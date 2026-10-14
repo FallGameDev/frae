@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fried Rice at Eddie's</title>
+<!-- Pixel fonts: Press Start 2P for titles, VT323 for body text (VHS / Deltarune feel) -->
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     THEME
+     Change these to restyle the whole menu.
+     ========================================================= */
+  :root {
+    --bg: #000;
+    --panel: #000;
+    --line: #fff;            /* Deltarune-style white box borders */
+    --text: #fff;
+    --dim: #8a8a99;
+    --start: #5b16ec;        /* purple START button from the sketch */
+    --start-hi: #8a4dff;
+    --soul: #ff2a3c;         /* red heart cursor */
+    --glow-r: rgba(255, 0, 60, .55);   /* VHS color bleed (red) */
+    --glow-b: rgba(0, 200, 255, .55);  /* VHS color bleed (blue) */
+    --card-w: min(78vw, 1040px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'VT323', monospace;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }
+
+  /* =========================================================
+     VHS OVERLAYS (scanlines, noise, rolling tracking bar, vignette)
+     These sit on top of everything and ignore clicks.
+     ========================================================= */
+  .fx { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+
+  /* Thin horizontal scanlines */
+  .scanlines {
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,.035) 0px,
+      rgba(255,255,255,.035) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+  }
+
+  /* Dark edges like an old CRT */
+  .vignette {
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.85) 100%);
+  }
+
+  /* Rolling tracking bar that slides down the screen */
+  .tracking::after {
+    content: "";
+    position: absolute; left: 0; right: 0; height: 90px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,.06), transparent);
+    animation: roll 7s linear infinite;
+  }
+  @keyframes roll { from { top: -100px; } to { top: 110%; } }
+
+  /* Static noise drawn on a canvas by JavaScript */
+  #noise { opacity: .07; mix-blend-mode: screen; }
+
+  /* Whole screen flickers a tiny bit */
+  .screen { animation: flicker 4s infinite steps(1); width: 100%; display: flex; flex-direction: column; align-items: center; }
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    47% { opacity: .96; }
+    48% { opacity: 1; }
+    82% { opacity: .93; transform: translateX(1px); }
+    83% { opacity: 1; transform: none; }
+  }
+
+  /* VHS on-screen display in the corners */
+  .osd {
+    position: fixed; z-index: 40;
+    font-family: 'VT323', monospace; font-size: 30px; letter-spacing: 2px;
+    text-shadow: 2px 0 var(--glow-r), -2px 0 var(--glow-b);
+  }
+  .osd.tl { top: 18px; left: 26px; }
+  .osd.tr { top: 18px; right: 26px; text-align: right; }
+  .osd.bl { bottom: 18px; left: 26px; font-size: 24px; color: var(--dim); }
+  .blink { animation: blink 1s infinite steps(1); }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* =========================================================
+     TITLE
+     ========================================================= */
+  .franchise {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(14px, 2.2vw, 26px);
+    letter-spacing: 4px;
+    margin-bottom: clamp(18px, 3vh, 34px);
+    text-shadow: 3px 0 var(--glow-r), -3px 0 var(--glow-b);
+    text-align: center;
+  }
+
+  /* =========================================================
+     CAROUSEL
+     The middle card is the selected game. Neighbors peek in from the sides.
+     ========================================================= */
+  .stage {
+    position: relative;
+    width: 100%;
+    height: calc(var(--card-w) * .47);
+    max-height: 62vh;
+    min-height: 300px;
+  }
+
+  .card {
+    position: absolute;
+    top: 0; left: 50%;
+    width: var(--card-w);
+    height: 100%;
+    background: var(--panel);
+    border: 6px solid var(--line);
+    box-shadow: 0 0 0 4px #000, 10px 10px 0 4px #1d1d2b;  /* chunky double border + heavy shadow */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(14px, 2.5vw, 34px);
+    padding: clamp(14px, 2.5vw, 34px);
+    transition: transform .45s cubic-bezier(.2,.9,.25,1.1), opacity .45s, filter .45s;
+    cursor: pointer;
+  }
+  /* Side cards: pushed back and dimmed */
+  .card.side { opacity: .6; filter: grayscale(.7) brightness(.55); }
+  .card.far  { opacity: 0; pointer-events: none; }
+
+  /* ----- Left column: thumbnail + START ----- */
+  .left { display: flex; flex-direction: column; gap: clamp(12px, 2.5vh, 28px); min-height: 0; }
+
+  .thumb {
+    flex: 1;
+    min-height: 0;
+    border: 4px solid var(--line);
+    position: relative;
+    overflow: hidden;
+    background-size: cover; background-position: center;
+  }
+  /* Placeholder art when there is no image yet: colored stripes + big number */
+  .thumb .ph {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(40px, 7vw, 96px);
+    color: #000;
+    text-shadow: 4px 4px 0 rgba(255,255,255,.35);
+  }
+  /* Scanlines inside the thumbnail too, so it looks like a TV */
+  .thumb::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(to bottom, rgba(0,0,0,.18) 0 2px, transparent 2px 4px);
+  }
+
+  .start {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(14px, 2vw, 28px);
+    letter-spacing: 3px;
+    color: #fff;
+    background: var(--start);
+    border: 4px solid var(--line);
+    border-radius: 999px;
+    padding: clamp(14px, 2.4vh, 26px) 10px;
+    box-shadow: 0 7px 0 #000, 0 7px 0 4px var(--line);
+    cursor: pointer;
+    position: relative;
+    transition: transform .08s, box-shadow .08s, background .15s;
+  }
+  .start:hover { background: var(--start-hi); }
+  .start:active { transform: translateY(6px); box-shadow: 0 1px 0 #000, 0 1px 0 4px var(--line); }
+  /* Red heart "soul" cursor that sits next to START on the selected card */
+  .start .soul {
+    position: absolute; left: 7%; top: 50%;
+    width: 22px; height: 22px; translate: 0 -50%;
+    fill: var(--soul);
+    animation: bob .9s infinite ease-in-out;
+  }
+  @keyframes bob { 50% { translate: 4px -50%; } }
+
+  /* ----- Right column: header + description ----- */
+  .right { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .right h2 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(16px, 2.3vw, 32px);
+    line-height: 1.35;
+    text-align: center;
+    margin-bottom: 8px;
+    text-shadow: 3px 0 var(--glow-r), -3px 0 var(--glow-b);
+  }
+  .right .tag {
+    text-align: center;
+    color: var(--dim);
+    font-size: clamp(20px, 1.8vw, 26px);
+    margin-bottom: 10px;
+  }
+  .right p {
+    font-size: clamp(20px, 1.9vw, 28px);
+    line-height: 1.15;
+    overflow-y: auto;
+  }
+  /* "* " lines like Deltarune dialog */
+  .right p::before { content: "* "; color: var(--dim); }
+
+  /* ----- Locked cards: blacked out ----- */
+  .card.locked { border-color: #2b2b38; box-shadow: 0 0 0 4px #000, 10px 10px 0 4px #0c0c12; }
+  .card.locked .thumb { border-color: #2b2b38; background: #050507; }
+  .card.locked .thumb .ph { color: #1a1a24; text-shadow: none; }
+  .card.locked .start { background: #0d0d14; border-color: #2b2b38; color: #3a3a4a; box-shadow: 0 7px 0 #000; cursor: not-allowed; }
+  .card.locked .start .soul { display: none; }
+  .card.locked .right h2, .card.locked .right p, .card.locked .right .tag { color: #333342; text-shadow: none; }
+  .card.locked .right p::before { color: #222230; }
+
+  /* Shake when trying to start a locked game */
+  .shake { animation: shake .35s; }
+  @keyframes shake { 25% { margin-left: -10px; } 75% { margin-left: 10px; } }
+
+  /* =========================================================
+     ARROWS + PAGE DOTS
+     ========================================================= */
+  .nav {
+    display: flex; align-items: center; gap: clamp(30px, 6vw, 90px);
+    margin-top: clamp(20px, 4vh, 44px);
+  }
+  .arrow {
+    background: none; border: none; cursor: pointer;
+    width: clamp(50px, 6vw, 84px); height: clamp(56px, 7vw, 96px);
+    transition: transform .1s;
+  }
+  .arrow svg { width: 100%; height: 100%; fill: #fff; filter: drop-shadow(5px 5px 0 #2a2a3a); }
+  .arrow:hover svg { fill: #ffe14a; }
+  .arrow:active { transform: scale(.88); }
+  .arrow:disabled { opacity: .2; cursor: default; }
+
+  .dots { display: flex; gap: 12px; }
+  .dot { width: 14px; height: 14px; border: 3px solid #fff; }
+  .dot.on { background: #fff; }
+  .dot.lock { border-color: #333342; }
+  .dot.lock.on { background: #333342; }
+
+  .hint { margin-top: 14px; color: var(--dim); font-size: 22px; letter-spacing: 1px; }
+
+  /* =========================================================
+     START TRANSITION (screen shrinks to a line like an old TV turning off)
+     ========================================================= */
+  #tvoff {
+    position: fixed; inset: 0; z-index: 60; background: #000;
+    display: none;
+  }
+  #tvoff.go { display: block; animation: tvoff .6s forwards; }
+  @keyframes tvoff {
+    0%   { clip-path: inset(0 0 100% 0); }
+    40%  { clip-path: inset(0 0 0 0); background: #fff; }
+    70%  { background: #000; }
+    100% { background: #000; }
+  }
+
+  /* =========================================================
+     PHONE LAYOUT: card stacks vertically
+     ========================================================= */
+  @media (max-width: 700px) {
+    :root { --card-w: 84vw; }
+    .stage { height: 64vh; max-height: none; }
+    .card { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+    .left { display: contents; }
+    .thumb { height: 22vh; flex: none; order: 1; }
+    .right { order: 2; }
+    .start { order: 3; align-self: end; }
+    .osd { font-size: 22px; }
+    .osd.bl { display: none; }
+    .hint { display: none; }   /* no keyboard on phones */
+  }
+</style>
+</head>
+<body>
+
+<!-- VHS overlays -->
+<canvas id="noise" class="fx"></canvas>
+<div class="fx scanlines"></div>
+<div class="fx tracking"></div>
+<div class="fx vignette"></div>
+
+<!-- VHS on-screen text in the corners -->
+<div class="osd tl">PLAY <span class="blink">▶</span></div>
+<div class="osd tr" id="clock">SP 00:00:00</div>
+<div class="osd bl">WILDCARD STUDIOS</div>
+
+<div class="screen">
+  <h1 class="franchise">FRIED RICE AT EDDIE'S</h1>
+
+  <!-- Cards get built here by JavaScript from the GAMES list -->
+  <div class="stage" id="stage"></div>
+
+  <div class="nav">
+    <button class="arrow" id="prev" aria-label="Previous game">
+      <svg viewBox="0 0 10 12"><polygon points="10,0 10,12 0,6"/></svg>
+    </button>
+    <div class="dots" id="dots"></div>
+    <button class="arrow" id="next" aria-label="Next game">
+      <svg viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6"/></svg>
+    </button>
+  </div>
+  <div class="hint">◀ ▶ CHOOSE &nbsp; · &nbsp; Z / ENTER START</div>
+</div>
+
+<div id="tvoff"></div>
+
+<script>
+  /* =========================================================
+     GAME LIST
+     Edit names, text, and colors here.
+     - unlocked: true lets the player start it
+     - thumb: path to an image (like "img/game1.png"). Leave "" for the placeholder.
+     - url: page to open when START is pressed (fill this in after the sb3 conversion)
+     ========================================================= */
+  const GAMES = [
+    {
+      title: "FRIED RICE AT EDDIE'S",
+      tag: "Episode 1",
+      desc: "Welcome to Eddie's. The rice is hot, the orders are piling up, and something is not quite right after closing time. Placeholder description: swap this for the real one.",
+      color: "#7fdc5a",
+      thumb: "",
+      url: "",
+      unlocked: true
+    },
+    {
+      title: "FRIED RICE AT EDDIE'S 2",
+      tag: "Coming soon",
+      desc: "This tape has not been recorded yet.",
+      color: "#ffcf3f",
+      thumb: "",
+      url: "",
+      unlocked: false
+    },
+    {
+      title: "FRIED RICE AT EDDIE'S 3",
+      tag: "Coming soon",
+      desc: "This tape has not been recorded yet.",
+      color: "#46e0ff",
+      thumb: "",
+      url: "",
+      unlocked: false
+    },
+    {
+      title: "FRIED RICE AT EDDIE'S 4",
+      tag: "Coming soon",
+      desc: "This tape has not been recorded yet.",
+      color: "#ff6b4a",
+      thumb: "",
+      url: "",
+      unlocked: false
+    }
+  ];
+
+  let current = 0;   // which game is in the middle
+  const stage = document.getElementById("stage");
+  const dotsBox = document.getElementById("dots");
+  const cards = [];
+  const dots = [];
+
+  // Red heart icon (Deltarune "soul") used on the START button
+  const SOUL_SVG = '<svg class="soul" viewBox="0 0 10 9"><path d="M1 0h3v1h2V0h3v1h1v3H9v1H8v1H7v1H6v1H4V7H3V6H2V5H1V4H0V1h1z"/></svg>';
+
+  /* ---------- Build one card per game ---------- */
+  GAMES.forEach((game, i) => {
+    const card = document.createElement("div");
+    card.className = "card" + (game.unlocked ? "" : " locked");
+
+    // Locked games hide their real title and art
+    const title = game.unlocked ? game.title : "? ? ?";
+    const thumbStyle = game.unlocked
+      ? (game.thumb
+          ? `background-image:url('${game.thumb}')`
+          : `background: repeating-linear-gradient(135deg, ${game.color} 0 28px, ${shade(game.color)} 28px 56px)`)
+      : "";
+
+    card.innerHTML = `
+      <div class="left">
+        <div class="thumb" style="${thumbStyle}">
+          ${game.thumb && game.unlocked ? "" : `<div class="ph">${game.unlocked ? i + 1 : "?"}</div>`}
+        </div>
+        <button class="start">${SOUL_SVG}${game.unlocked ? "START" : "LOCKED"}</button>
+      </div>
+      <div class="right">
+        <h2>${title}</h2>
+        <div class="tag">${game.unlocked ? game.tag : "NO SIGNAL"}</div>
+        <p>${game.unlocked ? game.desc : "This tape has not been recorded yet."}</p>
+      </div>
+    `;
+
+    // Clicking a side card slides to it. Clicking START on the middle card plays it.
+    card.addEventListener("click", e => {
+      if (i !== current) { go(i); return; }
+      if (e.target.closest(".start")) startGame();
+    });
+
+    stage.appendChild(card);
+    cards.push(card);
+
+    // Little square page indicator
+    const dot = document.createElement("div");
+    dot.className = "dot" + (game.unlocked ? "" : " lock");
+    dotsBox.appendChild(dot);
+    dots.push(dot);
+  });
+
+  /* ---------- Position every card based on the current one ---------- */
+  function layout() {
+    cards.forEach((card, i) => {
+      const off = i - current;                 // -1 = left neighbor, 1 = right neighbor
+      const scale = off === 0 ? 1 : .86;
+      // 106% puts the neighbor mostly off screen so only its edge peeks in
+      card.style.transform = `translateX(calc(-50% + ${off * 106}%)) scale(${scale})`;
+      card.style.zIndex = 10 - Math.abs(off);
+      card.classList.toggle("side", Math.abs(off) === 1);
+      card.classList.toggle("far", Math.abs(off) > 1);
+    });
+    dots.forEach((d, i) => d.classList.toggle("on", i === current));
+    document.getElementById("prev").disabled = current === 0;
+    document.getElementById("next").disabled = current === GAMES.length - 1;
+  }
+
+  /* ---------- Move to a game ---------- */
+  function go(i) {
+    if (i < 0 || i >= GAMES.length || i === current) return;
+    current = i;
+    beep(520, .05);
+    layout();
+  }
+
+  /* ---------- Press START ---------- */
+  function startGame() {
+    const game = GAMES[current];
+    const card = cards[current];
+
+    if (!game.unlocked) {
+      // Locked: shake + low buzz
+      card.classList.remove("shake");
+      void card.offsetWidth;              // restarts the animation
+      card.classList.add("shake");
+      beep(110, .18, "square");
+      return;
+    }
+
+    beep(880, .08); setTimeout(() => beep(1320, .12), 80);
+    document.getElementById("tvoff").classList.add("go");
+
+    // After the TV-off effect, open the game (once its url is filled in)
+    setTimeout(() => {
+      if (game.url) {
+        location.href = game.url;
+      } else {
+        document.getElementById("tvoff").classList.remove("go");
+        alert(game.title + " is not hooked up yet. Set its url in the GAMES list.");
+      }
+    }, 650);
+  }
+
+  /* ---------- Controls: buttons, keyboard, swipe ---------- */
+  document.getElementById("prev").onclick = () => go(current - 1);
+  document.getElementById("next").onclick = () => go(current + 1);
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft"  || e.key === "a") go(current - 1);
+    if (e.key === "ArrowRight" || e.key === "d") go(current + 1);
+    if (e.key === "Enter" || e.key === "z" || e.key === "Z" || e.key === " ") startGame();
+  });
+
+  let touchX = null;
+  stage.addEventListener("touchstart", e => touchX = e.touches[0].clientX, { passive: true });
+  stage.addEventListener("touchend", e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 40) go(current + (dx < 0 ? 1 : -1));
+    touchX = null;
+  });
+
+  /* ---------- Tiny retro sound effects (no audio files needed) ---------- */
+  let audio;
+  function beep(freq, len, type = "square") {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audio.createOscillator();
+      const gain = audio.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(.06, audio.currentTime);
+      gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + len);
+      osc.connect(gain).connect(audio.destination);
+      osc.start();
+      osc.stop(audio.currentTime + len);
+    } catch (err) { /* sound is optional */ }
+  }
+
+  /* ---------- Helper: darker version of a hex color for stripes ---------- */
+  function shade(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16) * .75, g = ((n >> 8) & 255) * .75, b = (n & 255) * .75;
+    return `rgb(${r|0},${g|0},${b|0})`;
+  }
+
+  /* ---------- VHS static noise ---------- */
+  const noise = document.getElementById("noise");
+  const nctx = noise.getContext("2d");
+  noise.width = 200; noise.height = 120;        // small canvas stretched = chunky grain
+  noise.style.width = "100%"; noise.style.height = "100%";
+  function drawNoise() {
+    const img = nctx.createImageData(noise.width, noise.height);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = Math.random() * 255;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 255;
+    }
+    nctx.putImageData(img, 0, 0);
+    setTimeout(() => requestAnimationFrame(drawNoise), 60);
+  }
+  drawNoise();
+
+  /* ---------- VHS tape counter in the top right ---------- */
+  const t0 = Date.now();
+  setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    const pad = n => String(n).padStart(2, "0");
+    document.getElementById("clock").textContent =
+      `SP ${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
+  }, 1000);
+
+  layout();
+</script>
+</body>
+</html>
