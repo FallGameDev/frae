@@ -100,7 +100,7 @@
   #debug .keys { margin-top: calc(var(--u) * 3); color: #888; }
   /* settings */
   #settingsPanel h2 { font-size: calc(var(--u) * 22); font-weight: normal; margin-bottom: calc(var(--u) * 16); }
-  #settingsPanel .row { display: flex; align-items: center; gap: calc(var(--u) * 12); margin: calc(var(--u) * 6) 0 calc(var(--u) * 6) calc(var(--u) * 40); }
+  #settingsPanel .row { display: flex; align-items: center; gap: calc(var(--u) * 12); margin: calc(var(--u) * 9) 0 calc(var(--u) * 9) calc(var(--u) * 40); }
   #settingsPanel .label { width: calc(var(--u) * 110); font-size: calc(var(--u) * 15); }
   #settingsPanel .pair { display: flex; gap: calc(var(--u) * 8); }
   /* jumpscare buttons: orange when picked, gray when not (like the old pictures) */
@@ -116,9 +116,6 @@
     background: #666; border-color: #666; padding: calc(var(--u) * 4) calc(var(--u) * 26); }
   #settingsPanel .confirm:hover { border-color: #fff; }
 
-  #settingsPanel .nameInput { width: calc(var(--u) * 170); background: #111; border: calc(var(--u) * 2) solid #fff;
-    padding: calc(var(--u) * 3) calc(var(--u) * 6); font-size: calc(var(--u) * 12); }
-  #settingsPanel .nameInput:focus { border-color: #f7931e; outline: none; }
   #settingsPanel .note { color: #888; font-size: calc(var(--u) * 9); }
   #settingsPanel .fileNow { color: #aaa; min-width: calc(var(--u) * 150); }
   #settingsPanel .small { font-size: calc(var(--u) * 12); padding: calc(var(--u) * 2) calc(var(--u) * 10); }
@@ -304,8 +301,7 @@ const DEFAULT_TEXTS = {
   "Save file": "Save file",
   "CHANGE": "CHANGE",
   "Saving and achievements are off": "Saving and achievements are off",
-  "no saving or achievements while on": "no saving or achievements while on",
-  "Name": "Name"
+  "no saving or achievements while on": "no saving or achievements while on"
  },
  "Night start and clock": {
   "12:00 AM": "12:00 AM",
@@ -3217,7 +3213,6 @@ async function applyMods() {
     if (mod.texts) mergeTexts(mod.texts);
   }
   TEXTS = texts;
-  applyName();
   const url = {};
   for (const [path, blob] of Object.entries(files)) {
     url["assets/" + path] = URL.createObjectURL(blob);
@@ -3360,20 +3355,6 @@ document.addEventListener("keydown", e => {
 });
 
 /* =====================================================================
-   PLAYER NAME
-   The name on the paycheck and the pink slip (normally "Mike Wazowski").
-   Browsers do not let web pages read the computer's account name, so the
-   player types it in Settings. Saved in localStorage with the settings.
-   ===================================================================== */
-const NAME_KEY = "Mike Wazowski";             // the word in the pictures that the name replaces
-let baseName = null;                          // what it says without a player name (mods can change it)
-function applyName() {
-  if (baseName === null) baseName = TEXTS[NAME_KEY] !== undefined ? TEXTS[NAME_KEY] : NAME_KEY;
-  const name = (settings.name || "").trim();
-  TEXTS[NAME_KEY] = name || baseName;
-}
-
-/* =====================================================================
    SETTINGS SCREEN
    ===================================================================== */
 function buildSettings() {
@@ -3401,7 +3382,6 @@ function buildSettings() {
     el("div", { class: "row" }, el("span", { class: "label" }, T("Debug mode")),
        el("div", { class: "pair" }, dbBtn("ON", true), dbBtn("OFF", false)),
        el("span", { class: "note" }, T("no saving or achievements while on"))),
-    el("div", { class: "row" }, el("span", { class: "label" }, T("Name")), nameBox()),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Save file")),
        el("span", { class: "fileNow" }, T("FILE") + " " + game.file + "  (" + fileSummary(game.file) + ")"),
        el("button", { class: "small", onclick: () => {
@@ -3419,13 +3399,6 @@ function buildSettings() {
        el("button", { class: "big", onclick: () => { blip(); openMods(); } }, T("Mods"))),
     el("button", { class: "confirm", onclick: closeSettings }, T("CONFIRM"))
   );
-}
-// The name box: changes the name as you type
-function nameBox() {
-  const input = el("input", { type: "text", class: "nameInput", maxlength: "20", spellcheck: "false",
-                              placeholder: baseName || NAME_KEY, value: settings.name || "" });
-  input.addEventListener("input", () => { settings.name = input.value.slice(0, 20); applyName(); saveSettings(); });
-  return input;
 }
 function openSettings() {
   buildSettings();
