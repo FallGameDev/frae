@@ -147,20 +147,34 @@ function measureInk(ctx, text, font) {
   return textCache.get(key);
 }
 
+// Words shown in the game. Mods can change them with texts.json
+// (original text -> new text). Filled in before the game starts.
+let TEXTS = {};
+
 function drawCostume(ctx, cos) {
   if (cos.clip) { ctx.beginPath(); ctx.rect(0, 0, cos.w, cos.h); ctx.clip(); }
   for (const L of cos.layers) {
     if (L.img) {
       const img = L.tint ? Assets.tinted(L.img, L.tint) : Assets.image(L.img);
       if (!img || (img.complete === false)) continue;
+      ctx.save();
+      if (L.cut) {                      // only show part of the picture
+        ctx.beginPath(); ctx.rect(...L.cut); ctx.clip();
+      }
+      if (L.outline) {                  // only show the picture inside these shapes (custom night heads)
+        if (!L._clip) {
+          L._clip = new Path2D();
+          for (const [d, m] of L.outline) L._clip.addPath(new Path2D(d), new DOMMatrix(m));
+        }
+        ctx.clip(L._clip);
+      }
       if (L.m) {
-        ctx.save();
         ctx.transform(...L.m);
         ctx.drawImage(img, 0, 0, L.iw, L.ih);
-        ctx.restore();
       } else {
         ctx.drawImage(img, L.x, L.y, L.w, L.h);
       }
+      ctx.restore();
     } else if (L.rect) {
       const [x, y, w, h] = L.rect;
       if (L.fill && L.hole) {
@@ -177,20 +191,49 @@ function drawCostume(ctx, cos) {
         ctx.strokeRect(x + L.lw / 2, y + L.lw / 2, w - L.lw, h - L.lw);
       }
     } else if (L.text !== undefined) {
-      // Stretch the text so its ink fills the box exactly where the old picture had it
-      const ink = measureInk(ctx, L.text, L.font);
-      if (ink.w <= 0 || ink.h <= 0) continue;
-      const [x, y, w, h] = L.box;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.scale(w / ink.w, h / ink.h);
-      ctx.font = `100px "${L.font}"`;
-      ctx.fillStyle = L.color;
-      ctx.textBaseline = "alphabetic";
-      ctx.fillText(L.text, -ink.left, -ink.top);
-      ctx.restore();
+      drawText(ctx, L);
     }
   }
+}
+
+function drawText(ctx, L) {
+  const shown = TEXTS[L.text] !== undefined ? String(TEXTS[L.text]) : L.text;
+  if (L.at) {
+    // text placed like in the original drawing: [left x, baseline y, font size]
+    ctx.save();
+    ctx.font = `${L.at[2]}px "${L.font}"`;
+    ctx.fillStyle = L.color;
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(shown, L.at[0], L.at[1]);
+    ctx.restore();
+    return;
+  }
+  const [x, y, w, h] = L.box;
+  const orig = measureInk(ctx, L.text, L.font);
+  if (orig.w <= 0 || orig.h <= 0) return;
+  ctx.save();
+  ctx.font = `100px "${L.font}"`;
+  ctx.fillStyle = L.color;
+  ctx.textBaseline = "alphabetic";
+  if (shown === L.text && !L.like) {
+    // Stretch the text so its ink fills the box exactly where the old picture had it
+    ctx.translate(x, y);
+    ctx.scale(w / orig.w, h / orig.h);
+    ctx.fillText(L.text, -orig.left, -orig.top);
+  } else {
+    // Changed text (or text sized like another one): keep the letter size, let the width change
+    let k = h / orig.h;
+    if (L.like) k = L.like[1] / measureInk(ctx, L.like[0], L.font).h;   // same letter size as L.like[0]
+    const ink = measureInk(ctx, shown, L.font);
+    const baseline = L.like ? y + h : y - orig.top * k;   // "like" boxes end on the baseline
+    let left = x;
+    if (L.align === "center") left = x + w / 2 - ink.w * k / 2;
+    if (L.align === "right") left = x + w - ink.w * k;
+    ctx.translate(left - ink.left * k, baseline);
+    ctx.scale(k, k);
+    ctx.fillText(shown, 0, 0);
+  }
+  ctx.restore();
 }
 
 // Builds a 1-unit-per-pixel see-through map of a costume, used for clicks,
@@ -235,10 +278,13 @@ class Target {
     this.volume = s.volume;
     this.effects = { ghost: 0, brightness: 0, ...(from ? from.effects : {}) };
     this.v = { ...(from ? from.v : def.start.vars) };   // local variables
-    // sound output for this sprite (each sprite has its own volume)
-    this.out = rt.audio.createGain();
-    this.out.gain.value = this.volume / 100;
-    this.out.connect(rt.master);
+    // sound output for this sprite (each sprite has its own volume);
+    // music goes through the Music slider, everything else through the Sound slider
+    this.outMusic = rt.audio.createGain();
+    this.outSfx = rt.audio.createGain();
+    this.outMusic.gain.value = this.outSfx.gain.value = this.volume / 100;
+    this.outMusic.connect(rt.musicBus);
+    this.outSfx.connect(rt.sfxBus);
     this.playing = new Map();            // sound index -> playback info
   }
 
@@ -370,7 +416,7 @@ class Target {
     if (buf) {
       const src = this.rt.audio.createBufferSource();
       src.buffer = buf;
-      src.connect(this.out);
+      src.connect(this.def.sounds[i].music ? this.outMusic : this.outSfx);
       src.onended = () => { p.done = true; if (this.playing.get(i) === p) this.playing.delete(i); };
       src.start();
       p.src = src;
@@ -389,7 +435,7 @@ class Target {
   stopSounds() { for (const i of [...this.playing.keys()]) this.stopSound(i); }
   setVolume(v) {
     this.volume = Math.min(100, Math.max(0, v));
-    this.out.gain.value = this.volume / 100;
+    this.outMusic.gain.value = this.outSfx.gain.value = this.volume / 100;
   }
 
   /* ---- sensing ---- */
@@ -437,6 +483,11 @@ class Runtime {
     this.audio = new (window.AudioContext || window.webkitAudioContext)();
     this.master = this.audio.createGain();
     this.master.connect(this.audio.destination);
+    this.musicBus = this.audio.createGain();      // Music volume (settings)
+    this.sfxBus = this.audio.createGain();        // Sound volume (settings)
+    this.musicBus.connect(this.master);
+    this.sfxBus.connect(this.master);
+    this.hooks = {};                              // page code that runs when a message is broadcast
     this.project = project;
     this.defs = new Map();                 // sprite name -> shared definition
     this.targets = [];                     // stage + sprites + clones
@@ -499,7 +550,11 @@ class Runtime {
     }
     return started;
   }
-  broadcast(name) { return this.startHats("broadcast", str(name)); }
+  broadcast(name) {
+    const hook = this.hooks[str(name).toLowerCase()];
+    if (hook) hook();
+    return this.startHats("broadcast", str(name));
+  }
   *broadcastAndWait(name) {
     const started = this.broadcast(name);
     yield WAIT;

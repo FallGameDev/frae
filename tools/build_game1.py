@@ -30,6 +30,44 @@ OUT = os.path.join(REPO, '1')
 ASSETS = os.path.join(OUT, 'assets')
 
 
+# Sounds controlled by the Music slider (everything else uses the Sound slider)
+MUSIC = {'Menu', 'ColdPresc B', 'Fried Rice At Eddies (1)_E_major__bpm_103', 'circus', 'music box',
+         'pirate song2', 'Download (5)', 'shimmy-shimmy-yay-made-with-Voicemod', 'chimes 2'}
+
+# texts.json groups: which sprites' words go in which group
+TEXT_GROUPS = [
+    ('Title menu', ['FNaF text', 'dine in', 'new game', 'continue', '6th Night', 'Custom Night', 'selection', 'SettingsButton']),
+    ('Settings', []),
+    ('Night start and clock', ['what day', 'time AM', 'night', '6am fore', '6am back']),
+    ('Office', ['Power Left %', 'Usage word']),
+    ('Cameras', ['CAM']),
+    ('Custom night', ['Backdrop', 'Ready']),
+    ('Hallucinations', ['hallucinations']),
+    ('Secret ending', ['Secret??//']),
+]
+SETTINGS_TEXTS = ['Settings', 'Jumpscares', 'ON', 'OFF', 'Music', 'Sound', 'Mods', 'CONFIRM']
+CHARACTER_NAMES = ['Eddie', 'Weddy', 'Cheddy', '???']
+
+
+def default_texts(data):
+    """All the words the game shows, grouped, as {group: {text: text}} for texts.json."""
+    out = {g: {} for g, _ in TEXT_GROUPS}
+    out['Settings'] = {t: t for t in SETTINGS_TEXTS}
+    out['Characters'] = {}
+    for t in data:
+        group = next((g for g, names in TEXT_GROUPS if any(t['name'] == n or t['name'].startswith(n) for n in names)), None)
+        for c in t['costumes']:
+            for L in c['layers']:
+                s = L.get('text')
+                if s is None or s.strip() == '' or s.strip().isdigit():
+                    continue           # single digits (clock, power) are not worth changing
+                if s in CHARACTER_NAMES:
+                    out['Characters'][s] = s
+                elif group:
+                    out[group][s] = s
+    return {g: v for g, v in out.items() if v}
+
+
 def slug(s):
     return re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-')[:48] or 'x'
 
@@ -111,8 +149,9 @@ class Builder:
     # --------------------------------------------------------------- sounds
     def sound(self, target, s):
         key = s['md5ext']
+        music = 1 if s['name'] in MUSIC else 0
         if key in self.done:
-            return dict(name=s['name'], src=self.done[key])
+            return dict(name=s['name'], src=self.done[key], music=music)
         path = os.path.join(self.src, key)
         rel = self.out_name('snd', slug(s['name']), 'mp3')
         codec = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'a:0', '-show_entries', 'stream=codec_name',
@@ -123,7 +162,7 @@ class Builder:
             subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', path, '-codec:a', 'libmp3lame', '-q:a', '3',
                             os.path.join(OUT, rel)], check=True)
         self.done[key] = rel
-        return dict(name=s['name'], src=rel)
+        return dict(name=s['name'], src=rel, music=music)
 
     # ---------------------------------------------------------------- data
     def target_data(self, t, costumes):
@@ -170,9 +209,17 @@ def main():
     engine = open(os.path.join(HERE, 'engine.js'), encoding='utf-8').read()
     shell = open(os.path.join(HERE, 'game_shell.html'), encoding='utf-8').read()
     project_js = 'const PROJECT = ' + json.dumps(dict(targets=data), ensure_ascii=False, separators=(',', ':')) + ';'
+    # everything a mod template needs: every asset file (except the loading picture) and the words
+    files = sorted(os.path.relpath(os.path.join(dp, f), ASSETS).replace(os.sep, '/')
+                   for dp, _, fs in os.walk(ASSETS) for f in fs)
+    files = [f for f in files if f != 'loading-rice.webp']
+    project_js += '\nconst ASSET_FILES = ' + json.dumps(files) + ';'
+    project_js += '\nconst DEFAULT_TEXTS = ' + json.dumps(default_texts(data), ensure_ascii=False, indent=1) + ';'
+    ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
     html = (shell.replace('/*ENGINE*/', engine)
                  .replace('/*PROJECT*/', project_js)
-                 .replace('/*SCRIPTS*/', scripts_js))
+                 .replace('/*SCRIPTS*/', scripts_js)
+                 .replace('/*UI*/', ui))
     open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(html)
     print(f'wrote 1/index.html with {n} scripts, {len(data)} sprites')
 

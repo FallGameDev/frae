@@ -320,8 +320,8 @@ def svg_costume(b, t, c, assets, stats):
                 clip=True, layers=layers)
 
 
-def place(b, t, c, inst, A, ox, oy, w, h, croot, stats):
-    """Find where the character file must go so it covers the drawn character."""
+def fit_instance(inst, A):
+    """Scale/turn/move that puts character file A on top of a drawn character."""
     pairs = []
     used = set()
     for p in inst['parts'] + inst['face']:
@@ -345,6 +345,12 @@ def place(b, t, c, inst, A, ox, oy, w, h, croot, stats):
         keep = [(p, q) for e, p, q in good if e < 0.03 * scale] or [(p, q) for e, p, q in sorted(good, key=lambda g: g[0])[:3]]
         src = np.vstack([q['pts'] for p, q in keep]); dst = np.vstack([p['pts'] for p, q in keep])
         m, err = fit_similarity(src, dst)
+    return m
+
+
+def place(b, t, c, inst, A, ox, oy, w, h, croot, stats):
+    """Find where the character file must go so it covers the drawn character."""
+    m = fit_instance(inst, A)
     m_costume = mul([1, 0, 0, 1, -ox, -oy], m)
     layer = dict(img=b.char_src[A.name], m=[round(v, 5) for v in m_costume], iw=A.w, ih=A.h)
     if inst['silhouette']:

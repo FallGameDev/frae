@@ -43,9 +43,6 @@ TEXT = {
     'level': (PIXEL, {str(d): [[str(d)]] for d in range(1, 8)}),
     'Ready': (SANS, {'active': [['READY']]}),
     'SettingsButton': (MONO, {'Deselected': [['Settings']], 'Selected': [['Settings']]}),
-    'JumpscareON': (SANS, {'OnActiveAsset 4@4x': [['ON']], 'OnInactiveAsset 3@4x': [['ON']]}),
-    'JumpscareOFF': (SANS, {'OffActiveAsset 5@4x': [['OFF']], 'OffInactiveAsset 6@4x': [['OFF']]}),
-    'ConfirmSettings': (SANS, {'ConfirmAsset 7@4x2': [['CONFIRM']]}),
     'Custom10': (SANS, {'1': [['1']], '2': [['2']]}),
     'Custom01': (SANS, {str(d): [[str(d)]] for d in range(10)}),
     'dine in': (SANS, {'text': [['Dine In']]}),
@@ -67,7 +64,6 @@ TEXT = {
         'costume10': [['you wont regret it'], ['what would you wanna eat']],
         'costume12': [['Fried Rice At Eddies']],
     }),
-    'Backdrop': (MONO, {'SettingsMenu': None}),       # filled in from the picture (see below)
 }
 # camera buttons: "CAM" over the camera number, in a box (gray = off, green = showing)
 for cam in ['0', '1A', '1B', '1C', '2A', '2B', '3', '4A', '4B', '5', '6', '7']:
@@ -80,10 +76,13 @@ def apply(b):
     b.notes = []
     remove_copyright(b)
     stop_title_music(b)
+    new_settings(b)
     drop_unused_costumes(b)
     text_costumes(b)
     from cameras import split_cameras
     split_cameras(b)
+    from custom_night import custom_night
+    custom_night(b)
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +111,31 @@ def stop_title_music(b):
         'mutation': {'tagName': 'mutation', 'children': [], 'hasnext': 'true'},
         'shadow': False, 'topLevel': False}
     b.notes.append('fixed: title music now stops when a night starts')
+
+
+# ---------------------------------------------------------------------------
+# The settings screen is now real HTML (see ui.js), so the old Scratch
+# buttons are removed, the saved jumpscare setting is no longer reset to OFF
+# on start, and the settings picture becomes plain black (the panel draws
+# the words on top).
+# ---------------------------------------------------------------------------
+def new_settings(b):
+    gone = {'JumpscareON', 'JumpscareOFF', 'ConfirmSettings'}
+    b.project['targets'] = [t for t in b.project['targets'] if t['name'] not in gone]
+    sb = next(t for t in b.project['targets'] if t['name'] == 'SettingsButton')
+    for bid, blk in list(sb['blocks'].items()):
+        if isinstance(blk, dict) and blk['opcode'] == 'event_whenflagclicked':
+            nxt = sb['blocks'].get(blk['next'] or '')
+            if nxt and nxt['opcode'] == 'data_setvariableto' and nxt['fields']['VARIABLE'][0] == 'Jumpscares':
+                del sb['blocks'][blk['next']]
+                del sb['blocks'][bid]
+    bd = next(t for t in b.project['targets'] if t['name'] == 'Backdrop')
+    c = next(c for c in bd['costumes'] if c['name'] == 'SettingsMenu')
+    res = c.get('bitmapResolution', 1)
+    w, h = 960 / res, 540 / res
+    b.custom[('Backdrop', 'SettingsMenu')] = dict(name='SettingsMenu', w=w, h=h,
+        cx=c['rotationCenterX'] / res, cy=c['rotationCenterY'] / res, layers=[dict(rect=[0, 0, w, h], fill='#000000')])
+    b.notes.append('settings screen moved to HTML (old buttons removed)')
 
 
 # ---------------------------------------------------------------------------
@@ -348,6 +372,57 @@ def text_costumes(b):
                 layers=text_layers(px, lines, font, t['name'], c['name']))
             count += 1
     b.notes.append(f'{count} costumes turned into real text')
+    match_menu_font(b)
+
+
+# ---------------------------------------------------------------------------
+# Dine In, Spooky and It's already dark. use the same font, size and left
+# edge as New Game / Continue (and Dine In loses its black box)
+# ---------------------------------------------------------------------------
+MENU_LIKE_NEW_GAME = {'dine in': 'text', '6th Night': 'string', 'Custom Night': 'string'}
+
+
+def sprite_pos(b, name):
+    """Where the menu scripts put a sprite (x, y, size), or its starting spot."""
+    t = next(t for t in b.project['targets'] if t['name'] == name)
+    x, y, size = t['x'], t['y'], t['size']
+    for blk in t['blocks'].values():
+        if isinstance(blk, dict) and blk['opcode'] == 'motion_gotoxy':
+            vx, vy = blk['inputs']['X'][1], blk['inputs']['Y'][1]
+            if isinstance(vx, list) and isinstance(vy, list):
+                x, y = float(vx[1]), float(vy[1])
+        if isinstance(blk, dict) and blk['opcode'] == 'looks_setsizeto':
+            v = blk['inputs']['SIZE'][1]
+            if isinstance(v, list):
+                size = float(v[1])
+    return x, y, size
+
+
+def match_menu_font(b):
+    ng = b.custom[('new game', 'text')]
+    ngt = next(L for L in ng['layers'] if 'text' in L)
+    nx, ny, ns = sprite_pos(b, 'new game')
+    k = ns / 100
+    left_stage = nx + (ngt['box'][0] - ng['cx']) * k          # left edge of "New Game" on the stage
+    cap_stage = ngt['box'][3] * k                               # letter height of "New Game" on the stage
+    for name, cos in MENU_LIKE_NEW_GAME.items():
+        c = b.custom[(name, cos)]
+        L = next(L for L in c['layers'] if 'text' in L)
+        sx, sy, ss = sprite_pos(b, name)
+        ks = ss / 100
+        mid = L['box'][1] + L['box'][3] / 2                    # keep the item's vertical spot
+        cap = cap_stage / ks
+        x0 = (left_stage - sx) / ks + c['cx']
+        L.update(font=MONO, color='#ffffff', like=['New Game', round(cap, 3)], align='left',
+                 box=[round(x0, 3), round(mid - cap / 2, 3), round(L['box'][2], 3), round(cap, 3)])
+        c['layers'] = [L]                                        # no box behind it any more
+        if x0 < 2:                                               # keep the text inside the costume
+            shift = 2 - x0
+            L['box'][0] += shift
+            c['cx'] += shift
+        c['w'] = L['box'][0] + 420                               # room for the wider font
+        c['h'] = max(c['h'], L['box'][1] + L['box'][3] * 1.6)
+    b.notes.append('Dine In, Spooky and It\'s already dark. now use the New Game font')
 
 
 # Lines read off pictures that have no SVG text inside

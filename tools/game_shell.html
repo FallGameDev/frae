@@ -66,6 +66,71 @@
   #askInput { flex: 1; font: inherit; font-size: 12px; padding: 6px; background: #111; color: #fff; border: 2px solid #fff; }
   #ask button { font: inherit; font-size: 11px; background: var(--accent); color: #fff; border: 2px solid #fff; padding: 0 10px; cursor: pointer; }
 
+
+  /* ===== Settings + Mods panels (sizes use --u = 1 Scratch pixel) ===== */
+  .panel {
+    position: absolute; inset: 0; z-index: 6; background: #000; color: #fff;
+    font-family: "Share Tech Mono", monospace; font-size: calc(var(--u) * 13);
+    display: flex; flex-direction: column; padding: calc(var(--u) * 14) calc(var(--u) * 18);
+    animation: fadeIn .35s;
+  }
+  .panel[hidden] { display: none; }
+  @keyframes fadeIn { from { opacity: 0; } }
+  .panel button, .panel input { font: inherit; color: #fff; }
+  .panel button { cursor: pointer; background: #000; border: calc(var(--u) * 2) solid #fff; padding: calc(var(--u) * 4) calc(var(--u) * 10); }
+  .panel button:hover { background: #222; }
+  .panel button:active { transform: translateY(calc(var(--u) * 1)); }
+  .panel button:disabled { opacity: .4; cursor: wait; }
+
+  /* settings */
+  #settingsPanel h2 { font-size: calc(var(--u) * 22); font-weight: normal; margin-bottom: calc(var(--u) * 16); }
+  #settingsPanel .row { display: flex; align-items: center; gap: calc(var(--u) * 12); margin: calc(var(--u) * 9) 0 calc(var(--u) * 9) calc(var(--u) * 40); }
+  #settingsPanel .label { width: calc(var(--u) * 110); font-size: calc(var(--u) * 15); }
+  #settingsPanel .pair { display: flex; gap: calc(var(--u) * 8); }
+  /* jumpscare buttons: orange when picked, gray when not (like the old pictures) */
+  #settingsPanel .pick { min-width: calc(var(--u) * 70); font-family: "Sans Serif", sans-serif; font-size: calc(var(--u) * 16);
+    background: #666; border-color: #666; padding: calc(var(--u) * 3) calc(var(--u) * 10); }
+  #settingsPanel .pick:hover { border-color: #fff; background: #777; }
+  #settingsPanel .pick.on { background: #f7931e; border-color: #f7931e; }
+  #settingsPanel .pick.on:hover { border-color: #fff; }
+  #settingsPanel input[type=range] { width: calc(var(--u) * 170); accent-color: #f7931e; }
+  #settingsPanel .val { width: calc(var(--u) * 40); color: #aaa; }
+  #settingsPanel .big { font-size: calc(var(--u) * 15); padding: calc(var(--u) * 4) calc(var(--u) * 22); }
+  #settingsPanel .confirm { margin: auto auto 0; font-family: "Sans Serif", sans-serif; font-size: calc(var(--u) * 18);
+    background: #666; border-color: #666; padding: calc(var(--u) * 4) calc(var(--u) * 26); }
+  #settingsPanel .confirm:hover { border-color: #fff; }
+
+  /* mods */
+  #modsPanel { gap: calc(var(--u) * 7); }
+  .modsTop { display: flex; align-items: center; gap: calc(var(--u) * 10); }
+  .modsTop h2 { font-size: calc(var(--u) * 20); font-weight: normal; }
+  .tabs { display: flex; gap: calc(var(--u) * 6); margin-left: auto; }
+  .tabs button.on { background: #fff; color: #000; }
+  .pane { border: calc(var(--u) * 2) solid #444; padding: calc(var(--u) * 6) calc(var(--u) * 8); display: flex; flex-wrap: wrap; gap: calc(var(--u) * 6); align-items: center; }
+  .pane[hidden] { display: none; }
+  .pane .hint { color: #999; font-size: calc(var(--u) * 11); width: 100%; }
+  #ghInput { flex: 1; min-width: 0; background: #111; border: calc(var(--u) * 2) solid #fff; padding: calc(var(--u) * 4) calc(var(--u) * 6); }
+  #modStatus { min-height: calc(var(--u) * 15); font-size: calc(var(--u) * 11); color: #9f9; }
+  #modStatus.bad { color: #ff6b6b; }
+  .lists { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 10); min-height: 0; }
+  .col { display: flex; flex-direction: column; min-height: 0; }
+  .col h3 { font-weight: normal; font-size: calc(var(--u) * 13); margin-bottom: calc(var(--u) * 4); }
+  .col h3 small { color: #999; font-size: calc(var(--u) * 10); }
+  .list { flex: 1; overflow-y: auto; border: calc(var(--u) * 2) solid #fff; padding: calc(var(--u) * 5); }
+  #modsInUse { border-color: #f7931e; }
+  .mod { position: relative; border: calc(var(--u) * 2) solid #666; padding: calc(var(--u) * 4) calc(var(--u) * 22) calc(var(--u) * 4) calc(var(--u) * 6);
+    margin-bottom: calc(var(--u) * 5); background: #111; cursor: grab; touch-action: none; user-select: none; }
+  .mod:hover { border-color: #fff; }
+  .modName { font-size: calc(var(--u) * 13); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .modInfo { font-size: calc(var(--u) * 10); color: #999; }
+  .mod .del { position: absolute; right: calc(var(--u) * 3); top: calc(var(--u) * 3); border: none; padding: 0 calc(var(--u) * 4); font-size: calc(var(--u) * 14); color: #999; background: none; }
+  .mod .del:hover { color: #ff6b6b; background: none; }
+  .mod.dragging { opacity: .3; }
+  .mod.ghost { position: fixed; z-index: 99; pointer-events: none; opacity: .9; border-color: #fff; font-family: "Share Tech Mono", monospace; color: #fff; }
+  .dropMark { height: calc(var(--u) * 3); background: #f7931e; margin-bottom: calc(var(--u) * 5); }
+  .empty { color: #666; font-size: calc(var(--u) * 11); text-align: center; padding: calc(var(--u) * 14) 0; }
+  #reloadNote { position: absolute; inset: 0; z-index: 7; background: #000; display: flex; align-items: center; justify-content: center; }
+  #reloadNote[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -78,6 +143,41 @@
     <img id="spinner" src="assets/loading-rice.webp" alt="">
     <div id="barOuter"><div id="barInner"></div></div>
   </div>
+
+
+  <!-- Settings screen (opens when the Settings button is clicked) -->
+  <div id="settingsPanel" class="panel" hidden></div>
+
+  <!-- Mods screen -->
+  <div id="modsPanel" class="panel" hidden>
+    <div class="modsTop">
+      <button id="modsBack">&lt; BACK</button>
+      <h2>MODS</h2>
+      <div class="tabs">
+        <button id="tabUnpacked">LOAD UNPACKED</button>
+        <button id="tabPacked">LOAD PACKED</button>
+      </div>
+    </div>
+    <div class="pane" id="paneUnpacked">
+      <button id="pickFolder">PICK MOD FOLDER</button>
+      <button id="pickZip">PICK .ZIP</button>
+      <button id="tplBtn" style="margin-left:auto">DOWNLOAD TEMPLATE</button>
+      <div class="hint">Pick a mod folder from your computer. New to modding? Download the template, change some files, then pick that folder.</div>
+      <input type="file" id="folderInput" webkitdirectory directory multiple hidden>
+      <input type="file" id="zipInput" accept=".zip" hidden>
+    </div>
+    <div class="pane" id="panePacked" hidden>
+      <input id="ghInput" placeholder="github.com/user/repo" autocomplete="off" spellcheck="false">
+      <button id="ghLoad">LOAD</button>
+      <div class="hint">Loads a mod straight from a public GitHub repo (it needs a manifest.json).</div>
+    </div>
+    <div id="modStatus"></div>
+    <div class="lists">
+      <div class="col"><h3>DOWNLOADED <small>(not in use)</small></h3><div class="list" id="modsDownloaded"></div></div>
+      <div class="col"><h3>IN USE <small>(top one wins)</small></h3><div class="list" id="modsInUse"></div></div>
+    </div>
+  </div>
+  <div id="reloadNote" hidden></div>
 
   <!-- Box for the "ask and wait" block -->
   <form id="ask" hidden>
@@ -138,6 +238,7 @@ function fit() {
   frame.style.width = (full ? window.innerWidth : w + 8) + "px";
   frame.style.height = (full ? window.innerHeight : h + 8) + "px";
   canvas.style.width = w + "px";
+  frame.style.setProperty("--u", (w / 480) + "px");     // 1 Scratch pixel, used by the panels
   canvas.style.height = h + "px";
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   canvas.width = Math.round(w * dpr);
@@ -153,22 +254,32 @@ fit();
 
 /*SCRIPTS*/
 
-// Collect every file the game needs, then load them with a progress bar
+/*UI*/
+
+// The settings screen replaces the old Scratch settings buttons
+rt.hooks["settings menu"] = openSettings;
+setupModsUI();
+applyVolumes();
+PROJECT.targets.find(t => t.isStage).start.vars.Jumpscares = settings.jumpscares;
+
+const barInner = document.getElementById("barInner");
+
+// Put mods in place first, then load every file the game needs (with the progress bar)
+applyMods().then(() => {
 const imageUrls = new Set(), soundUrls = new Set();
 for (const t of PROJECT.targets) {
   for (const c of t.costumes) for (const L of c.layers) if (L.img) imageUrls.add(L.img);
   for (const s of t.sounds) soundUrls.add(s.src);
 }
-const barInner = document.getElementById("barInner");
-
-Promise.all([
+return Promise.all([
   document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Serif"'),
   document.fonts.load('10px "Pixel"'), document.fonts.load('10px "Press Start 2P"'),
   document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Share Tech Mono"'),
   Assets.loadAll([...imageUrls], [...soundUrls], rt.audio, p => {
     barInner.style.width = Math.round(p * 100) + "%";
   })
-]).then(() => {
+]);
+}).then(() => {
   // Everything is loaded: start the game right away (like pressing the green flag)
   rt.createTargets();
   const cover = document.getElementById("cover");
@@ -211,7 +322,7 @@ canvas.addEventListener("pointerdown", e => { canvas.focus(); rt.setMouse(e.clie
 window.addEventListener("pointermove", e => { rt.setMouse(e.clientX, e.clientY); rt.mouseMoved(); });
 window.addEventListener("pointerup", e => { rt.setMouse(e.clientX, e.clientY); rt.mouseReleased(); });
 document.addEventListener("keydown", e => {
-  if (e.target.id === "askInput") return;
+  if (e.target.tagName === "INPUT") return;     // typing in a box is not game input
   const k = scratchKey(e);
   if (!k) return;
   if (k.includes("arrow") || k === "space") e.preventDefault();
@@ -220,7 +331,12 @@ document.addEventListener("keydown", e => {
 document.addEventListener("keyup", e => { const k = scratchKey(e); if (k) rt.keyReleased(k); });
 
 /* ===== Esc goes back to the game menu ===== */
-document.addEventListener("keydown", e => { if (e.key === "Escape") location.href = "../index.html"; });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!$("#modsPanel").hidden) closeMods();
+  else if (!$("#settingsPanel").hidden) closeSettings();
+  else location.href = "../index.html";
+});
 </script>
 </body>
 </html>
