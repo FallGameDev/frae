@@ -382,6 +382,7 @@ async function applyMods() {
     if (mod.texts) mergeTexts(mod.texts);
   }
   TEXTS = texts;
+  applyName();
   const url = {};
   for (const [path, blob] of Object.entries(files)) {
     url["assets/" + path] = URL.createObjectURL(blob);
@@ -524,6 +525,20 @@ document.addEventListener("keydown", e => {
 });
 
 /* =====================================================================
+   PLAYER NAME
+   The name on the paycheck and the pink slip (normally "Mike Wazowski").
+   Browsers do not let web pages read the computer's account name, so the
+   player types it in Settings. Saved in localStorage with the settings.
+   ===================================================================== */
+const NAME_KEY = "Mike Wazowski";             // the word in the pictures that the name replaces
+let baseName = null;                          // what it says without a player name (mods can change it)
+function applyName() {
+  if (baseName === null) baseName = TEXTS[NAME_KEY] !== undefined ? TEXTS[NAME_KEY] : NAME_KEY;
+  const name = (settings.name || "").trim();
+  TEXTS[NAME_KEY] = name || baseName;
+}
+
+/* =====================================================================
    SETTINGS SCREEN
    ===================================================================== */
 function buildSettings() {
@@ -551,6 +566,7 @@ function buildSettings() {
     el("div", { class: "row" }, el("span", { class: "label" }, T("Debug mode")),
        el("div", { class: "pair" }, dbBtn("ON", true), dbBtn("OFF", false)),
        el("span", { class: "note" }, T("no saving or achievements while on"))),
+    el("div", { class: "row" }, el("span", { class: "label" }, T("Name")), nameBox()),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Save file")),
        el("span", { class: "fileNow" }, T("FILE") + " " + game.file + "  (" + fileSummary(game.file) + ")"),
        el("button", { class: "small", onclick: () => {
@@ -568,6 +584,13 @@ function buildSettings() {
        el("button", { class: "big", onclick: () => { blip(); openMods(); } }, T("Mods"))),
     el("button", { class: "confirm", onclick: closeSettings }, T("CONFIRM"))
   );
+}
+// The name box: changes the name as you type
+function nameBox() {
+  const input = el("input", { type: "text", class: "nameInput", maxlength: "20", spellcheck: "false",
+                              placeholder: baseName || NAME_KEY, value: settings.name || "" });
+  input.addEventListener("input", () => { settings.name = input.value.slice(0, 20); applyName(); saveSettings(); });
+  return input;
 }
 function openSettings() {
   buildSettings();
