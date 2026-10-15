@@ -38,23 +38,22 @@
   }
   #stage { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
 
-  /* ===== Loading / click to play screen ===== */
+  /* ===== Loading screen: a flat picture spinning in 3D, with a bar under it ===== */
   #cover {
     position: absolute; inset: 0; z-index: 5;
     background: #000; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 22px; text-align: center;
-    padding: 16px;
+    align-items: center; justify-content: center; gap: 6%;
+    perspective: 900px;                       /* gives the spin its 3D depth */
+    transition: opacity .4s;
   }
-  #cover h1 { font-size: clamp(12px, 2.6vw, 22px); line-height: 1.5; text-shadow: 3px 0 rgba(255,0,60,.55), -3px 0 rgba(0,200,255,.55); }
-  #barOuter { width: min(70%, 360px); height: 18px; border: 3px solid #fff; padding: 2px; }
+  #cover.done { opacity: 0; pointer-events: none; }
+  #spinner {
+    width: 38%;
+    animation: spin 2.4s linear infinite;    /* one full turn every 2.4 seconds */
+  }
+  @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+  #barOuter { width: 46%; height: 16px; border: 3px solid #fff; padding: 2px; }
   #barInner { height: 100%; width: 0; background: #fff; transition: width .15s; }
-  #playBtn {
-    font: inherit; font-size: 14px; color: #fff; background: var(--accent);
-    border: 4px solid #fff; border-radius: 999px; padding: 14px 34px; cursor: pointer;
-    box-shadow: 0 6px 0 #000, 0 6px 0 4px #fff;
-  }
-  #playBtn:disabled { background: #222; color: #555; cursor: wait; }
-  #status { font-size: 10px; color: var(--dim); }
 
   /* ===== "ask and wait" box ===== */
   #ask {
@@ -74,12 +73,10 @@
 <div id="frame">
   <canvas id="stage" tabindex="0"></canvas>
 
-  <!-- Loading screen (a click is needed before browsers allow sound) -->
+  <!-- Loading screen: spinning rice bowl + loading bar -->
   <div id="cover">
-    <h1>FRIED RICE<br>AT EDDIE'S</h1>
+    <img id="spinner" src="assets/loading-rice.webp" alt="">
     <div id="barOuter"><div id="barInner"></div></div>
-    <button id="playBtn" disabled>LOADING...</button>
-    <div id="status">Loading tapes...</div>
   </div>
 
   <!-- Box for the "ask and wait" block -->
@@ -8076,8 +8073,6 @@ for (const t of PROJECT.targets) {
   for (const s of t.sounds) soundUrls.add(s.src);
 }
 const barInner = document.getElementById("barInner");
-const playBtn = document.getElementById("playBtn");
-const status = document.getElementById("status");
 
 Promise.all([
   document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Serif"'),
@@ -8085,23 +8080,25 @@ Promise.all([
   document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Share Tech Mono"'),
   Assets.loadAll([...imageUrls], [...soundUrls], rt.audio, p => {
     barInner.style.width = Math.round(p * 100) + "%";
-    status.textContent = `Loading tapes... ${Math.round(p * 100)}%`;
   })
 ]).then(() => {
+  // Everything is loaded: start the game right away (like pressing the green flag)
   rt.createTargets();
-  playBtn.disabled = false;
-  playBtn.textContent = "CLICK TO PLAY";
-  status.textContent = "Use headphones for the full experience";
-});
-
-// The first click unlocks sound, then presses the green flag
-playBtn.addEventListener("click", () => {
-  rt.audio.resume();
-  document.getElementById("cover").remove();
+  const cover = document.getElementById("cover");
+  cover.classList.add("done");
+  setTimeout(() => cover.remove(), 450);
   canvas.focus();
+  rt.audio.resume();
   rt.greenFlag();
+  last = performance.now();
   requestAnimationFrame(loop);
 });
+
+// Browsers only allow sound after the player clicks or presses a key,
+// so the sound turns on at the first click/key if it could not start by itself
+function unlockSound() { if (rt.audio.state !== "running") rt.audio.resume(); }
+window.addEventListener("pointerdown", unlockSound);
+window.addEventListener("keydown", unlockSound);
 
 /* =====================================================================
    MAIN LOOP: run scripts 30 times a second, draw when something changed

@@ -153,6 +153,9 @@ def main():
         ('Share Tech Mono', 'ShareTechMono.woff2')]}
     b = Builder(sb3_dir, fonts)
 
+    # loading screen picture
+    shutil.copy(os.path.join(HERE, 'loading-rice.webp'), os.path.join(ASSETS, 'loading-rice.webp'))
+
     import mods
     mods.apply(b)          # edits for the web version (text, cameras, copyright, unused costumes)
 
