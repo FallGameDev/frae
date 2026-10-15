@@ -298,7 +298,8 @@ class Game {
     const overId = over ? over.id : null;
     if (overId && overId !== this.hovered) { this.sp.blip.play("new game", "blip3"); this.selected = overId; }
     this.hovered = overId;
-    const sHover = hits(pic("SettingsButton", "Deselected"), 30, 305, 10, this.mouse.x, this.mouse.y);
+    // the whole box around the word counts (not just the letters), like the menu items
+    const sHover = inBox(pic("SettingsButton", "Deselected"), 30, 305, 10, this.mouse.x, this.mouse.y, 40);
     if (sHover && !this.settingsHover) this.sp.blip.play("new game", "blip3");
     this.settingsHover = sHover;
 
