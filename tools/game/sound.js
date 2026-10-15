@@ -68,9 +68,17 @@ class Speaker {
     const src = Sound.ctx.createBufferSource();
     src.buffer = buffer;
     src.loop = !!o.loop;
-    src.connect(info.music ? this.music : this.sfx);
+    const gain = Sound.ctx.createGain();          // this sound's own volume (for fading out)
+    src.connect(gain).connect(info.music ? this.music : this.sfx);
     handle.done = false;
     handle.stop = () => { try { src.stop(); } catch (e) {} handle.done = true; };
+    // fade to silence over `secs` seconds, then stop
+    handle.fadeOut = secs => {
+      const t = Sound.ctx.currentTime;
+      gain.gain.setValueAtTime(gain.gain.value, t);
+      gain.gain.linearRampToValueAtTime(0, t + secs);
+      try { src.stop(t + secs); } catch (e) {}
+    };
     src.onended = () => { handle.done = true; if (this.playing.get(name) === handle) this.playing.delete(name); };
     src.start();
     this.playing.set(name, handle);

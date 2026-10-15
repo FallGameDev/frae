@@ -36,6 +36,11 @@ ASSETS = os.path.join(OUT, 'assets')
 MUSIC = {'Menu', 'ColdPresc B', 'Fried Rice At Eddies (1)_E_major__bpm_103', 'circus', 'music box',
          'pirate song2', 'Download (5)', 'shimmy-shimmy-yay-made-with-Voicemod', 'chimes 2'}
 
+# Phone calls recorded again (tools/calls/): Scratch sound name -> new file.
+# Night 5 keeps its original call.
+NEW_CALLS = {'voiceover1c': 'night1.mp3', 'voiceover2a': 'night2.mp3',
+             'voiceover3': 'night3.mp3', 'voiceover4': 'night4.mp3'}
+
 # texts.json groups: which sprites' words go in which group
 TEXT_GROUPS = [
     ('Title menu', ['FNaF text', 'dine in', 'new game', 'continue', '6th Night', 'Custom Night', 'selection', 'SettingsButton']),
@@ -254,6 +259,13 @@ def main():
         art[t['name']] = {'list': [c['name'] for c in t['costumes']],
                           'pics': {c['name']: {k: v for k, v in c.items() if k != 'name'} for c in t['costumes']}}
         sounds[t['name']] = {s['name']: {'src': s['src'], 'music': s['music']} for s in t['sounds']}
+    # ---- new phone calls for nights 1-4 (tools/calls/) and the ringtone before each call ----
+    calls_dir = os.path.join(HERE, 'calls')
+    for old, new in NEW_CALLS.items():
+        shutil.copy(os.path.join(calls_dir, new), os.path.join(OUT, sounds['Phone Calls'][old]['src']))
+    shutil.copy(os.path.join(calls_dir, 'ringtone.mp3'), os.path.join(ASSETS, 'snd', 'ringtone.mp3'))
+    sounds['Phone Calls']['ringtone'] = {'src': 'assets/snd/ringtone.mp3', 'music': 0}
+
     data_js = 'const ART = ' + json.dumps(art, ensure_ascii=False, separators=(',', ':')) + ';'
     data_js += '\nconst SOUNDS = ' + json.dumps(sounds, ensure_ascii=False, separators=(',', ':')) + ';'
     # everything a mod template needs: every asset file (except the loading picture) and the words

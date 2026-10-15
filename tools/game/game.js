@@ -544,19 +544,31 @@ class Game {
     const n = this.n;
     if (this.level >= 6 || this.died) return;
     const calls = { 1: "voiceover1c", 2: "voiceover2a", 3: "voiceover3", 4: "voiceover4", 5: "voiceover5" };
-    this.sp.phone.setVolume(100);
-    const call = this.sp.phone.play("Phone Calls", calls[this.level]);
+    const sp = this.sp.phone;
+    sp.setVolume(100);
     n.phoneOn = true;
+    let ring = null, call = null;
+    // the phone rings for 3 to 8 seconds, then the call plays
     this.scripts.run("phone", function* () {
-      // the "mute call" button shows from 20 to 60 seconds in
-      yield 20; n.phoneShown = true;
-      yield 40; n.phoneShown = false;
-    }.call(this));
-    this.scripts.run("phone", function* () {
+      ring = sp.play("Phone Calls", "ringtone");
+      yield randFloat(3, 8);
+      ring.fadeOut(0.15);
+      yield 0.15;
+      call = sp.play("Phone Calls", calls[this.level]);
+      // the "mute call" button shows from 20 to 60 seconds into the call
+      this.scripts.run("phone", function* () {
+        yield 20; n.phoneShown = true;
+        yield 40; n.phoneShown = false;
+      }.call(this));
       yield () => call.done;
       n.phoneShown = false; n.phoneOn = false;
     }.call(this));
-    this.muteCall = () => { call.stop(); n.phoneShown = false; n.phoneOn = false; this.scripts.stop("phone"); };
+    this.muteCall = () => {
+      if (ring) ring.stop();
+      if (call) call.stop();
+      n.phoneShown = false; n.phoneOn = false;
+      this.scripts.stop("phone");
+    };
   }
 
   // --------------------------------------------------------------
