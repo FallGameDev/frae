@@ -306,12 +306,15 @@ function loop(now) {
   acc += now - last;
   last = now;
   if (acc > 200) acc = 200;                     // tab was hidden: don't try to catch up forever
+  let stepped = false;
   while (acc >= FRAME_MS) {
     rt.step();
+    stepped = true;
     acc -= FRAME_MS;
     if (++saveTimer >= 60) { saveTimer = 0; writeSave(); }
   }
-  if (rt.needsRedraw) rt.render();
+  // draw every screen refresh while things move (smooth), otherwise only when something changed
+  if (rt.needsRedraw || rt.moving || stepped) rt.render(Math.min(1, acc / FRAME_MS));
   requestAnimationFrame(loop);
 }
 

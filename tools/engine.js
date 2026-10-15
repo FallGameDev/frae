@@ -19,6 +19,7 @@ const FRAME_MS = 1000 / 30;          // Scratch runs at 30 frames per second
 const WORK_MS = FRAME_MS * 0.75;     // max time scripts may use per frame
 const WAIT = Symbol("wait");         // yielded by waits (not counted as "busy")
 const FENCE = 15;                    // sprites must keep 15px on stage (Scratch rule)
+let SMOOTH = true;                   // blend movement between steps (set false for exact Scratch look)
 
 /* ---------------------------------------------------------------------
    Scratch value rules
@@ -152,6 +153,11 @@ function measureInk(ctx, text, font) {
 let TEXTS = {};
 
 function drawCostume(ctx, cos) {
+  if (cos.spin && ctx !== maskCtx) {
+    // a flat picture spinning in 3D (like the rice bowl on the loading screen): squeeze it sideways
+    const turn = Math.cos(performance.now() / 2400 * Math.PI * 2);
+    ctx.translate(cos.w / 2, 0); ctx.scale(turn, 1); ctx.translate(-cos.w / 2, 0);
+  }
   if (cos.clip) { ctx.beginPath(); ctx.rect(0, 0, cos.w, cos.h); ctx.clip(); }
   for (const L of cos.layers) {
     if (L.img) {
@@ -173,6 +179,11 @@ function drawCostume(ctx, cos) {
         ctx.drawImage(img, 0, 0, L.iw, L.ih);
       } else {
         ctx.drawImage(img, L.x, L.y, L.w, L.h);
+      }
+      if (L.shade) {                    // darken the picture (characters in dark rooms)
+        ctx.globalAlpha *= L.shade;
+        const dark = Assets.tinted(L.img, "#000");
+        if (L.m) ctx.drawImage(dark, 0, 0, L.iw, L.ih); else ctx.drawImage(dark, L.x, L.y, L.w, L.h);
       }
       ctx.restore();
     } else if (L.rect) {
@@ -247,6 +258,8 @@ function drawText(ctx, L) {
   ctx.restore();
 }
 
+let maskCtx = null;                  // (spinning costumes are measured unturned)
+
 // Builds a 1-unit-per-pixel see-through map of a costume, used for clicks,
 // "touching mouse" checks and keeping sprites on the stage.
 function costumeMask(cos) {
@@ -255,7 +268,9 @@ function costumeMask(cos) {
   const c = document.createElement("canvas");
   c.width = w; c.height = h;
   const g = c.getContext("2d");
+  maskCtx = g;
   drawCostume(g, cos);
+  maskCtx = null;
   let data = null;
   try { data = g.getImageData(0, 0, w, h).data; } catch (e) { data = null; }  // blocked when opened from a file:// URL
   let minX = w, minY = h, maxX = -1, maxY = -1;
@@ -651,6 +666,10 @@ class Runtime {
   /* ---- one frame of scripts ---- */
   step() {
     this.redrawRequested = false;
+    // remember where everything was, so frames drawn between steps can blend smoothly
+    for (const t of this.targets) {
+      t.prev = { x: t.x, y: t.y, size: t.size, dir: t.dir, ghost: t.effects.ghost, costume: t.costumeIndex, visible: t.visible };
+    }
     // "while key held" hats (Makey Makey key block) start whenever the key is down
     for (const t of this.executionOrder()) for (const s of t.def.scripts) {
       if (s.type === "keyHeld" && this.keys.has(s.arg)) this.startHats("keyHeld", s.arg, t, false);
@@ -675,7 +694,10 @@ class Runtime {
   }
 
   /* ---- drawing ---- */
-  render() {
+  // a = how far we are between the last step and the next one (0 to 1).
+  // Position, size, turn and fade are blended so movement looks smooth on fast screens;
+  // big jumps (teleports, costume changes) are not blended.
+  render(a = 1) {
     const ctx = this.ctx, cw = this.canvas.width, ch = this.canvas.height;
     const k = cw / STAGE_W;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -683,27 +705,42 @@ class Runtime {
     ctx.fillRect(0, 0, cw, ch);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
+    let moving = false;
     for (const t of [this.stage, ...this.drawOrder]) {
-      if (!t || !t.visible || t.effects.ghost >= 100) continue;
+      if (!t || !t.visible) continue;
+      let { x, y, size, dir } = t, ghost = t.effects.ghost;
+      const p = t.prev;
+      if (SMOOTH && p && a < 1 && p.visible && p.costume === t.costumeIndex &&
+          Math.abs(p.x - x) + Math.abs(p.y - y) < 120 && Math.abs(p.size - size) < 60) {
+        const f = (u, v) => u + (v - u) * a;
+        if (p.x !== x || p.y !== y || p.size !== size || p.dir !== dir || p.ghost !== ghost) moving = true;
+        x = f(p.x, x); y = f(p.y, y); size = f(p.size, size); ghost = f(p.ghost, ghost);
+        let d = dir - p.dir;
+        if (d > 180) d -= 360; if (d < -180) d += 360;
+        dir = p.dir + d * a;
+      }
+      if (ghost >= 100) continue;
       const c = t.costumeObj;
       ctx.save();
       ctx.setTransform(k, 0, 0, k, 0, 0);
       if (t.isStage) {
         ctx.translate(STAGE_W / 2 - c.cx, STAGE_H / 2 - c.cy);
       } else {
-        ctx.translate(STAGE_W / 2 + t.x, STAGE_H / 2 - t.y);
-        if (t.rotationStyle === "all around") ctx.rotate((t.dir - 90) * Math.PI / 180);
-        else if (t.rotationStyle === "left-right" && t.dir < 0) ctx.scale(-1, 1);
-        ctx.scale(t.size / 100, t.size / 100);
+        ctx.translate(STAGE_W / 2 + x, STAGE_H / 2 - y);
+        if (t.rotationStyle === "all around") ctx.rotate((dir - 90) * Math.PI / 180);
+        else if (t.rotationStyle === "left-right" && dir < 0) ctx.scale(-1, 1);
+        ctx.scale(size / 100, size / 100);
         ctx.translate(-c.cx, -c.cy);
       }
-      ctx.globalAlpha = 1 - t.effects.ghost / 100;
+      ctx.globalAlpha = 1 - ghost / 100;
       // brightness: Scratch adds light; a CSS filter is a close match
       if (t.effects.brightness) ctx.filter = `brightness(${Math.max(0, 1 + t.effects.brightness / 100)})`;
       drawCostume(ctx, c);
       ctx.restore();
+      if (c.spin) moving = true;        // keep the spin going
     }
     this.needsRedraw = false;
+    this.moving = moving;               // keep drawing in-between frames while something moves
   }
 
   /* ---- input ---- */

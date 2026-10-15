@@ -195,6 +195,7 @@ def split_cameras(b):
     b.char_src = {n: f'assets/characters/{f}' for n, f in CHAR_FILES.items()}
     b.char_assets = assets
     b.variant_hashes = {}
+    b.variant_info = {}
     b.bg_cache = {}            # image content hash -> asset path
     stats = dict(costumes=0, base=0, silhouette=0, variant=0, partial=0, baked=0)
     for t in b.project['targets']:
@@ -459,6 +460,8 @@ def exact_pose(b, A, m, inst, croot, label, ox, oy):
         rel = b.out_name('characters', f"{A.name.lower()}-{re.sub(r'[^a-z0-9]+', '-', label.lower()).strip('-')}", 'svg')
         open(os.path.join(b.out_root, rel), 'w', encoding='utf-8').write(svg)
         b.variant_hashes[hsh] = rel
+    # where this file sits in the base character's coordinates (so it can be reused elsewhere)
+    b.variant_info[b.variant_hashes[hsh]] = (x0, y0, vw, vh)
     # the file starts at (x0, y0) of the character's coordinates
     m_img = mul([1, 0, 0, 1, -ox, -oy], mul(m, [1, 0, 0, 1, x0, y0]))
     return dict(img=b.variant_hashes[hsh], m=[round(v, 5) for v in m_img], iw=round(vw, 3), ih=round(vh, 3))

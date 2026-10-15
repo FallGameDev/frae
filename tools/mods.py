@@ -83,6 +83,8 @@ def apply(b):
     split_cameras(b)
     from custom_night import custom_night
     custom_night(b)
+    from fanmade import fanmade
+    fanmade(b)
 
 
 # ---------------------------------------------------------------------------
