@@ -418,7 +418,15 @@ function applyDebug() {
   const box = $("#debug");
   box.hidden = !settings.debug;
   clearInterval(debugTimer);
-  if (!settings.debug) return;
+  if (!settings.debug) {
+    // debug mode off: anything that changed while it was on is thrown away (back to the saved file)
+    if (typeof game !== "undefined" && game.file) {
+      const level = game.level;
+      game.useFile(game.file);
+      if (game.screen !== "title") game.level = level;      // finish the current night as it is
+    }
+    return;
+  }
   debugFrames = 0;
   requestAnimationFrame(debugCount);
   let lastTime = performance.now();
@@ -437,7 +445,8 @@ function applyDebug() {
       `<div class="head">DEBUG</div>` +
       `<div>FPS <b>${fps}</b> &nbsp; mouse <b>${Math.round(game.mouse.x)}, ${Math.round(game.mouse.y)}</b>${game.mouse.down ? " (down)" : ""}</div>` +
       `<div class="vars">${rows}</div>` +
-      `<div class="keys">H next hour &middot; P +10% power &middot; G Golden</div>`;
+      `<div class="keys">H next hour &middot; P +10% power &middot; G Golden</div>` +
+      `<div class="warn">${T("Saving and achievements are off")}</div>`;
   }, 200);
 }
 document.addEventListener("keydown", e => {
@@ -540,7 +549,8 @@ function buildSettings() {
     el("div", { class: "row" }, el("span", { class: "label" }, T("Jumpscares")),
        el("div", { class: "pair" }, jsBtn("ON", "1"), jsBtn("OFF", "0"))),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Debug mode")),
-       el("div", { class: "pair" }, dbBtn("ON", true), dbBtn("OFF", false))),
+       el("div", { class: "pair" }, dbBtn("ON", true), dbBtn("OFF", false)),
+       el("span", { class: "note" }, T("no saving or achievements while on"))),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Save file")),
        el("span", { class: "fileNow" }, T("FILE") + " " + game.file + "  (" + fileSummary(game.file) + ")"),
        el("button", { class: "small", onclick: () => {

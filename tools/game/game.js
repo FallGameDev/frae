@@ -291,7 +291,8 @@ class Game {
     this.file = file;
     this.progress = loadProgress(file);
   }
-  save() { saveProgress(this.file, this.progress); }
+  // Save progress. Never while debug mode is on (debug keys could skip nights for free)
+  save() { if (!settings.debug) saveProgress(this.file, this.progress); }
 
   // First screen after loading
   boot() {

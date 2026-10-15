@@ -54,7 +54,8 @@ TEXT_GROUPS = [
     ('Secret ending', ['Secret??//']),
 ]
 SETTINGS_TEXTS = ['Settings', 'Jumpscares', 'ON', 'OFF', 'Music', 'Sound', 'Mods', 'CONFIRM', 'Debug mode', 'Golden Freddy Rate?',
-                  'Select a file', 'FILE', 'EMPTY', 'Night', 'ERASE', 'Save file', 'CHANGE']
+                  'Select a file', 'FILE', 'EMPTY', 'Night', 'ERASE', 'Save file', 'CHANGE',
+                  'Saving and achievements are off', 'no saving or achievements while on']
 CHARACTER_NAMES = ['Eddie', 'Weddy', 'Cheddy', '???']
 
 

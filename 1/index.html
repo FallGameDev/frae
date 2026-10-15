@@ -96,6 +96,7 @@
   #debug .vars { margin-top: calc(var(--u) * 3); }
   #debug .vars div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #debug .chg, #debug .chg b { color: #ffe14d; }
+  #debug .warn { margin-top: calc(var(--u) * 2); color: #ff6b6b; }
   #debug .keys { margin-top: calc(var(--u) * 3); color: #888; }
   /* settings */
   #settingsPanel h2 { font-size: calc(var(--u) * 22); font-weight: normal; margin-bottom: calc(var(--u) * 16); }
@@ -115,6 +116,7 @@
     background: #666; border-color: #666; padding: calc(var(--u) * 4) calc(var(--u) * 26); }
   #settingsPanel .confirm:hover { border-color: #fff; }
 
+  #settingsPanel .note { color: #888; font-size: calc(var(--u) * 9); }
   #settingsPanel .fileNow { color: #aaa; min-width: calc(var(--u) * 150); }
   #settingsPanel .small { font-size: calc(var(--u) * 12); padding: calc(var(--u) * 2) calc(var(--u) * 10); }
 
@@ -297,7 +299,9 @@ const DEFAULT_TEXTS = {
   "Night": "Night",
   "ERASE": "ERASE",
   "Save file": "Save file",
-  "CHANGE": "CHANGE"
+  "CHANGE": "CHANGE",
+  "Saving and achievements are off": "Saving and achievements are off",
+  "no saving or achievements while on": "no saving or achievements while on"
  },
  "Night start and clock": {
   "12:00 AM": "12:00 AM",
@@ -1157,7 +1161,8 @@ class Game {
     this.file = file;
     this.progress = loadProgress(file);
   }
-  save() { saveProgress(this.file, this.progress); }
+  // Save progress. Never while debug mode is on (debug keys could skip nights for free)
+  save() { if (!settings.debug) saveProgress(this.file, this.progress); }
 
   // First screen after loading
   boot() {
@@ -2729,6 +2734,7 @@ Object.assign(Game.prototype, {
     const a = ACHIEVEMENTS.find(x => x.id === id);
     const got = this.progress.achievements;
     if (!a || got[id]) return;
+    if (settings.debug) return;                 // no achievements while debug mode is on
     got[id] = Date.now();
     this.progress.started = true;
     this.save();
@@ -3243,7 +3249,15 @@ function applyDebug() {
   const box = $("#debug");
   box.hidden = !settings.debug;
   clearInterval(debugTimer);
-  if (!settings.debug) return;
+  if (!settings.debug) {
+    // debug mode off: anything that changed while it was on is thrown away (back to the saved file)
+    if (typeof game !== "undefined" && game.file) {
+      const level = game.level;
+      game.useFile(game.file);
+      if (game.screen !== "title") game.level = level;      // finish the current night as it is
+    }
+    return;
+  }
   debugFrames = 0;
   requestAnimationFrame(debugCount);
   let lastTime = performance.now();
@@ -3262,7 +3276,8 @@ function applyDebug() {
       `<div class="head">DEBUG</div>` +
       `<div>FPS <b>${fps}</b> &nbsp; mouse <b>${Math.round(game.mouse.x)}, ${Math.round(game.mouse.y)}</b>${game.mouse.down ? " (down)" : ""}</div>` +
       `<div class="vars">${rows}</div>` +
-      `<div class="keys">H next hour &middot; P +10% power &middot; G Golden</div>`;
+      `<div class="keys">H next hour &middot; P +10% power &middot; G Golden</div>` +
+      `<div class="warn">${T("Saving and achievements are off")}</div>`;
   }, 200);
 }
 document.addEventListener("keydown", e => {
@@ -3365,7 +3380,8 @@ function buildSettings() {
     el("div", { class: "row" }, el("span", { class: "label" }, T("Jumpscares")),
        el("div", { class: "pair" }, jsBtn("ON", "1"), jsBtn("OFF", "0"))),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Debug mode")),
-       el("div", { class: "pair" }, dbBtn("ON", true), dbBtn("OFF", false))),
+       el("div", { class: "pair" }, dbBtn("ON", true), dbBtn("OFF", false)),
+       el("span", { class: "note" }, T("no saving or achievements while on"))),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Save file")),
        el("span", { class: "fileNow" }, T("FILE") + " " + game.file + "  (" + fileSummary(game.file) + ")"),
        el("button", { class: "small", onclick: () => {

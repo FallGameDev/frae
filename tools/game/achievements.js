@@ -43,6 +43,7 @@ Object.assign(Game.prototype, {
     const a = ACHIEVEMENTS.find(x => x.id === id);
     const got = this.progress.achievements;
     if (!a || got[id]) return;
+    if (settings.debug) return;                 // no achievements while debug mode is on
     got[id] = Date.now();
     this.progress.started = true;
     this.save();
