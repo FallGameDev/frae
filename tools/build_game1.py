@@ -63,6 +63,7 @@ def default_texts(data):
     out = {g: {} for g, _ in TEXT_GROUPS}
     out['Custom night'] = {}
     out['Settings'] = {t: t for t in SETTINGS_TEXTS}
+    out['Phone'] = {t: t for t in ['AM', 'Aidan', 'Manager', 'incoming call...']}   # the call banner
     out['Characters'] = {}
     for t in data:
         group = next((g for g, names in TEXT_GROUPS if any(t['name'] == n or t['name'].startswith(n) for n in names)), None)

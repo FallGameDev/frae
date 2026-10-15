@@ -363,6 +363,12 @@ const DEFAULT_TEXTS = {
   "what would you wanna eat": "what would you wanna eat",
   "Fried Rice At Eddies": "Fried Rice At Eddies"
  },
+ "Phone": {
+  "AM": "AM",
+  "Aidan": "Aidan",
+  "Manager": "Manager",
+  "incoming call...": "incoming call..."
+ },
  "Characters": {
   "Eddie": "Eddie",
   "Weddy": "Weddy",
@@ -851,6 +857,9 @@ const ROOM_ART = {
   "Backstage": "backstage", "Kitchen": "kitchen", "Restrooms": "restrooms",
 };
 
+// The phone handset icon (Material Design "call" icon, 24 x 24)
+const PHONE_ICON = new Path2D("M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z");
+
 // Starting difficulty (AI level 0-20) of each character on nights 1-6
 const NIGHT_AI = {
   //        Eddie (Freddy)  Weddy (Bonnie)  Cheddy (Chica)  Endo (Foxy)
@@ -1233,7 +1242,8 @@ class Game {
       fanFrame: 1,
       scareLeft: true, scareRight: true,
       hallucination: null,       // creepy face flashing this update
-      phoneOn: false, phoneShown: false,
+      phone: "off",              // the call banner: off, ringing (incoming call) or talking
+      callTime: 0,                // seconds into the call (shown on the banner)
       dance: 0,                   // dance frame (0 = no dance)
     };
     if (L <= 6) {
@@ -1245,6 +1255,7 @@ class Game {
     this.smooth.jump("pan", 60);       // office looks left/right (-60..60)
     this.smooth.jump("camPan", 60);    // camera view slowly slides
     this.smooth.jump("slideY", 0);
+    this.smooth.jump("phoneShow", 0);   // the call banner starts hidden
 
     // looping sounds of the office
     const sp = this.sp;
@@ -1313,29 +1324,100 @@ class Game {
     const calls = { 1: "voiceover1c", 2: "voiceover2a", 3: "voiceover3", 4: "voiceover4", 5: "voiceover5" };
     const sp = this.sp.phone;
     sp.setVolume(100);
-    n.phoneOn = true;
     let ring = null, call = null;
-    // the phone rings for 3 to 8 seconds, then the call plays
-    this.scripts.run("phone", function* () {
-      ring = sp.play("Phone Calls", "ringtone");
-      yield randFloat(3, 8);
+
+    // Pick up: the ringing stops and the call plays
+    const answer = () => {
+      if (n.phone !== "ringing") return;
+      this.scripts.stop("ring");
       ring.fadeOut(0.15);
-      yield 0.15;
       call = sp.play("Phone Calls", calls[this.level]);
-      // the "mute call" button shows from 20 to 60 seconds into the call
+      n.phone = "talking";
+      n.callTime = 0;
       this.scripts.run("phone", function* () {
-        yield 20; n.phoneShown = true;
-        yield 40; n.phoneShown = false;
+        yield () => call.done;
+        n.phone = "off";                              // the banner goes away when the call ends
       }.call(this));
-      yield () => call.done;
-      n.phoneShown = false; n.phoneOn = false;
-    }.call(this));
-    this.muteCall = () => {
+    };
+    // Hang up: everything stops and the banner goes away
+    const hangUp = () => {
       if (ring) ring.stop();
       if (call) call.stop();
-      n.phoneShown = false; n.phoneOn = false;
-      this.scripts.stop("phone");
+      this.scripts.stop("ring", "phone");
+      n.phone = "off";
     };
+    this.phoneTap = () => (n.phone === "ringing" ? answer() : hangUp());
+
+    // The phone rings for 3 to 8 seconds (the banner shows up 1 second in), then picks up by itself
+    this.scripts.run("ring", function* () {
+      ring = sp.play("Phone Calls", "ringtone");
+      const ringFor = randFloat(3, 8);
+      yield 1;
+      n.phone = "ringing";
+      yield ringFor - 1;
+      answer();
+    }.call(this));
+  }
+
+  /* --------------------------------------------------------------
+     THE CALL BANNER (top left, like an iPhone call)
+     Click it while it rings to pick up, click it during the call to hang up.
+     -------------------------------------------------------------- */
+  phoneBox() { return { x: 8, y: 8, w: 160, h: 42 }; }
+
+  updatePhone() {
+    const n = this.n;
+    if (n.phone === "talking") n.callTime += TICK;
+    // slide in / fade out smoothly
+    const show = this.smooth.get("phoneShow") || 0;
+    this.smooth.set("phoneShow", Math.max(0, Math.min(1, show + (n.phone === "off" ? -0.15 : 0.15))));
+  }
+
+  drawPhone(ctx, a) {
+    const n = this.n, show = this.smooth.at("phoneShow", a) || 0;
+    if (show <= 0) return;
+    const { x, y: y0, w, h } = this.phoneBox();
+    const y = y0 - (1 - show) * 14;
+    const word = s => (TEXTS[s] !== undefined ? String(TEXTS[s]) : s);
+    ctx.save();
+    ctx.globalAlpha = show;
+    // the dark glassy card
+    ctx.fillStyle = "rgba(28, 28, 32, 0.92)";
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, 13); ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.12)"; ctx.lineWidth = 0.75; ctx.stroke();
+    // the caller picture: a gradient circle with their letters
+    const cx = x + 21, cy = y + h / 2, r = 14;
+    const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
+    g.addColorStop(0, "#a5a9b6"); g.addColorStop(1, "#6b6f7c");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = '600 11px "Sans Serif"';
+    ctx.fillText(word("AM"), cx, cy + 0.5);
+    // name and what is happening
+    ctx.textAlign = "left";
+    ctx.font = '600 10px "Sans Serif"';
+    ctx.fillText(word("Aidan") + " (" + word("Manager") + ")", x + 41, y + 15, w - 80);
+    ctx.font = '8px "Sans Serif"';
+    ctx.fillStyle = "rgba(235, 235, 245, 0.6)";
+    if (n.phone === "ringing") ctx.fillText(word("incoming call..."), x + 41, y + 28);
+    else {
+      const t = Math.floor(n.callTime);
+      ctx.fillText(Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"), x + 41, y + 28);
+    }
+    // the round button: green to answer, red to hang up
+    const bx = x + w - 21, ringing = n.phone === "ringing";
+    const pulse = ringing ? 1 + 0.06 * Math.sin(performance.now() / 120) : 1;
+    ctx.fillStyle = ringing ? "#30d158" : "#ff3b30";
+    ctx.beginPath(); ctx.arc(bx, cy, 13 * pulse, 0, Math.PI * 2); ctx.fill();
+    // the handset (turned down when it means hang up)
+    ctx.translate(bx, cy);
+    if (!ringing) ctx.rotate(Math.PI * 0.75);
+    ctx.scale(0.62, 0.62);
+    ctx.translate(-12, -12);
+    ctx.fillStyle = "#fff";
+    ctx.fill(PHONE_ICON);
+    ctx.restore();
   }
 
   // --------------------------------------------------------------
@@ -1839,6 +1921,7 @@ class Game {
     this.updateWindowScare();
     this.updateFlipBar();
     this.updateNightSounds();
+    this.updatePhone();
     if (this.n.hallucA !== undefined) {
       n.hallucination = (n.hallucA === 1 && chance(10)) ? n.hallucPic : null;
     }
@@ -1886,7 +1969,9 @@ class Game {
   nightClick(x, y) {
     const n = this.n, pan = this.smooth.get("pan");
     // mute call button
-    if (n.phoneShown && hits(pic("Phone Calls", "mute bar"), 63, 98, 100, x, y)) { this.muteCall(); return; }
+    // the call banner: pick up or hang up
+    const pb = this.phoneBox();
+    if (n.phone !== "off" && x >= pb.x && x <= pb.x + pb.w && y >= pb.y && y <= pb.y + pb.h) { this.phoneTap(); return; }
     if (n.camsUp) {
       // camera buttons on the map
       for (const cam of CAMERAS) {
@@ -1938,7 +2023,8 @@ class Game {
     n.blackout = false;
     n.hallucination = null;
     // the AI stops (they are coming anyway)
-    this.scripts.stop("bonnie", "chica", "foxy", "freddy", "halluc", "breath", "golden", "phone", "monitor");
+    this.scripts.stop("bonnie", "chica", "foxy", "freddy", "halluc", "breath", "golden", "phone", "ring", "monitor");
+    n.phone = "off";
     n.goldenInOffice = false;
     for (const s of ["office", "lights", "map", "kitchen", "redDot", "breath", "golden", "pirate", "phone", "westHall"]) sp[s].stopAll();
     sp.fan.play("fan", "ambience2", { loop: true });
@@ -1978,8 +2064,9 @@ class Game {
   jumpscare(who) {
     const n = this.n;
     // the night stops: nobody moves, the clock stops
-    this.scripts.stop("night", "bonnie", "chica", "foxy", "freddy", "halluc", "breath", "golden", "powerout", "jingle", "dance", "phone");
+    this.scripts.stop("night", "bonnie", "chica", "foxy", "freddy", "halluc", "breath", "golden", "powerout", "jingle", "dance", "phone", "ring");
     n.hallucination = null;
+    n.phone = "off";
     this.killer = { Bonnie: "Bonnie", Chica: "Chica", Foxy: "Foxy", Eddie: "Freddy" }[who];
     if (settings.jumpscares !== "1") return this.dead();
     this.sp.halluc.setVolume(100);
@@ -2034,8 +2121,8 @@ class Game {
   sixAM() {
     const n = this.n;
     // the night stops but stays on screen for 3 seconds under the 6 AM card
-    this.scripts.stop("night", "bonnie", "chica", "foxy", "freddy", "halluc", "breath", "golden", "powerout", "jingle", "dance", "phone", "monitor", "blackout");
-    if (n) { n.hallucination = null; n.frozen = true; }
+    this.scripts.stop("night", "bonnie", "chica", "foxy", "freddy", "halluc", "breath", "golden", "powerout", "jingle", "dance", "phone", "ring", "monitor", "blackout");
+    if (n) { n.hallucination = null; n.frozen = true; n.phone = "off"; this.smooth.jump("phoneShow", 0); }
     Sound.stopAll();
     this.died = false;
     const sp = this.sp;
@@ -2207,7 +2294,7 @@ class Game {
     }
     // monitor flipping up or down
     if (n.monitorFrame) draw(ctx, pic("moniter", `Moniter (${n.monitorFrame})`), 240, 180);
-    this.drawNightInfo(ctx);
+    this.drawNightInfo(ctx, a);
     if (n.dance) draw(ctx, picAt("dance", n.dance), 240, 180, { size: 160 });
     // creepy one-frame faces
     if (n.hallucination) draw(ctx, picAt("hallucinations", n.hallucination), 240, 180);
@@ -2219,7 +2306,7 @@ class Game {
   }
 
   // Clock, night number, power and usage, the flip bar and the mute button
-  drawNightInfo(ctx) {
+  drawNightInfo(ctx, a) {
     const n = this.n;
     if (n.powerOut) return;
     draw(ctx, pic("time AM", n.hour === 0 ? "12am" : n.hour + "am"), 456, 64, { size: 40 });
@@ -2234,7 +2321,7 @@ class Game {
     draw(ctx, pic("Usage word", "text"), 28, 297, { size: 40 });
     draw(ctx, pic("Usage Bars", "Usage" + Math.min(6, this.usage())), 65, 298, { size: 40 });
     if (n.flipArmed && !n.monitorFrame) draw(ctx, pic("flip panel", "flip down"), 205, 295, { size: 45, bright: -10 });
-    if (n.phoneShown) draw(ctx, pic("Phone Calls", "mute bar"), 63, 98, { alpha: 0.75 });
+    this.drawPhone(ctx, a);
   }
 
   /* =================================================================
