@@ -38,17 +38,6 @@
   }
   #stage { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
 
-  /* ===== Bottom control bar ===== */
-  #bar { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
-  #bar button, #bar a {
-    font: inherit; font-size: 11px; letter-spacing: 1px;
-    color: #fff; background: #000; text-decoration: none;
-    border: 3px solid var(--line); padding: 9px 12px;
-    box-shadow: 4px 4px 0 #2a2a3a; cursor: pointer;
-  }
-  #bar button:hover, #bar a:hover { background: var(--accent); }
-  #bar button:active, #bar a:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #2a2a3a; }
-
   /* ===== Loading / click to play screen ===== */
   #cover {
     position: absolute; inset: 0; z-index: 5;
@@ -78,8 +67,6 @@
   #askInput { flex: 1; font: inherit; font-size: 12px; padding: 6px; background: #111; color: #fff; border: 2px solid #fff; }
   #ask button { font: inherit; font-size: 11px; background: var(--accent); color: #fff; border: 2px solid #fff; padding: 0 10px; cursor: pointer; }
 
-  /* Fullscreen: let the frame fill the screen */
-  #frame:fullscreen { border: none; box-shadow: none; display: flex; align-items: center; justify-content: center; }
 </style>
 </head>
 <body>
@@ -100,13 +87,6 @@
     <div id="askText"></div>
     <div><input id="askInput" autocomplete="off"><button type="submit">OK</button></div>
   </form>
-</div>
-
-<div id="bar">
-  <a href="../index.html">&#9664; MENU</a>
-  <button id="flagBtn" title="Start over (green flag)">&#9654; RESTART</button>
-  <button id="stopBtn" title="Stop everything (red stop sign)">&#9632; STOP</button>
-  <button id="fullBtn" title="Full screen">&#9974; FULL</button>
 </div>
 
 <script>
@@ -862,7 +842,7 @@ const frame = document.getElementById("frame");
 function fit() {
   const full = document.fullscreenElement === frame;
   const maxW = window.innerWidth - (full ? 0 : 40);
-  const maxH = window.innerHeight - (full ? 0 : 110);
+  const maxH = window.innerHeight - (full ? 0 : 40);
   const w = Math.max(240, Math.min(maxW, maxH * 4 / 3));
   const h = w * 3 / 4;
   frame.style.width = (full ? window.innerWidth : w + 8) + "px";
@@ -885,6 +865,11 @@ fit();
 // Stage (backdrop)
 // ======================================================================
 scripts("Stage", t => {
+  // when I receive [intro]
+  t.on("broadcast", "intro", function* (t) {
+    rt.stopOtherScripts(t);
+  });
+
   // when I receive [win]
   t.on("broadcast", "win", function* (t) {
     rt.stopOtherScripts(t);
@@ -8150,13 +8135,8 @@ document.addEventListener("keydown", e => {
 });
 document.addEventListener("keyup", e => { const k = scratchKey(e); if (k) rt.keyReleased(k); });
 
-/* ===== Control bar ===== */
-document.getElementById("flagBtn").onclick = () => { if (!document.getElementById("cover")) { rt.greenFlag(); canvas.focus(); } };
-document.getElementById("stopBtn").onclick = () => rt.stopAll();
-document.getElementById("fullBtn").onclick = () => {
-  if (document.fullscreenElement) document.exitFullscreen();
-  else frame.requestFullscreen && frame.requestFullscreen();
-};
+/* ===== Esc goes back to the game menu ===== */
+document.addEventListener("keydown", e => { if (e.key === "Escape") location.href = "../index.html"; });
 </script>
 </body>
 </html>
