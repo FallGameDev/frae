@@ -47,6 +47,39 @@ function typed(blob, path) {
   const type = MIME[path.split(".").pop().toLowerCase()] || "application/octet-stream";
   return blob.type === type ? blob : new Blob([blob], { type });
 }
+// what kind of file an extension is (a mod may swap a file for another of the same kind)
+const KINDS = { image: ["png", "webp", "jpg", "jpeg", "gif", "svg"], audio: ["mp3", "wav", "ogg", "m4a"], font: ["ttf", "otf", "woff", "woff2"] };
+const kindOf = p => { const e = p.split(".").pop().toLowerCase(); return Object.keys(KINDS).find(k => KINDS[k].includes(e)) || e; };
+const stemOf = p => p.split("/").slice(-2).join("/").replace(/\.[^./]+$/, "").toLowerCase();
+let GAME_FILE_BY_STEM = null;
+// "anything/img/office-normal.png" -> "img/office-normal.webp" (the game's own file), or null
+function gameFile(path) {
+  if (!GAME_FILE_BY_STEM) {
+    GAME_FILE_BY_STEM = {};
+    for (const a of ASSET_FILES) GAME_FILE_BY_STEM[stemOf(a)] = a;
+  }
+  const a = GAME_FILE_BY_STEM[stemOf(path)];
+  return a && kindOf(a) === kindOf(path) ? a : null;
+}
+
+// Any picture -> PNG. Drawings (SVG) are made bigger so they stay sharp in close-ups.
+async function toPng(blob, path) {
+  const url = URL.createObjectURL(typed(blob, path));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    let scale = 1;
+    if (path.endsWith(".svg")) scale = path.startsWith("characters/") ? 6 : 4;
+    const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+    const k = Math.min(1, 4096 / Math.max(w, h));             // keep huge pictures a sane size
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise(res => c.toBlob(res, "image/png"));
+  } finally { URL.revokeObjectURL(url); }
+}
+
 function sizeText(bytes) {
   return bytes > 1048576 ? (bytes / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(bytes / 1024)) + " KB";
 }
@@ -120,20 +153,18 @@ async function makeMod(files, fallbackName, source) {
   };
   for (const f of files) {
     if (!f.path.startsWith(root)) continue;
-    let rel = f.path.slice(root.length).replace(/^assets\//, "");
-    // files can sit a few folders deep (like 1/assets/img/...): match them by their ending
-    if (!ASSET_FILES.includes(rel) && !/^(manifest|texts)\.json$/i.test(rel)) {
-      rel = ASSET_FILES.find(a => rel.endsWith("/" + a)) || rel;
-    }
+    const rel = f.path.slice(root.length).replace(/^assets\//, "");
     if (/^manifest\.json$/i.test(rel)) continue;
     if (/^texts\.json$/i.test(rel)) {
       try { mod.texts = JSON.parse(await f.blob.text()); }
       catch (e) { throw new Error("texts.json is not valid JSON"); }
       continue;
     }
-    // only keep files the game actually has (a mod replaces files, it cannot add new ones)
-    if (!ASSET_FILES.includes(rel)) continue;
-    mod.files[rel] = typed(f.blob, rel);
+    // only keep files the game actually has (a mod replaces files, it cannot add new ones).
+    // Same name, any picture/sound/font type: img/x.png replaces img/x.webp
+    const target = gameFile(rel);
+    if (!target) continue;
+    mod.files[target] = typed(f.blob, rel);
     mod.size += f.blob.size;
   }
   if (!Object.keys(mod.files).length && !mod.texts) {
@@ -230,7 +261,7 @@ async function buildTemplate(onProgress) {
     version: "1.0.0",
     description: "Describe your mod here",
     game: "fried-rice-at-eddies-1",
-    howTo: "Replace any file in img, snd, characters or fonts with your own using the SAME file name. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods."
+    howTo: "Replace any file in img, snd, characters or fonts with your own using the SAME file name. Pictures can be PNG, JPG, WEBP or SVG at any size (they are stretched to fit the same spot). Sounds can be MP3, WAV or OGG. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods."
   };
   entries.push({ path: "manifest.json", bytes: enc.encode(JSON.stringify(manifest, null, 2)) });
   entries.push({ path: "texts.json", bytes: enc.encode(JSON.stringify(DEFAULT_TEXTS, null, 2)) });
@@ -239,8 +270,14 @@ async function buildTemplate(onProgress) {
   const workers = Array.from({ length: 6 }, async () => {
     while (queue.length) {
       const f = queue.shift();
-      const bytes = new Uint8Array(await (await fetch("assets/" + f)).arrayBuffer());
-      entries.push({ path: f, bytes });
+      const blob = await (await fetch("assets/" + f)).blob();
+      if (kindOf(f) === "image") {
+        // every picture goes in the template as a PNG (easy to open in any paint program)
+        const png = await toPng(blob, f);
+        entries.push({ path: f.replace(/\.[^.]+$/, ".png"), bytes: new Uint8Array(await png.arrayBuffer()) });
+      } else {
+        entries.push({ path: f, bytes: new Uint8Array(await blob.arrayBuffer()) });
+      }
       onProgress(++done / ASSET_FILES.length);
     }
   });
@@ -268,7 +305,7 @@ async function loadFromGitHub(input, onStatus) {
   const folder = (folderIn || "").replace(/\/$/, "");
   const blobs = tree.tree.filter(t => t.type === "blob" && (!folder || t.path.startsWith(folder + "/")));
   const wanted = blobs.filter(t => /(^|\/)(manifest\.json|texts\.json)$/i.test(t.path) ||
-                                   ASSET_FILES.some(a => t.path.endsWith(a)));
+                                   gameFile(t.path));
   if (!wanted.length) throw new Error("No mod files in that repo");
   const files = [];
   let done = 0;
