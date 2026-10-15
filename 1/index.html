@@ -899,14 +899,28 @@ class Runtime {
       if (!t || !t.visible) continue;
       let { x, y, size, dir } = t, ghost = t.effects.ghost;
       const p = t.prev;
-      if (SMOOTH && p && a < 1 && p.visible && p.costume === t.costumeIndex &&
-          Math.abs(p.x - x) + Math.abs(p.y - y) < 120 && Math.abs(p.size - size) < 60) {
+      if (SMOOTH && p && a < 1 && p.visible && !t.isStage) {
+        // Same rules as TurboWarp's interpolation:
         const f = (u, v) => u + (v - u) * a;
-        if (p.x !== x || p.y !== y || p.size !== size || p.dir !== dir || p.ghost !== ghost) moving = true;
-        x = f(p.x, x); y = f(p.y, y); size = f(p.size, size); ghost = f(p.ghost, ghost);
-        let d = dir - p.dir;
-        if (d > 180) d -= 360; if (d < -180) d += 360;
-        dir = p.dir + d * a;
+        // position: always, unless it is a big jump (judged by the sprite's own size)
+        const dx = x - p.x, dy = y - p.y;
+        const b = t.bounds();
+        const tol = b ? Math.min(240, Math.max(50, 1.5 * ((b.right - b.left) + (b.top - b.bottom)))) : 50;
+        if ((Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) && Math.abs(dx) < tol && Math.abs(dy) < tol) {
+          x = f(p.x, x); y = f(p.y, y); moving = true;
+        }
+        // fade: small changes only
+        const dg = ghost - p.ghost;
+        if (dg !== 0 && Math.abs(dg) < 25) { ghost = f(p.ghost, ghost); moving = true; }
+        // turn and size: only while the costume stays the same
+        if (p.costume === t.costumeIndex) {
+          if (dir !== p.dir && !(p.dir % 90 === 0 && dir % 90 === 0)) {
+            const r1 = p.dir * Math.PI / 180, r2 = dir * Math.PI / 180;
+            dir = Math.atan2(f(Math.sin(r1), Math.sin(r2)), f(Math.cos(r1), Math.cos(r2))) * 180 / Math.PI;
+            moving = true;
+          }
+          if (size !== p.size && Math.abs(size - p.size) < 100) { size = f(p.size, size); moving = true; }
+        }
       }
       if (ghost >= 100) continue;
       const c = t.costumeObj;
