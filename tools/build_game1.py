@@ -64,6 +64,14 @@ def default_texts(data):
     out['Custom night'] = {}
     out['Settings'] = {t: t for t in SETTINGS_TEXTS}
     out['Phone'] = {t: t for t in ['AM', 'Aidan', 'Manager', 'incoming call...']}   # the call banner
+    # achievement names and descriptions (read from tools/game/achievements.js)
+    ach = open(os.path.join(HERE, 'game', 'achievements.js'), encoding='utf-8').read()
+    words = ['Achievements', 'Achievement Unlocked!', 'Hidden achievement', 'Keep playing to find it.', 'Unlocked', 'BACK']
+    words += [w for pair in re.findall(r'name: "([^"]+)",\s*desc: "([^"]+)"', ach) for w in pair]
+    out['Achievements'] = {t: t for t in words}
+    # camera names shown on the monitor
+    out.setdefault('Cameras', {}).update({t: t for t in ['CAM', 'Show Stage', 'Entrance', 'Dining Area', 'Pirate Cove', 'West Hall',
+        'W. Hall Corner', 'Supply Closet', 'East Hall', 'E. Hall Corner', 'Backstage', 'Kitchen', 'Restrooms']})
     out['Characters'] = {}
     for t in data:
         group = next((g for g, names in TEXT_GROUPS if any(t['name'] == n or t['name'].startswith(n) for n in names)), None)
@@ -218,7 +226,7 @@ def write_page(data_js):
     """Puts the data, the hand-written game and the settings/mods UI into 1/index.html."""
     game_dir = os.path.join(HERE, 'game')
     code = '\n\n'.join(open(os.path.join(game_dir, f), encoding='utf-8').read()
-                        for f in ('pictures.js', 'sound.js', 'game.js', 'secret.js'))
+                        for f in ('pictures.js', 'sound.js', 'game.js', 'secret.js', 'achievements.js'))
     ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
     shell = open(os.path.join(HERE, 'game_shell.html'), encoding='utf-8').read()
     html = (shell.replace('/*DATA*/', data_js)

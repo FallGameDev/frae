@@ -132,6 +132,35 @@
   #filesPanel .erase:hover { color: #ff6b6b; border-color: #ff6b6b; background: #000; }
   #filesPanel .hint { color: #777; font-size: calc(var(--u) * 11); }
 
+  /* ===== Achievements (Steam style) ===== */
+  #toasts { position: absolute; right: calc(var(--u) * 6); bottom: calc(var(--u) * 6); z-index: 8; pointer-events: none;
+    display: flex; flex-direction: column; gap: calc(var(--u) * 4); overflow: hidden; }
+  .toast { display: flex; align-items: center; gap: calc(var(--u) * 7); width: calc(var(--u) * 150); padding: calc(var(--u) * 6);
+    background: linear-gradient(to bottom, #2a3f5a, #1b2838); border: 1px solid #3d5a7a; box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 10) rgba(0,0,0,.6);
+    font-family: "Sans Serif", sans-serif; transform: translateY(130%); opacity: 0; transition: transform .45s ease, opacity .45s ease; }
+  .toast.in { transform: none; opacity: 1; }
+  .toastTitle { color: #fff; font-size: calc(var(--u) * 7.5); }
+  .toastName { color: #8f98a0; font-size: calc(var(--u) * 7); margin-top: calc(var(--u) * 1.5); }
+  .achIcon { flex: none; width: calc(var(--u) * 28); height: calc(var(--u) * 28); display: grid; place-items: center;
+    color: #fff; font: 600 calc(var(--u) * 13) "Sans Serif", sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
+  .achIcon.locked { filter: grayscale(1) brightness(.45); }
+  #achPanel { background: #1b2838; font-family: "Sans Serif", sans-serif; gap: calc(var(--u) * 6); }
+  .achTop { display: flex; align-items: center; gap: calc(var(--u) * 10); }
+  .achTop h2 { font-weight: normal; font-size: calc(var(--u) * 16); }
+  .achTop button { font-family: "Share Tech Mono", monospace; font-size: calc(var(--u) * 10); background: transparent; border-color: #3d5a7a; }
+  .achCount { margin-left: auto; color: #8f98a0; font-size: calc(var(--u) * 9); }
+  .achBar { height: calc(var(--u) * 4); background: #0e1621; }
+  .achFill { height: 100%; background: linear-gradient(to right, #5c7e10, #a4d007); }
+  .achList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 3); padding-right: calc(var(--u) * 3); }
+  .achRow { display: flex; align-items: center; gap: calc(var(--u) * 8); padding: calc(var(--u) * 5); background: #233246; }
+  .achRow.locked { background: #18222f; }
+  .achText { flex: 1; min-width: 0; }
+  .achName { font-size: calc(var(--u) * 9); color: #fff; }
+  .achRow.locked .achName { color: #8f98a0; }
+  .achDesc { font-size: calc(var(--u) * 7.5); color: #8f98a0; margin-top: calc(var(--u) * 1); }
+  .achDate { font-size: calc(var(--u) * 7); color: #8f98a0; white-space: nowrap; }
+
   /* mods */
   #modsPanel { gap: calc(var(--u) * 7); }
   .modsTop { display: flex; align-items: center; gap: calc(var(--u) * 10); }
@@ -179,6 +208,10 @@
 
   <!-- Debug mode box (turn it on in Settings) -->
   <div id="debug" hidden></div>
+
+  <!-- Achievement pop-ups (bottom right) and the achievements list -->
+  <div id="toasts"></div>
+  <div id="achPanel" class="panel" hidden></div>
 
   <!-- Save file screen (when the address has no ?file=1, 2 or 3) -->
   <div id="filesPanel" class="panel" hidden></div>
@@ -296,6 +329,18 @@ const DEFAULT_TEXTS = {
  },
  "Cameras": {
   "CAM": "CAM",
+  "Show Stage": "Show Stage",
+  "Entrance": "Entrance",
+  "Dining Area": "Dining Area",
+  "Pirate Cove": "Pirate Cove",
+  "West Hall": "West Hall",
+  "W. Hall Corner": "W. Hall Corner",
+  "Supply Closet": "Supply Closet",
+  "East Hall": "East Hall",
+  "E. Hall Corner": "E. Hall Corner",
+  "Backstage": "Backstage",
+  "Kitchen": "Kitchen",
+  "Restrooms": "Restrooms",
   "1A": "1A",
   "1B": "1B",
   "1C": "1C",
@@ -368,6 +413,52 @@ const DEFAULT_TEXTS = {
   "Aidan": "Aidan",
   "Manager": "Manager",
   "incoming call...": "incoming call..."
+ },
+ "Achievements": {
+  "Achievements": "Achievements",
+  "Achievement Unlocked!": "Achievement Unlocked!",
+  "Hidden achievement": "Hidden achievement",
+  "Keep playing to find it.": "Keep playing to find it.",
+  "Unlocked": "Unlocked",
+  "BACK": "BACK",
+  "First Shift": "First Shift",
+  "Survive Night 1.": "Survive Night 1.",
+  "Getting the Hang of It": "Getting the Hang of It",
+  "Survive Night 2.": "Survive Night 2.",
+  "Halfway Home": "Halfway Home",
+  "Survive Night 3.": "Survive Night 3.",
+  "Almost Payday": "Almost Payday",
+  "Survive Night 4.": "Survive Night 4.",
+  "Good Job Sport!": "Good Job Sport!",
+  "Survive all five nights.": "Survive all five nights.",
+  "Overtime": "Overtime",
+  "Survive the 6th night.": "Survive the 6th night.",
+  "Pampering": "Pampering",
+  "Beat a custom night with everyone at 20.": "Beat a custom night with everyone at 20.",
+  "Lights Out": "Lights Out",
+  "Run out of power.": "Run out of power.",
+  "Penny Pincher": "Penny Pincher",
+  "Survive a night with 30% power or more left.": "Survive a night with 30% power or more left.",
+  "Security Expert": "Security Expert",
+  "Look at all 12 cameras in one night.": "Look at all 12 cameras in one night.",
+  "Knock Knock": "Knock Knock",
+  "Close the door on Endo.": "Close the door on Endo.",
+  "Hello? Hello?": "Hello? Hello?",
+  "Listen to a whole phone call.": "Listen to a whole phone call.",
+  "Not Now, Aidan": "Not Now, Aidan",
+  "Hang up on the manager.": "Hang up on the manager.",
+  "Full House": "Full House",
+  "Get caught by all four of them.": "Get caught by all four of them.",
+  "Boop": "Boop",
+  "Boop the poster's nose.": "Boop the poster's nose.",
+  "Show Time": "Show Time",
+  "Catch the 5 AM dance on the stage camera.": "Catch the 5 AM dance on the stage camera.",
+  "It's Me": "It's Me",
+  "Meet Golden Eddie.": "Meet Golden Eddie.",
+  "You're Fired": "You're Fired",
+  "Enter 1 / 2 / 2 / 7 on the custom night.": "Enter 1 / 2 / 2 / 7 on the custom night.",
+  "Dine In": "Dine In",
+  "Find the secret song.": "Find the secret song."
  },
  "Characters": {
   "Eddie": "Eddie",
@@ -886,7 +977,9 @@ function fileFromUrl() {
 }
 
 function loadProgress(file) {
-  const p = { night: 1, beat5: false, beat6: false, beat420: false, started: false };
+  const p = { night: 1, beat5: false, beat6: false, beat420: false, started: false,
+              achievements: {},   // achievement id -> when it was unlocked
+              caughtBy: [] };     // who has caught you (for "Full House")
   try {
     // the very first version had one save: it becomes file 1
     if (file === 1 && !localStorage.getItem(saveKey(1)) && localStorage.getItem("frae1-save"))
@@ -899,6 +992,8 @@ function loadProgress(file) {
       p.beat5 = !!Number(s.beat5 ?? s["beat 5"] ?? 0);
       p.beat6 = !!Number(s.beat6 ?? s["beat 6"] ?? 0);
       p.beat420 = !!Number(s.beat420 ?? s["beat 420"] ?? 0);
+      p.achievements = (s.achievements && typeof s.achievements === "object") ? s.achievements : {};
+      p.caughtBy = Array.isArray(s.caughtBy) ? s.caughtBy : [];
       p.started = true;
       if (s.night === undefined) saveProgress(file, p);      // rewrite old saves in the new shape
     }
@@ -907,7 +1002,8 @@ function loadProgress(file) {
 }
 function saveProgress(file, p) {
   try {
-    localStorage.setItem(saveKey(file), JSON.stringify({ night: p.night, beat5: p.beat5, beat6: p.beat6, beat420: p.beat420 }));
+    localStorage.setItem(saveKey(file), JSON.stringify({ night: p.night, beat5: p.beat5, beat6: p.beat6, beat420: p.beat420,
+                                                      achievements: p.achievements, caughtBy: p.caughtBy }));
   } catch (e) {}
 }
 function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); } catch (e) {} }
@@ -1108,7 +1204,11 @@ class Game {
     if (sHover && !this.settingsHover) this.sp.blip.play("new game", "blip3");
     this.settingsHover = sHover;
 
+    const aHover = this.mouse.x > 375 && this.mouse.y > 296 && this.mouse.y < 314;
+    if (aHover && !this.achHover) this.sp.blip.play("new game", "blip3");
+    this.achHover = aHover;
     for (const c of this.clicks) {
+      if (aHover) { openAchievements(); return; }
       if (sHover) { openSettings(); return; }
       if (over) { this.choose(over.id); return; }
     }
@@ -1163,6 +1263,14 @@ class Game {
       draw(ctx, pic("level", String(Math.min(7, this.level))), 100, 249, { size: 40 });
     }
     draw(ctx, pic("SettingsButton", this.settingsHover ? "Selected" : "Deselected"), 30, 305, { size: 10 });
+    // "Achievements 3/19" in the bottom right corner
+    const got = ACHIEVEMENTS.filter(x => this.progress.achievements[x.id]).length;
+    ctx.save();
+    ctx.font = '8px "Share Tech Mono"';
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillStyle = this.achHover ? "#f7931e" : "#fff";
+    ctx.fillText(ACH_WORD("Achievements") + "  " + got + "/" + ACHIEVEMENTS.length, 472, 305);
+    ctx.restore();
   }
 
   // Back from the settings screen
@@ -1337,10 +1445,12 @@ class Game {
       this.scripts.run("phone", function* () {
         yield () => call.done;
         n.phone = "off";                              // the banner goes away when the call ends
+        this.unlock("call");
       }.call(this));
     };
     // Hang up: everything stops and the banner goes away
     const hangUp = () => {
+      this.unlock("hangup");
       if (ring) ring.stop();
       if (call) call.stop();
       this.scripts.stop("ring", "phone");
@@ -1537,6 +1647,7 @@ class Game {
           this.sp.foxy.play("Foxy", "knock2");
           f.stage = 1;
           f.knockLoss += 50;
+          this.unlock("knock");
         } else {
           if (n.camsUp) this.lowerMonitor();
           return this.jumpscare("Foxy");
@@ -1694,6 +1805,7 @@ class Game {
       for (let f = 1; f <= 10; f++) { n.monitorFrame = f; yield; }
       n.camsUp = true;
       n.monitorFrame = 0;
+      this.seeCamera(n.camera);
       n.leftLight = n.rightLight = false;
       this.sp.monitor.setVolume(100);
       this.sp.monitor.play("moniter", "MiniDV_Tape_Eject_1");
@@ -1783,8 +1895,16 @@ class Game {
 
   switchCamera(room) {
     this.n.camera = room;
+    this.seeCamera(room);
     this.goldenWatchReset();
     this.showCamera();
+  }
+
+  // "Security Expert": every camera looked at in one night
+  seeCamera(room) {
+    const seen = this.n.camsSeen || (this.n.camsSeen = new Set());
+    seen.add(room);
+    if (seen.size === CAMERAS.length) this.unlock("cams");
   }
 
   // Someone moved on the camera you watch: it goes black for 3 seconds
@@ -1871,6 +1991,7 @@ class Game {
     }
   }
   goldenInOffice() {
+    this.unlock("golden");
     const n = this.n;
     n.goldenWatch = false;
     n.goldenInOffice = true;
@@ -1886,6 +2007,7 @@ class Game {
      The dance on the stage camera at 5 AM (ends the night early)
      -------------------------------------------------------------- */
   startDance() {
+    this.unlock("dance");
     const n = this.n;
     this.sp.dance.play("dance", "Download (5)");
     this.scripts.run("dance", function* () {
@@ -1986,7 +2108,7 @@ class Game {
     const right = pic("right button panel", this.panelPic(n.rightDoor, n.rightLight));
     if (hits(right, 515 + pan, 204, 34, x, y)) return this.pressButton("right", y);
     // boop the poster's nose
-    if (hits(pic("nose", "normal"), 240 + pan, 180, 125, x, y)) this.sp.nose.play("nose", "PartyFavorraspyPart_AC01__3");
+    if (hits(pic("nose", "normal"), 240 + pan, 180, 125, x, y)) { this.sp.nose.play("nose", "PartyFavorraspyPart_AC01__3"); this.unlock("boop"); }
   }
   panelPic(door, light) {
     return door && light ? "both on" : door ? "door on" : light ? "light on" : "both off";
@@ -2010,6 +2132,7 @@ class Game {
      POWER OUT: everything shuts off, then Eddie plays his music box
      -------------------------------------------------------------- */
   powerOut() {
+    this.unlock("power");
     const n = this.n, sp = this.sp;
     if (n.monitorUp || n.monitorFrame) {
       if (n.monitorFrame !== 1) { sp.flip.setVolume(100); sp.flip.play("flip panel", "put down"); }
@@ -2068,6 +2191,7 @@ class Game {
     n.hallucination = null;
     n.phone = "off";
     this.killer = { Bonnie: "Bonnie", Chica: "Chica", Foxy: "Foxy", Eddie: "Freddy" }[who];
+    this.caughtBy(this.killer);
     if (settings.jumpscares !== "1") return this.dead();
     this.sp.halluc.setVolume(100);
     this.sp.halluc.play("hallucinations", "XSCREAM2");
@@ -2159,12 +2283,15 @@ class Game {
 
   nightWon() {
     const L = this.level;
+    // achievements for surviving
+    if (L <= 6) this.unlock("night" + L);
+    if (this.n && this.n.power >= 300) this.unlock("frugal");
     if (L < 5) { this.level = L + 1; return this.startIntro(); }
     if (L === 5) { this.progress.beat5 = true; return this.ending("beat5"); }
     if (L === 6) { this.progress.beat6 = true; return this.ending("beat6"); }
     // custom night (night 7): 20/20/20/20 earns the last star
     const ai = this.customAI || {};
-    if (ai.freddy > 19 && ai.bonnie > 19 && ai.chica > 19 && ai.foxy > 19) this.progress.beat420 = true;
+    if (ai.freddy > 19 && ai.bonnie > 19 && ai.chica > 19 && ai.foxy > 19) { this.progress.beat420 = true; this.unlock("max"); }
     return this.ending("pink slip");
   }
 
@@ -2228,6 +2355,7 @@ class Game {
     const code = this.customPick.join("/");
     if (code === "1/9/8/7") { this.customPick = [1, 2, 2, 7]; return this.creepyEnd(); }
     if (code === "1/2/2/7") {
+      this.unlock("fired");
       // the joke code: you're fired before the night even starts
       this.customPick = [1, 2, 2, 7];
       this.go("black");
@@ -2291,6 +2419,15 @@ class Game {
       const blink = Math.floor(this.tick / 15) % 2 === 0;
       for (const cam of CAMERAS) draw(ctx, pic(cam.button, cam.room === room && blink ? "Active" : "Inactive"), cam.x, cam.y, { size: 40 });
       if (n.redDot) draw(ctx, pic("red dot", "blinking"), 35, 85, { size: 40 });
+      // which camera this is, next to the red recording dot ("CAM 1A  Show Stage")
+      const cam = CAMERAS.find(c => c.room === room);
+      ctx.save();
+      ctx.font = '9px "Pixel"';
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#fff";
+      ctx.shadowColor = "#000"; ctx.shadowBlur = 2;
+      ctx.fillText(ACH_WORD("CAM") + " " + cam.button.replace("CAM", "") + "   " + ACH_WORD(room), 48, 86);
+      ctx.restore();
     }
     // monitor flipping up or down
     if (n.monitorFrame) draw(ctx, pic("moniter", `Moniter (${n.monitorFrame})`), 240, 180);
@@ -2368,6 +2505,7 @@ class Game {
 Object.assign(Game.prototype, {
 
   startSecret() {
+    this.unlock("rice");
     this.go("secret");
     Sound.stopAll();
     this.sp.music.setVolume(100);
@@ -2531,6 +2669,141 @@ Object.assign(Game.prototype, {
     }
   },
 });
+
+
+/* =====================================================================
+   ACHIEVEMENTS
+   Steam-style achievements, kept inside each save file (so file 1, 2 and
+   3 each have their own). A pop-up slides in at the bottom right when one
+   unlocks, and the title screen has an Achievements list.
+
+   To add one: put it in the list below, then call game.unlock("its-id")
+   where it should happen. Mods can rename them in texts.json.
+   ===================================================================== */
+"use strict";
+
+// icon: a symbol drawn on the square picture; colors: the picture's gradient
+// hidden: shows as "Hidden achievement" until it is unlocked
+const ACHIEVEMENTS = [
+  { id: "night1",   icon: "1",  colors: ["#4a6b8a", "#1d2f44"], name: "First Shift",            desc: "Survive Night 1." },
+  { id: "night2",   icon: "2",  colors: ["#4a7a8a", "#1d3a44"], name: "Getting the Hang of It",  desc: "Survive Night 2." },
+  { id: "night3",   icon: "3",  colors: ["#4a8a7a", "#1d443a"], name: "Halfway Home",            desc: "Survive Night 3." },
+  { id: "night4",   icon: "4",  colors: ["#5a8a4a", "#2a441d"], name: "Almost Payday",           desc: "Survive Night 4." },
+  { id: "night5",   icon: "★",  colors: ["#d9b44a", "#6b4a12"], name: "Good Job Sport!",         desc: "Survive all five nights." },
+  { id: "night6",   icon: "★",  colors: ["#d97a4a", "#6b2a12"], name: "Overtime",                desc: "Survive the 6th night." },
+  { id: "max",      icon: "20", colors: ["#d94a4a", "#5a0d0d"], name: "Pampering",               desc: "Beat a custom night with everyone at 20." },
+  { id: "power",    icon: "⚡", colors: ["#6a6a6a", "#111111"], name: "Lights Out",              desc: "Run out of power." },
+  { id: "frugal",   icon: "%",  colors: ["#4ad97a", "#0d5a2a"], name: "Penny Pincher",           desc: "Survive a night with 30% power or more left." },
+  { id: "cams",     icon: "◉",  colors: ["#8a8a9a", "#2a2a38"], name: "Security Expert",         desc: "Look at all 12 cameras in one night." },
+  { id: "knock",    icon: "✋", colors: ["#a86a4a", "#3a1d12"], name: "Knock Knock",             desc: "Close the door on Endo." },
+  { id: "call",     icon: "☎",  colors: ["#30d158", "#0d5a24"], name: "Hello? Hello?",           desc: "Listen to a whole phone call." },
+  { id: "hangup",   icon: "✕",  colors: ["#ff3b30", "#6b0d08"], name: "Not Now, Aidan",          desc: "Hang up on the manager." },
+  { id: "caught",   icon: "☠",  colors: ["#5a4a6a", "#120d1d"], name: "Full House",              desc: "Get caught by all four of them." },
+  { id: "boop",     icon: "!",  colors: ["#d94ac8", "#5a0d50"], name: "Boop",                    desc: "Boop the poster's nose.", hidden: true },
+  { id: "dance",    icon: "♪",  colors: ["#a64ad9", "#3a0d5a"], name: "Show Time",               desc: "Catch the 5 AM dance on the stage camera.", hidden: true },
+  { id: "golden",   icon: "?",  colors: ["#e6c34a", "#5a4a0d"], name: "It's Me",                 desc: "Meet Golden Eddie.", hidden: true },
+  { id: "fired",    icon: "✉",  colors: ["#e68ab4", "#5a1d38"], name: "You're Fired",            desc: "Enter 1 / 2 / 2 / 7 on the custom night.", hidden: true },
+  { id: "rice",     icon: "🍚", colors: ["#e6dcc8", "#6b5a3a"], name: "Dine In",                 desc: "Find the secret song.", hidden: true },
+];
+
+const ACH_WORD = s => (TEXTS[s] !== undefined ? String(TEXTS[s]) : s);
+
+Object.assign(Game.prototype, {
+
+  // Unlock an achievement (once per save file) and show the pop-up
+  unlock(id) {
+    const a = ACHIEVEMENTS.find(x => x.id === id);
+    const got = this.progress.achievements;
+    if (!a || got[id]) return;
+    got[id] = Date.now();
+    this.progress.started = true;
+    this.save();
+    achievementToast(a);
+  },
+
+  // Remember who caught you (for "Full House")
+  caughtBy(who) {
+    const list = this.progress.caughtBy;
+    if (!list.includes(who)) { list.push(who); this.save(); }
+    if (["Bonnie", "Chica", "Foxy", "Freddy"].every(k => list.includes(k))) this.unlock("caught");
+  },
+});
+
+/* ---------------------------------------------------------------------
+   The pop-up (bottom right, like Steam's)
+   --------------------------------------------------------------------- */
+function achievementIcon(a, locked) {
+  const icon = el("div", { class: "achIcon" + (locked ? " locked" : "") }, locked && a.hidden ? "?" : a.icon);
+  icon.style.background = `linear-gradient(135deg, ${a.colors[0]}, ${a.colors[1]})`;
+  return icon;
+}
+
+function achievementToast(a) {
+  const box = $("#toasts");
+  const toast = el("div", { class: "toast" },
+    achievementIcon(a, false),
+    el("div", { class: "toastText" },
+      el("div", { class: "toastTitle" }, ACH_WORD("Achievement Unlocked!")),
+      el("div", { class: "toastName" }, ACH_WORD(a.name))));
+  box.append(toast);
+  achievementChime();
+  // slide up, stay 5 seconds, slide back down
+  requestAnimationFrame(() => toast.classList.add("in"));
+  setTimeout(() => { toast.classList.remove("in"); setTimeout(() => toast.remove(), 450); }, 5000);
+}
+
+// a soft two-note chime (made with Web Audio, follows the Sound slider)
+function achievementChime() {
+  const ac = Sound.ctx;
+  [[880, 0], [1320, 0.11]].forEach(([f, t]) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, ac.currentTime + t);
+    g.gain.exponentialRampToValueAtTime(0.08, ac.currentTime + t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + t + 0.5);
+    o.connect(g).connect(Sound.sfxBus);
+    o.start(ac.currentTime + t); o.stop(ac.currentTime + t + 0.55);
+  });
+}
+
+/* ---------------------------------------------------------------------
+   The list (opened from the title screen)
+   --------------------------------------------------------------------- */
+function openAchievements() {
+  const got = game.progress.achievements;
+  const done = ACHIEVEMENTS.filter(a => got[a.id]).length;
+  const pct = Math.round(done / ACHIEVEMENTS.length * 100);
+  const box = $("#achPanel");
+  box.innerHTML = "";
+  const date = t => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  // unlocked first (newest on top), then locked
+  const order = [...ACHIEVEMENTS].sort((p, q) => (got[q.id] || 0) - (got[p.id] || 0));
+  const rows = order.map(a => {
+    const unlocked = !!got[a.id], secret = !unlocked && a.hidden;
+    return el("div", { class: "achRow" + (unlocked ? "" : " locked") },
+      achievementIcon(a, !unlocked),
+      el("div", { class: "achText" },
+        el("div", { class: "achName" }, secret ? ACH_WORD("Hidden achievement") : ACH_WORD(a.name)),
+        el("div", { class: "achDesc" }, secret ? ACH_WORD("Keep playing to find it.") : ACH_WORD(a.desc))),
+      el("div", { class: "achDate" }, unlocked ? ACH_WORD("Unlocked") + " " + date(got[a.id]) : ""));
+  });
+  const bar = el("div", { class: "achBar" }, el("div", { class: "achFill" }));
+  bar.firstChild.style.width = pct + "%";
+  box.append(
+    el("div", { class: "achTop" },
+      el("button", { onclick: closeAchievements }, "< " + ACH_WORD("BACK")),
+      el("h2", {}, ACH_WORD("Achievements")),
+      el("div", { class: "achCount" }, `${done} / ${ACHIEVEMENTS.length} (${pct}%)  ·  ${ACH_WORD("FILE")} ${game.file}`)),
+    bar,
+    el("div", { class: "achList" }, ...rows));
+  box.hidden = false;
+  game.paused = true;
+}
+function closeAchievements() {
+  $("#achPanel").hidden = true;
+  game.paused = false;
+  canvas.focus();
+}
 
 
 /* =====================================================================
@@ -3016,7 +3289,8 @@ function fileSummary(n) {
   const p = loadProgress(n);
   if (!p.started) return T("EMPTY");
   const stars = "★".repeat(p.beat5 + p.beat6 + p.beat420);
-  return T("Night") + " " + p.night + (stars ? "  " + stars : "");
+  const trophies = Object.keys(p.achievements).length;          // achievements unlocked
+  return T("Night") + " " + p.night + (stars ? "  " + stars : "") + (trophies ? "  ·  🏆 " + trophies : "");
 }
 function showFiles() {
   const box = $("#filesPanel");
@@ -3426,6 +3700,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     // Esc closes the mods screen, then settings, then goes back to the game menu
     if (!$("#ask").hidden) { $("#ask").hidden = true; game.paused = false; canvas.focus(); }
+    else if (!$("#achPanel").hidden) closeAchievements();
     else if (!$("#modsPanel").hidden) closeMods();
     else if (!$("#settingsPanel").hidden) closeSettings();
     else location.href = "../index.html";

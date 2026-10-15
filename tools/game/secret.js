@@ -12,6 +12,7 @@
 Object.assign(Game.prototype, {
 
   startSecret() {
+    this.unlock("rice");
     this.go("secret");
     Sound.stopAll();
     this.sp.music.setVolume(100);

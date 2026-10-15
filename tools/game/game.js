@@ -113,7 +113,9 @@ function fileFromUrl() {
 }
 
 function loadProgress(file) {
-  const p = { night: 1, beat5: false, beat6: false, beat420: false, started: false };
+  const p = { night: 1, beat5: false, beat6: false, beat420: false, started: false,
+              achievements: {},   // achievement id -> when it was unlocked
+              caughtBy: [] };     // who has caught you (for "Full House")
   try {
     // the very first version had one save: it becomes file 1
     if (file === 1 && !localStorage.getItem(saveKey(1)) && localStorage.getItem("frae1-save"))
@@ -126,6 +128,8 @@ function loadProgress(file) {
       p.beat5 = !!Number(s.beat5 ?? s["beat 5"] ?? 0);
       p.beat6 = !!Number(s.beat6 ?? s["beat 6"] ?? 0);
       p.beat420 = !!Number(s.beat420 ?? s["beat 420"] ?? 0);
+      p.achievements = (s.achievements && typeof s.achievements === "object") ? s.achievements : {};
+      p.caughtBy = Array.isArray(s.caughtBy) ? s.caughtBy : [];
       p.started = true;
       if (s.night === undefined) saveProgress(file, p);      // rewrite old saves in the new shape
     }
@@ -134,7 +138,8 @@ function loadProgress(file) {
 }
 function saveProgress(file, p) {
   try {
-    localStorage.setItem(saveKey(file), JSON.stringify({ night: p.night, beat5: p.beat5, beat6: p.beat6, beat420: p.beat420 }));
+    localStorage.setItem(saveKey(file), JSON.stringify({ night: p.night, beat5: p.beat5, beat6: p.beat6, beat420: p.beat420,
+                                                      achievements: p.achievements, caughtBy: p.caughtBy }));
   } catch (e) {}
 }
 function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); } catch (e) {} }
@@ -335,7 +340,11 @@ class Game {
     if (sHover && !this.settingsHover) this.sp.blip.play("new game", "blip3");
     this.settingsHover = sHover;
 
+    const aHover = this.mouse.x > 375 && this.mouse.y > 296 && this.mouse.y < 314;
+    if (aHover && !this.achHover) this.sp.blip.play("new game", "blip3");
+    this.achHover = aHover;
     for (const c of this.clicks) {
+      if (aHover) { openAchievements(); return; }
       if (sHover) { openSettings(); return; }
       if (over) { this.choose(over.id); return; }
     }
@@ -390,6 +399,14 @@ class Game {
       draw(ctx, pic("level", String(Math.min(7, this.level))), 100, 249, { size: 40 });
     }
     draw(ctx, pic("SettingsButton", this.settingsHover ? "Selected" : "Deselected"), 30, 305, { size: 10 });
+    // "Achievements 3/19" in the bottom right corner
+    const got = ACHIEVEMENTS.filter(x => this.progress.achievements[x.id]).length;
+    ctx.save();
+    ctx.font = '8px "Share Tech Mono"';
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillStyle = this.achHover ? "#f7931e" : "#fff";
+    ctx.fillText(ACH_WORD("Achievements") + "  " + got + "/" + ACHIEVEMENTS.length, 472, 305);
+    ctx.restore();
   }
 
   // Back from the settings screen
@@ -564,10 +581,12 @@ class Game {
       this.scripts.run("phone", function* () {
         yield () => call.done;
         n.phone = "off";                              // the banner goes away when the call ends
+        this.unlock("call");
       }.call(this));
     };
     // Hang up: everything stops and the banner goes away
     const hangUp = () => {
+      this.unlock("hangup");
       if (ring) ring.stop();
       if (call) call.stop();
       this.scripts.stop("ring", "phone");
@@ -764,6 +783,7 @@ class Game {
           this.sp.foxy.play("Foxy", "knock2");
           f.stage = 1;
           f.knockLoss += 50;
+          this.unlock("knock");
         } else {
           if (n.camsUp) this.lowerMonitor();
           return this.jumpscare("Foxy");
@@ -921,6 +941,7 @@ class Game {
       for (let f = 1; f <= 10; f++) { n.monitorFrame = f; yield; }
       n.camsUp = true;
       n.monitorFrame = 0;
+      this.seeCamera(n.camera);
       n.leftLight = n.rightLight = false;
       this.sp.monitor.setVolume(100);
       this.sp.monitor.play("moniter", "MiniDV_Tape_Eject_1");
@@ -1010,8 +1031,16 @@ class Game {
 
   switchCamera(room) {
     this.n.camera = room;
+    this.seeCamera(room);
     this.goldenWatchReset();
     this.showCamera();
+  }
+
+  // "Security Expert": every camera looked at in one night
+  seeCamera(room) {
+    const seen = this.n.camsSeen || (this.n.camsSeen = new Set());
+    seen.add(room);
+    if (seen.size === CAMERAS.length) this.unlock("cams");
   }
 
   // Someone moved on the camera you watch: it goes black for 3 seconds
@@ -1098,6 +1127,7 @@ class Game {
     }
   }
   goldenInOffice() {
+    this.unlock("golden");
     const n = this.n;
     n.goldenWatch = false;
     n.goldenInOffice = true;
@@ -1113,6 +1143,7 @@ class Game {
      The dance on the stage camera at 5 AM (ends the night early)
      -------------------------------------------------------------- */
   startDance() {
+    this.unlock("dance");
     const n = this.n;
     this.sp.dance.play("dance", "Download (5)");
     this.scripts.run("dance", function* () {
@@ -1213,7 +1244,7 @@ class Game {
     const right = pic("right button panel", this.panelPic(n.rightDoor, n.rightLight));
     if (hits(right, 515 + pan, 204, 34, x, y)) return this.pressButton("right", y);
     // boop the poster's nose
-    if (hits(pic("nose", "normal"), 240 + pan, 180, 125, x, y)) this.sp.nose.play("nose", "PartyFavorraspyPart_AC01__3");
+    if (hits(pic("nose", "normal"), 240 + pan, 180, 125, x, y)) { this.sp.nose.play("nose", "PartyFavorraspyPart_AC01__3"); this.unlock("boop"); }
   }
   panelPic(door, light) {
     return door && light ? "both on" : door ? "door on" : light ? "light on" : "both off";
@@ -1237,6 +1268,7 @@ class Game {
      POWER OUT: everything shuts off, then Eddie plays his music box
      -------------------------------------------------------------- */
   powerOut() {
+    this.unlock("power");
     const n = this.n, sp = this.sp;
     if (n.monitorUp || n.monitorFrame) {
       if (n.monitorFrame !== 1) { sp.flip.setVolume(100); sp.flip.play("flip panel", "put down"); }
@@ -1295,6 +1327,7 @@ class Game {
     n.hallucination = null;
     n.phone = "off";
     this.killer = { Bonnie: "Bonnie", Chica: "Chica", Foxy: "Foxy", Eddie: "Freddy" }[who];
+    this.caughtBy(this.killer);
     if (settings.jumpscares !== "1") return this.dead();
     this.sp.halluc.setVolume(100);
     this.sp.halluc.play("hallucinations", "XSCREAM2");
@@ -1386,12 +1419,15 @@ class Game {
 
   nightWon() {
     const L = this.level;
+    // achievements for surviving
+    if (L <= 6) this.unlock("night" + L);
+    if (this.n && this.n.power >= 300) this.unlock("frugal");
     if (L < 5) { this.level = L + 1; return this.startIntro(); }
     if (L === 5) { this.progress.beat5 = true; return this.ending("beat5"); }
     if (L === 6) { this.progress.beat6 = true; return this.ending("beat6"); }
     // custom night (night 7): 20/20/20/20 earns the last star
     const ai = this.customAI || {};
-    if (ai.freddy > 19 && ai.bonnie > 19 && ai.chica > 19 && ai.foxy > 19) this.progress.beat420 = true;
+    if (ai.freddy > 19 && ai.bonnie > 19 && ai.chica > 19 && ai.foxy > 19) { this.progress.beat420 = true; this.unlock("max"); }
     return this.ending("pink slip");
   }
 
@@ -1455,6 +1491,7 @@ class Game {
     const code = this.customPick.join("/");
     if (code === "1/9/8/7") { this.customPick = [1, 2, 2, 7]; return this.creepyEnd(); }
     if (code === "1/2/2/7") {
+      this.unlock("fired");
       // the joke code: you're fired before the night even starts
       this.customPick = [1, 2, 2, 7];
       this.go("black");
@@ -1518,6 +1555,15 @@ class Game {
       const blink = Math.floor(this.tick / 15) % 2 === 0;
       for (const cam of CAMERAS) draw(ctx, pic(cam.button, cam.room === room && blink ? "Active" : "Inactive"), cam.x, cam.y, { size: 40 });
       if (n.redDot) draw(ctx, pic("red dot", "blinking"), 35, 85, { size: 40 });
+      // which camera this is, next to the red recording dot ("CAM 1A  Show Stage")
+      const cam = CAMERAS.find(c => c.room === room);
+      ctx.save();
+      ctx.font = '9px "Pixel"';
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#fff";
+      ctx.shadowColor = "#000"; ctx.shadowBlur = 2;
+      ctx.fillText(ACH_WORD("CAM") + " " + cam.button.replace("CAM", "") + "   " + ACH_WORD(room), 48, 86);
+      ctx.restore();
     }
     // monitor flipping up or down
     if (n.monitorFrame) draw(ctx, pic("moniter", `Moniter (${n.monitorFrame})`), 240, 180);

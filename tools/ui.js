@@ -478,7 +478,8 @@ function fileSummary(n) {
   const p = loadProgress(n);
   if (!p.started) return T("EMPTY");
   const stars = "★".repeat(p.beat5 + p.beat6 + p.beat420);
-  return T("Night") + " " + p.night + (stars ? "  " + stars : "");
+  const trophies = Object.keys(p.achievements).length;          // achievements unlocked
+  return T("Night") + " " + p.night + (stars ? "  " + stars : "") + (trophies ? "  ·  🏆 " + trophies : "");
 }
 function showFiles() {
   const box = $("#filesPanel");

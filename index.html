@@ -476,7 +476,8 @@
       // (older saves used the Scratch names: level, "beat 5"...)
       const has = k => !!Number(sv[k] ?? sv[k.replace("beat", "beat ")] ?? 0);
       const stars = "★".repeat(has("beat5") + has("beat6") + has("beat420"));
-      return "NIGHT " + (sv.night || sv.level || 1) + (stars ? " " + stars : "");
+      const trophies = sv.achievements ? Object.keys(sv.achievements).length : 0;     // achievements unlocked
+      return "NIGHT " + (sv.night || sv.level || 1) + (stars ? " " + stars : "") + (trophies ? " · 🏆" + trophies : "");
     } catch (e) { return "EMPTY"; }
   }
   function showFiles() {

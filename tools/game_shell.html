@@ -132,6 +132,35 @@
   #filesPanel .erase:hover { color: #ff6b6b; border-color: #ff6b6b; background: #000; }
   #filesPanel .hint { color: #777; font-size: calc(var(--u) * 11); }
 
+  /* ===== Achievements (Steam style) ===== */
+  #toasts { position: absolute; right: calc(var(--u) * 6); bottom: calc(var(--u) * 6); z-index: 8; pointer-events: none;
+    display: flex; flex-direction: column; gap: calc(var(--u) * 4); overflow: hidden; }
+  .toast { display: flex; align-items: center; gap: calc(var(--u) * 7); width: calc(var(--u) * 150); padding: calc(var(--u) * 6);
+    background: linear-gradient(to bottom, #2a3f5a, #1b2838); border: 1px solid #3d5a7a; box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 10) rgba(0,0,0,.6);
+    font-family: "Sans Serif", sans-serif; transform: translateY(130%); opacity: 0; transition: transform .45s ease, opacity .45s ease; }
+  .toast.in { transform: none; opacity: 1; }
+  .toastTitle { color: #fff; font-size: calc(var(--u) * 7.5); }
+  .toastName { color: #8f98a0; font-size: calc(var(--u) * 7); margin-top: calc(var(--u) * 1.5); }
+  .achIcon { flex: none; width: calc(var(--u) * 28); height: calc(var(--u) * 28); display: grid; place-items: center;
+    color: #fff; font: 600 calc(var(--u) * 13) "Sans Serif", sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
+  .achIcon.locked { filter: grayscale(1) brightness(.45); }
+  #achPanel { background: #1b2838; font-family: "Sans Serif", sans-serif; gap: calc(var(--u) * 6); }
+  .achTop { display: flex; align-items: center; gap: calc(var(--u) * 10); }
+  .achTop h2 { font-weight: normal; font-size: calc(var(--u) * 16); }
+  .achTop button { font-family: "Share Tech Mono", monospace; font-size: calc(var(--u) * 10); background: transparent; border-color: #3d5a7a; }
+  .achCount { margin-left: auto; color: #8f98a0; font-size: calc(var(--u) * 9); }
+  .achBar { height: calc(var(--u) * 4); background: #0e1621; }
+  .achFill { height: 100%; background: linear-gradient(to right, #5c7e10, #a4d007); }
+  .achList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 3); padding-right: calc(var(--u) * 3); }
+  .achRow { display: flex; align-items: center; gap: calc(var(--u) * 8); padding: calc(var(--u) * 5); background: #233246; }
+  .achRow.locked { background: #18222f; }
+  .achText { flex: 1; min-width: 0; }
+  .achName { font-size: calc(var(--u) * 9); color: #fff; }
+  .achRow.locked .achName { color: #8f98a0; }
+  .achDesc { font-size: calc(var(--u) * 7.5); color: #8f98a0; margin-top: calc(var(--u) * 1); }
+  .achDate { font-size: calc(var(--u) * 7); color: #8f98a0; white-space: nowrap; }
+
   /* mods */
   #modsPanel { gap: calc(var(--u) * 7); }
   .modsTop { display: flex; align-items: center; gap: calc(var(--u) * 10); }
@@ -179,6 +208,10 @@
 
   <!-- Debug mode box (turn it on in Settings) -->
   <div id="debug" hidden></div>
+
+  <!-- Achievement pop-ups (bottom right) and the achievements list -->
+  <div id="toasts"></div>
+  <div id="achPanel" class="panel" hidden></div>
 
   <!-- Save file screen (when the address has no ?file=1, 2 or 3) -->
   <div id="filesPanel" class="panel" hidden></div>
@@ -338,6 +371,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     // Esc closes the mods screen, then settings, then goes back to the game menu
     if (!$("#ask").hidden) { $("#ask").hidden = true; game.paused = false; canvas.focus(); }
+    else if (!$("#achPanel").hidden) closeAchievements();
     else if (!$("#modsPanel").hidden) closeMods();
     else if (!$("#settingsPanel").hidden) closeSettings();
     else location.href = "../index.html";
