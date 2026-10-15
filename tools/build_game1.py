@@ -4,6 +4,7 @@ build_game1.py
 Builds the web version of Fried Rice at Eddie's (game 1) from the Scratch .sb3.
 
   python3 tools/build_game1.py path/to/unzipped_sb3_folder
+  python3 tools/build_game1.py --code      (only the game code changed: quick)
 
 What it does:
   1. Reads project.json
@@ -14,15 +15,16 @@ What it does:
          characters (Eddy, Cheddy, Weddy, Endo) as separate pictures
        - costumes that no script can ever show are dropped
   3. Converts assets: PNG -> WebP, WAV -> MP3, SVGs with photos or text -> WebP
-  4. Converts every script to JavaScript (sb3_to_js.py)
-  5. Writes 1/index.html (engine + scripts + data in one file)
+  4. Writes 1/index.html: the hand-written game (tools/game/*.js) plus
+     ART (every picture: size, center and layers) and SOUNDS.
+     The Scratch scripts are NOT converted: the game logic was rewritten
+     by hand in tools/game/game.js.
 """
 import hashlib, io, json, os, re, shutil, subprocess, sys
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from sb3_to_js import convert
 from render import Renderer, font_css
 
 REPO = os.path.dirname(HERE)
@@ -46,7 +48,7 @@ TEXT_GROUPS = [
     ('Hallucinations', ['hallucinations']),
     ('Secret ending', ['Secret??//']),
 ]
-SETTINGS_TEXTS = ['Settings', 'Jumpscares', 'ON', 'OFF', 'Music', 'Sound', 'Mods', 'CONFIRM']
+SETTINGS_TEXTS = ['Settings', 'Jumpscares', 'ON', 'OFF', 'Music', 'Sound', 'Mods', 'CONFIRM', 'Debug mode', 'Golden Freddy Rate?']
 CHARACTER_NAMES = ['Eddie', 'Weddy', 'Cheddy', '???']
 
 
@@ -205,7 +207,25 @@ class Builder:
                 volume=t.get('volume', 100), layer=t.get('layerOrder', 0), vars=locals_))
 
 
+def write_page(data_js):
+    """Puts the data, the hand-written game and the settings/mods UI into 1/index.html."""
+    game_dir = os.path.join(HERE, 'game')
+    code = '\n\n'.join(open(os.path.join(game_dir, f), encoding='utf-8').read()
+                        for f in ('pictures.js', 'sound.js', 'game.js', 'secret.js'))
+    ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
+    shell = open(os.path.join(HERE, 'game_shell.html'), encoding='utf-8').read()
+    html = (shell.replace('/*DATA*/', data_js)
+                 .replace('/*GAME*/', code)
+                 .replace('/*UI*/', ui))
+    open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(html)
+
+
 def main():
+    if sys.argv[1] == '--code':
+        # quick rebuild: only the game code changed (reuses the last data)
+        write_page(open(os.path.join(HERE, 'data_cache.js'), encoding='utf-8').read())
+        print('wrote 1/index.html (code only)')
+        return
     sb3_dir = sys.argv[1]
     fonts_dir = os.path.join(ASSETS, 'fonts')
     fonts = {f: os.path.join(fonts_dir, n) for f, n in [
@@ -227,23 +247,25 @@ def main():
         data.append(b.target_data(t, costumes))
     b.renderer.close()
 
-    scripts_js, n = convert(b.project)
-    engine = open(os.path.join(HERE, 'engine.js'), encoding='utf-8').read()
-    shell = open(os.path.join(HERE, 'game_shell.html'), encoding='utf-8').read()
-    project_js = 'const PROJECT = ' + json.dumps(dict(targets=data), ensure_ascii=False, separators=(',', ':')) + ';'
+    # ---- pictures and sounds, looked up by sprite name and costume/sound name ----
+    art, sounds = {}, {}
+    for t in data:
+        art[t['name']] = {'list': [c['name'] for c in t['costumes']],
+                          'pics': {c['name']: {k: v for k, v in c.items() if k != 'name'} for c in t['costumes']}}
+        sounds[t['name']] = {s['name']: {'src': s['src'], 'music': s['music']} for s in t['sounds']}
+    data_js = 'const ART = ' + json.dumps(art, ensure_ascii=False, separators=(',', ':')) + ';'
+    data_js += '\nconst SOUNDS = ' + json.dumps(sounds, ensure_ascii=False, separators=(',', ':')) + ';'
     # everything a mod template needs: every asset file (except the loading picture) and the words
     files = sorted(os.path.relpath(os.path.join(dp, f), ASSETS).replace(os.sep, '/')
                    for dp, _, fs in os.walk(ASSETS) for f in fs)
     files = [f for f in files if f != 'loading-rice.webp']
-    project_js += '\nconst ASSET_FILES = ' + json.dumps(files) + ';'
-    project_js += '\nconst DEFAULT_TEXTS = ' + json.dumps(default_texts(data), ensure_ascii=False, indent=1) + ';'
-    ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
-    html = (shell.replace('/*ENGINE*/', engine)
-                 .replace('/*PROJECT*/', project_js)
-                 .replace('/*SCRIPTS*/', scripts_js)
-                 .replace('/*UI*/', ui))
-    open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(html)
-    print(f'wrote 1/index.html with {n} scripts, {len(data)} sprites')
+    data_js += '\nconst ASSET_FILES = ' + json.dumps(files) + ';'
+    data_js += '\nconst DEFAULT_TEXTS = ' + json.dumps(default_texts(data), ensure_ascii=False, indent=1) + ';'
+    open(os.path.join(HERE, 'art_debug.json'), 'w').write(json.dumps(art, indent=1))   # for checking (git-ignored)
+
+    open(os.path.join(HERE, 'data_cache.js'), 'w', encoding='utf-8').write(data_js)   # for --code rebuilds (git-ignored)
+    write_page(data_js)
+    print(f'wrote 1/index.html ({len(data)} sprites of art, {sum(len(v) for v in sounds.values())} sounds)')
 
 
 if __name__ == '__main__':

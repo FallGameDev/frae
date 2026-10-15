@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 _val.html
 scratch
+tools/art_debug.json
+tools/data_cache.js

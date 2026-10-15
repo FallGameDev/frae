@@ -75,7 +75,6 @@ def apply(b):
     b.custom = {}
     b.notes = []
     remove_copyright(b)
-    stop_title_music(b)
     new_settings(b)
     drop_unused_costumes(b)
     text_costumes(b)
@@ -93,26 +92,6 @@ def apply(b):
 def remove_copyright(b):
     b.project['targets'] = [t for t in b.project['targets'] if t['name'] != 'copyright']
     b.notes.append('removed sprite "copyright"')
-
-
-# ---------------------------------------------------------------------------
-# Bug fix: the title music kept playing in the night after "New Game"
-# (only "Continue" stopped the title music loop). Adds this script to the stage:
-#   when I receive [intro] -> stop [other scripts in sprite]
-# ---------------------------------------------------------------------------
-def stop_title_music(b):
-    stage = next(t for t in b.project['targets'] if t['isStage'])
-    bid = next(k for k, v in stage['broadcasts'].items() if v == 'intro')
-    stage['blocks']['fix_intro_hat'] = {
-        'opcode': 'event_whenbroadcastreceived', 'next': 'fix_intro_stop', 'parent': None,
-        'inputs': {}, 'fields': {'BROADCAST_OPTION': ['intro', bid]},
-        'shadow': False, 'topLevel': True, 'x': 0, 'y': -999}
-    stage['blocks']['fix_intro_stop'] = {
-        'opcode': 'control_stop', 'next': None, 'parent': 'fix_intro_hat',
-        'inputs': {}, 'fields': {'STOP_OPTION': ['other scripts in sprite', None]},
-        'mutation': {'tagName': 'mutation', 'children': [], 'hasnext': 'true'},
-        'shadow': False, 'topLevel': False}
-    b.notes.append('fixed: title music now stops when a night starts')
 
 
 # ---------------------------------------------------------------------------

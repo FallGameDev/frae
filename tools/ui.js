@@ -1,6 +1,6 @@
 /* =====================================================================
    SETTINGS + MODS
-   - Settings screen: jumpscares on/off, music volume, sound volume, mods
+   - Settings screen: jumpscares on/off, debug mode on/off, music volume, sound volume, mods
    - Mods: load a mod folder (or .zip), load a mod from a GitHub repo,
      download a template mod, and drag mods between "Downloaded" and
      "In use". In use mods replace game files; the top one wins.
@@ -12,12 +12,12 @@
    Player settings (saved in this browser)
    --------------------------------------------------------------------- */
 const SETTINGS_KEY = "frae1-settings";
-const settings = { music: 100, sound: 100, jumpscares: "0" };
+const settings = { music: 100, sound: 100, jumpscares: "0", debug: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")); } catch (e) {}
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
 function applyVolumes() {
-  rt.musicBus.gain.value = settings.music / 100;
-  rt.sfxBus.gain.value = settings.sound / 100;
+  Sound.musicBus.gain.value = settings.music / 100;
+  Sound.sfxBus.gain.value = settings.sound / 100;
 }
 
 // Words for the settings screen (mods can change these too)
@@ -365,11 +365,80 @@ async function applyMods() {
       } catch (e) { console.warn("Mod font did not load", path); }
     }
   }
-  for (const t of PROJECT.targets) {
-    for (const c of t.costumes) for (const L of c.layers) if (L.img && url[L.img]) L.img = url[L.img];
-    for (const s of t.sounds) if (url[s.src]) s.src = url[s.src];
-  }
+  // point every picture layer and sound at the mod's file instead
+  for (const group of Object.values(ART))
+    for (const p of Object.values(group.pics)) for (const L of p.layers) if (L.img && url[L.img]) L.img = url[L.img];
+  for (const group of Object.values(SOUNDS))
+    for (const s of Object.values(group)) if (url[s.src]) s.src = url[s.src];
   return mods.length;
+}
+
+/* =====================================================================
+   DEBUG MODE
+   A see-through box in the top left corner that shows what the game is
+   doing right now: speed (FPS), the mouse spot, the screen, and during a
+   night the power, time and where every character is. Values that just
+   changed show in yellow.
+   Extra keys while debug mode is on:
+     H  skip to the next hour      P  +10% power
+     G  make Golden show up on the next monitor flip (press again to undo)
+   ===================================================================== */
+let debugTimer = 0, debugFrames = 0, debugLast = {};
+// counts screen refreshes so we can show FPS
+function debugCount() { debugFrames++; if (settings.debug) requestAnimationFrame(debugCount); }
+function applyDebug() {
+  const box = $("#debug");
+  box.hidden = !settings.debug;
+  clearInterval(debugTimer);
+  if (!settings.debug) return;
+  debugFrames = 0;
+  requestAnimationFrame(debugCount);
+  let lastTime = performance.now();
+  const esc = v => String(v).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  debugTimer = setInterval(() => {
+    const now = performance.now();
+    const fps = Math.round(debugFrames * 1000 / (now - lastTime));
+    debugFrames = 0; lastTime = now;
+    const info = game.debugInfo();
+    const rows = Object.entries(info).map(([k, v]) => {
+      const changed = debugLast[k] !== undefined && debugLast[k] !== String(v);
+      debugLast[k] = String(v);
+      return `<div${changed ? ' class="chg"' : ""}>${esc(k)} <b>${esc(v)}</b></div>`;
+    }).join("");
+    box.innerHTML =
+      `<div class="head">DEBUG</div>` +
+      `<div>FPS <b>${fps}</b> &nbsp; mouse <b>${Math.round(game.mouse.x)}, ${Math.round(game.mouse.y)}</b>${game.mouse.down ? " (down)" : ""}</div>` +
+      `<div class="vars">${rows}</div>` +
+      `<div class="keys">H next hour &middot; P +10% power &middot; G Golden</div>`;
+  }, 200);
+}
+document.addEventListener("keydown", e => {
+  if (!settings.debug || e.target.tagName === "INPUT" || e.repeat) return;
+  const k = e.key.toLowerCase();
+  if (k === "h") game.debugSkipHour();
+  if (k === "p") game.debugAddPower();
+  if (k === "g") game.goldenRate = game.goldenRate === 1 ? 10000 : 1;
+});
+
+/* =====================================================================
+   GOLDEN EDDIE'S RATE (press the left arrow, like in the original)
+   Golden shows up 1 in this many times you flip the monitor up.
+   ===================================================================== */
+function askGoldenRate() {
+  const form = $("#ask"), input = $("#askInput");
+  $("#askText").textContent = T("Golden Freddy Rate?") + " (1 in " + game.goldenRate + ")";
+  input.value = "";
+  form.hidden = false;
+  game.paused = true;
+  input.focus();
+  form.onsubmit = e => {
+    e.preventDefault();
+    const n = Math.round(Number(input.value));
+    if (n >= 1) game.goldenRate = n;
+    form.hidden = true;
+    game.paused = false;
+    canvas.focus();
+  };
 }
 
 /* =====================================================================
@@ -378,9 +447,14 @@ async function applyMods() {
 function buildSettings() {
   const box = $("#settingsPanel");
   box.innerHTML = "";
+  // ON/OFF buttons for debug mode
+  const dbBtn = (label, val) => el("button", {
+    class: "pick" + (settings.debug === val ? " on" : ""),
+    onclick: () => { settings.debug = val; saveSettings(); applyDebug(); buildSettings(); blip(); }
+  }, T(label));
   const jsBtn = (label, val) => el("button", {
     class: "pick" + (settings.jumpscares === val ? " on" : ""),
-    onclick: () => { settings.jumpscares = val; G.Jumpscares = val; saveSettings(); buildSettings(); blip(); }
+    onclick: () => { settings.jumpscares = val; saveSettings(); buildSettings(); blip(); }
   }, T(label));
   const slider = (key) => {
     const out = el("span", { class: "val" }, settings[key] + "%");
@@ -392,6 +466,8 @@ function buildSettings() {
     el("h2", {}, T("Settings")),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Jumpscares")),
        el("div", { class: "pair" }, jsBtn("ON", "1"), jsBtn("OFF", "0"))),
+    el("div", { class: "row" }, el("span", { class: "label" }, T("Debug mode")),
+       el("div", { class: "pair" }, dbBtn("ON", true), dbBtn("OFF", false))),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Music")), ...slider("music")),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Sound")), ...slider("sound")),
     el("div", { class: "row" }, el("span", { class: "label" }, ""),
@@ -402,22 +478,21 @@ function buildSettings() {
 function openSettings() {
   buildSettings();
   $("#settingsPanel").hidden = false;
+  game.paused = true;
 }
 function closeSettings() {
-  // same as the old CONFIRM sprite
   $("#settingsPanel").hidden = true;
-  rt.broadcast("ExitSettingsMenu");
-  G.Settings = "0";
-  rt.broadcast("message1");
+  game.paused = false;
+  game.settingsClosed();
   canvas.focus();
 }
 // a short menu blip (made with Web Audio, so it follows the Sound slider)
 function blip() {
-  const o = rt.audio.createOscillator(), g = rt.audio.createGain();
+  const ac = Sound.ctx, o = ac.createOscillator(), g = ac.createGain();
   o.type = "square"; o.frequency.value = 660;
-  g.gain.setValueAtTime(0.05, rt.audio.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, rt.audio.currentTime + 0.08);
-  o.connect(g).connect(rt.sfxBus); o.start(); o.stop(rt.audio.currentTime + 0.08);
+  g.gain.setValueAtTime(0.05, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.08);
+  o.connect(g).connect(Sound.sfxBus); o.start(); o.stop(ac.currentTime + 0.08);
 }
 
 /* =====================================================================
