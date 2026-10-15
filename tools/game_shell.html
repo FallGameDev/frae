@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fried Rice at Eddie's</title>
+<style>
+  /* ===== Fonts used by the game's text (Scratch's own fonts + pixel fonts) ===== */
+  @font-face { font-family: "Sans Serif"; src: url("assets/fonts/NotoSans-Medium.ttf"); }
+  @font-face { font-family: "Serif"; src: url("assets/fonts/SourceSerifPro-Regular.otf"); }
+  @font-face { font-family: "Pixel"; src: url("assets/fonts/Grand9K-Pixel.ttf"); }
+  @font-face { font-family: "Press Start 2P"; src: url("assets/fonts/PressStart2P.woff2"); }
+  @font-face { font-family: "Courier Prime"; src: url("assets/fonts/CourierPrime.woff2"); }
+  @font-face { font-family: "Share Tech Mono"; src: url("assets/fonts/ShareTechMono.woff2"); }
+
+  /* ===== Page theme: black VHS look to match the game menu ===== */
+  :root {
+    --bg: #000;
+    --line: #fff;
+    --dim: #8a8a99;
+    --accent: #5b16ec;
+    --soul: #ff2a3c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: #fff; overflow: hidden; }
+  body {
+    font-family: "Press Start 2P", monospace;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none;
+  }
+
+  /* The game screen keeps Scratch's 4:3 shape and grows to fit the window */
+  #frame {
+    position: relative;
+    border: 4px solid var(--line);
+    box-shadow: 0 0 0 4px #000, 8px 8px 0 4px #1d1d2b;
+    background: #000;
+  }
+  #stage { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+
+  /* ===== Bottom control bar ===== */
+  #bar { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+  #bar button, #bar a {
+    font: inherit; font-size: 11px; letter-spacing: 1px;
+    color: #fff; background: #000; text-decoration: none;
+    border: 3px solid var(--line); padding: 9px 12px;
+    box-shadow: 4px 4px 0 #2a2a3a; cursor: pointer;
+  }
+  #bar button:hover, #bar a:hover { background: var(--accent); }
+  #bar button:active, #bar a:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 #2a2a3a; }
+
+  /* ===== Loading / click to play screen ===== */
+  #cover {
+    position: absolute; inset: 0; z-index: 5;
+    background: #000; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 22px; text-align: center;
+    padding: 16px;
+  }
+  #cover h1 { font-size: clamp(12px, 2.6vw, 22px); line-height: 1.5; text-shadow: 3px 0 rgba(255,0,60,.55), -3px 0 rgba(0,200,255,.55); }
+  #barOuter { width: min(70%, 360px); height: 18px; border: 3px solid #fff; padding: 2px; }
+  #barInner { height: 100%; width: 0; background: #fff; transition: width .15s; }
+  #playBtn {
+    font: inherit; font-size: 14px; color: #fff; background: var(--accent);
+    border: 4px solid #fff; border-radius: 999px; padding: 14px 34px; cursor: pointer;
+    box-shadow: 0 6px 0 #000, 0 6px 0 4px #fff;
+  }
+  #playBtn:disabled { background: #222; color: #555; cursor: wait; }
+  #status { font-size: 10px; color: var(--dim); }
+
+  /* ===== "ask and wait" box ===== */
+  #ask {
+    position: absolute; left: 4%; right: 4%; bottom: 4%; z-index: 4;
+    background: #000; border: 3px solid #fff; padding: 10px; display: flex; flex-direction: column; gap: 8px;
+  }
+  #ask[hidden] { display: none; }
+  #askText { font-size: 11px; }
+  #ask div { display: flex; gap: 8px; }
+  #askInput { flex: 1; font: inherit; font-size: 12px; padding: 6px; background: #111; color: #fff; border: 2px solid #fff; }
+  #ask button { font: inherit; font-size: 11px; background: var(--accent); color: #fff; border: 2px solid #fff; padding: 0 10px; cursor: pointer; }
+
+  /* Fullscreen: let the frame fill the screen */
+  #frame:fullscreen { border: none; box-shadow: none; display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+
+<div id="frame">
+  <canvas id="stage" tabindex="0"></canvas>
+
+  <!-- Loading screen (a click is needed before browsers allow sound) -->
+  <div id="cover">
+    <h1>FRIED RICE<br>AT EDDIE'S</h1>
+    <div id="barOuter"><div id="barInner"></div></div>
+    <button id="playBtn" disabled>LOADING...</button>
+    <div id="status">Loading tapes...</div>
+  </div>
+
+  <!-- Box for the "ask and wait" block -->
+  <form id="ask" hidden>
+    <div id="askText"></div>
+    <div><input id="askInput" autocomplete="off"><button type="submit">OK</button></div>
+  </form>
+</div>
+
+<div id="bar">
+  <a href="../index.html">&#9664; MENU</a>
+  <button id="flagBtn" title="Start over (green flag)">&#9654; RESTART</button>
+  <button id="stopBtn" title="Stop everything (red stop sign)">&#9632; STOP</button>
+  <button id="fullBtn" title="Full screen">&#9974; FULL</button>
+</div>
+
+<script>
+/*ENGINE*/
+
+/* =====================================================================
+   PROJECT DATA (sprites, costumes, sounds, starting values)
+   Made by tools/build_game1.py from the Scratch project.
+   ===================================================================== */
+/*PROJECT*/
+
+/* =====================================================================
+   SAVE PROGRESS
+   Scratch forgets your progress when the page reloads. The web version
+   remembers which night you reached. Set SAVE_PROGRESS to false to
+   turn this off.
+   ===================================================================== */
+const SAVE_PROGRESS = true;
+const SAVE_KEY = "frae1-save";
+const SAVED_VARS = ["level", "beat 5", "beat 6", "beat 420"];
+
+function loadSave() {
+  if (!SAVE_PROGRESS) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
+    const stage = PROJECT.targets.find(t => t.isStage);
+    for (const k of SAVED_VARS) if (k in saved) stage.start.vars[k] = saved[k];
+  } catch (e) { /* storage blocked: just play without saving */ }
+}
+let lastSave = "";
+function writeSave() {
+  if (!SAVE_PROGRESS) return;
+  const data = JSON.stringify(Object.fromEntries(SAVED_VARS.map(k => [k, G[k]])));
+  if (data === lastSave) return;
+  lastSave = data;
+  try { localStorage.setItem(SAVE_KEY, data); } catch (e) {}
+}
+
+/* =====================================================================
+   START UP
+   ===================================================================== */
+const canvas = document.getElementById("stage");
+const frame = document.getElementById("frame");
+
+// Fit the 4:3 screen inside the window (and keep it sharp on hi-res screens)
+function fit() {
+  const full = document.fullscreenElement === frame;
+  const maxW = window.innerWidth - (full ? 0 : 40);
+  const maxH = window.innerHeight - (full ? 0 : 110);
+  const w = Math.max(240, Math.min(maxW, maxH * 4 / 3));
+  const h = w * 3 / 4;
+  frame.style.width = (full ? window.innerWidth : w + 8) + "px";
+  frame.style.height = (full ? window.innerHeight : h + 8) + "px";
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  if (rt) rt.redraw();
+}
+window.addEventListener("resize", fit);
+document.addEventListener("fullscreenchange", fit);
+
+loadSave();
+rt = new Runtime(canvas, PROJECT);
+fit();
+
+/*SCRIPTS*/
+
+// Collect every file the game needs, then load them with a progress bar
+const imageUrls = new Set(), soundUrls = new Set();
+for (const t of PROJECT.targets) {
+  for (const c of t.costumes) for (const L of c.layers) if (L.img) imageUrls.add(L.img);
+  for (const s of t.sounds) soundUrls.add(s.src);
+}
+const barInner = document.getElementById("barInner");
+const playBtn = document.getElementById("playBtn");
+const status = document.getElementById("status");
+
+Promise.all([
+  document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Serif"'),
+  document.fonts.load('10px "Pixel"'), document.fonts.load('10px "Press Start 2P"'),
+  document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Share Tech Mono"'),
+  Assets.loadAll([...imageUrls], [...soundUrls], rt.audio, p => {
+    barInner.style.width = Math.round(p * 100) + "%";
+    status.textContent = `Loading tapes... ${Math.round(p * 100)}%`;
+  })
+]).then(() => {
+  rt.createTargets();
+  playBtn.disabled = false;
+  playBtn.textContent = "CLICK TO PLAY";
+  status.textContent = "Use headphones for the full experience";
+});
+
+// The first click unlocks sound, then presses the green flag
+playBtn.addEventListener("click", () => {
+  rt.audio.resume();
+  document.getElementById("cover").remove();
+  canvas.focus();
+  rt.greenFlag();
+  requestAnimationFrame(loop);
+});
+
+/* =====================================================================
+   MAIN LOOP: run scripts 30 times a second, draw when something changed
+   ===================================================================== */
+let last = performance.now(), acc = 0, saveTimer = 0;
+function loop(now) {
+  acc += now - last;
+  last = now;
+  if (acc > 200) acc = 200;                     // tab was hidden: don't try to catch up forever
+  while (acc >= FRAME_MS) {
+    rt.step();
+    acc -= FRAME_MS;
+    if (++saveTimer >= 60) { saveTimer = 0; writeSave(); }
+  }
+  if (rt.needsRedraw) rt.render();
+  requestAnimationFrame(loop);
+}
+
+/* =====================================================================
+   INPUT: mouse, touch and keyboard go to the game
+   ===================================================================== */
+canvas.addEventListener("pointerdown", e => { canvas.focus(); rt.setMouse(e.clientX, e.clientY); rt.mousePressed(); });
+window.addEventListener("pointermove", e => { rt.setMouse(e.clientX, e.clientY); rt.mouseMoved(); });
+window.addEventListener("pointerup", e => { rt.setMouse(e.clientX, e.clientY); rt.mouseReleased(); });
+document.addEventListener("keydown", e => {
+  if (e.target.id === "askInput") return;
+  const k = scratchKey(e);
+  if (!k) return;
+  if (k.includes("arrow") || k === "space") e.preventDefault();
+  rt.keyPressed(k);
+});
+document.addEventListener("keyup", e => { const k = scratchKey(e); if (k) rt.keyReleased(k); });
+
+/* ===== Control bar ===== */
+document.getElementById("flagBtn").onclick = () => { if (!document.getElementById("cover")) { rt.greenFlag(); canvas.focus(); } };
+document.getElementById("stopBtn").onclick = () => rt.stopAll();
+document.getElementById("fullBtn").onclick = () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else frame.requestFullscreen && frame.requestFullscreen();
+};
+</script>
+</body>
+</html>
