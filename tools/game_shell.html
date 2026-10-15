@@ -115,6 +115,23 @@
     background: #666; border-color: #666; padding: calc(var(--u) * 4) calc(var(--u) * 26); }
   #settingsPanel .confirm:hover { border-color: #fff; }
 
+  #settingsPanel .fileNow { color: #aaa; min-width: calc(var(--u) * 150); }
+  #settingsPanel .small { font-size: calc(var(--u) * 12); padding: calc(var(--u) * 2) calc(var(--u) * 10); }
+
+  /* save file screen */
+  #filesPanel { align-items: center; justify-content: center; gap: calc(var(--u) * 14); }
+  #filesPanel h2 { font-size: calc(var(--u) * 22); font-weight: normal; }
+  #filesPanel .slots { display: flex; flex-direction: column; gap: calc(var(--u) * 10); width: 72%; }
+  #filesPanel .slotWrap { display: flex; gap: calc(var(--u) * 8); }
+  #filesPanel .slot { flex: 1; display: flex; justify-content: space-between; align-items: center;
+    padding: calc(var(--u) * 10) calc(var(--u) * 14); font-size: calc(var(--u) * 15); border-width: calc(var(--u) * 3); }
+  #filesPanel .slot:hover, #filesPanel .slot:focus { border-color: #f7931e; background: #1a1206; outline: none; }
+  #filesPanel .slot.empty .fileInfo { color: #666; }
+  #filesPanel .fileInfo { color: #f7931e; }
+  #filesPanel .erase { font-size: calc(var(--u) * 10); color: #888; border-color: #444; }
+  #filesPanel .erase:hover { color: #ff6b6b; border-color: #ff6b6b; background: #000; }
+  #filesPanel .hint { color: #777; font-size: calc(var(--u) * 11); }
+
   /* mods */
   #modsPanel { gap: calc(var(--u) * 7); }
   .modsTop { display: flex; align-items: center; gap: calc(var(--u) * 10); }
@@ -162,6 +179,9 @@
 
   <!-- Debug mode box (turn it on in Settings) -->
   <div id="debug" hidden></div>
+
+  <!-- Save file screen (when the address has no ?file=1, 2 or 3) -->
+  <div id="filesPanel" class="panel" hidden></div>
 
   <!-- Settings screen (opens when the Settings button is clicked) -->
   <div id="settingsPanel" class="panel" hidden></div>
@@ -272,7 +292,10 @@ applyMods().then(() => {
   setTimeout(() => cover.remove(), 450);
   canvas.focus();
   Sound.ctx.resume();
-  game.boot();
+  // ?file=1, 2 or 3 picks the save file; anything else asks first
+  const file = fileFromUrl();
+  if (file) { game.useFile(file); game.boot(); }
+  else showFiles();
   last = performance.now();
   requestAnimationFrame(loop);
 });

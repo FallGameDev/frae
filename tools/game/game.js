@@ -96,24 +96,45 @@ const NIGHT_AI = {
 };
 
 /* ---------------------------------------------------------------------
-   Saved progress (stays after closing the page)
+   Save files (stay after closing the page)
+   There are 3 save files. The page address picks one: 1/?file=2
+   Each file is kept in this browser's localStorage as "frae1-save-file2".
    --------------------------------------------------------------------- */
-const SAVE_KEY = "frae1-save";
-function loadProgress() {
-  const p = { night: 1, beat5: false, beat6: false, beat420: false };
+const SAVE_FILES = 3;
+const saveKey = file => "frae1-save-file" + file;
+
+// The file number from the address (?file=1, 2 or 3), or null if it is missing or not 1-3
+function fileFromUrl() {
+  const f = Number(new URLSearchParams(location.search).get("file"));
+  return Number.isInteger(f) && f >= 1 && f <= SAVE_FILES ? f : null;
+}
+
+function loadProgress(file) {
+  const p = { night: 1, beat5: false, beat6: false, beat420: false, started: false };
   try {
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
-    // (older saves used the Scratch variable names)
-    p.night = Number(s.night ?? s.level ?? 1) || 1;
-    p.beat5 = !!Number(s.beat5 ?? s["beat 5"] ?? 0);
-    p.beat6 = !!Number(s.beat6 ?? s["beat 6"] ?? 0);
-    p.beat420 = !!Number(s.beat420 ?? s["beat 420"] ?? 0);
+    // the very first version had one save: it becomes file 1
+    if (file === 1 && !localStorage.getItem(saveKey(1)) && localStorage.getItem("frae1-save"))
+      localStorage.setItem(saveKey(1), localStorage.getItem("frae1-save"));
+    const raw = localStorage.getItem(saveKey(file));
+    if (raw) {
+      const s = JSON.parse(raw);
+      // (older saves used the Scratch variable names)
+      p.night = Number(s.night ?? s.level ?? 1) || 1;
+      p.beat5 = !!Number(s.beat5 ?? s["beat 5"] ?? 0);
+      p.beat6 = !!Number(s.beat6 ?? s["beat 6"] ?? 0);
+      p.beat420 = !!Number(s.beat420 ?? s["beat 420"] ?? 0);
+      p.started = true;
+      if (s.night === undefined) saveProgress(file, p);      // rewrite old saves in the new shape
+    }
   } catch (e) { /* storage blocked: play without saving */ }
   return p;
 }
-function saveProgress(p) {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(p)); } catch (e) {}
+function saveProgress(file, p) {
+  try {
+    localStorage.setItem(saveKey(file), JSON.stringify({ night: p.night, beat5: p.beat5, beat6: p.beat6, beat420: p.beat420 }));
+  } catch (e) {}
 }
+function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); } catch (e) {} }
 
 /* =====================================================================
    THE GAME
@@ -124,7 +145,8 @@ class Game {
     this.ctx = canvas.getContext("2d");
     this.scripts = new Scripts();
     this.smooth = new Smooth();
-    this.progress = loadProgress();
+    this.file = 1;                  // which save file (picked on the file screen or by ?file=)
+    this.progress = loadProgress(1);
     this.mouse = { x: 240, y: 180, down: false };
     this.clicks = [];               // clicks waiting to be handled this update
     this.keys = [];                 // key presses waiting to be handled this update
@@ -256,6 +278,13 @@ class Game {
     return items.filter(i => i.show);
   }
 
+  // Switch to a save file (1-3)
+  useFile(file) {
+    this.file = file;
+    this.progress = loadProgress(file);
+  }
+  save() { saveProgress(this.file, this.progress); }
+
   // First screen after loading
   boot() {
     this.showTitle();
@@ -384,7 +413,7 @@ class Game {
     this.go("black");
     Sound.stopAll();
     if (this.level < 6) this.progress.night = this.level;     // Continue starts from here
-    saveProgress(this.progress);
+    this.save();
     const day = this.overlay("what day", `12:00AM ${this.level} Night`, { x: 240, y: 170, size: 40 });
     this.scripts.run("intro", function* () {
       yield 2;
@@ -1275,7 +1304,7 @@ class Game {
 
   // The paycheck / pink slip screens after nights 5, 6 and 7
   ending(name) {
-    saveProgress(this.progress);
+    this.save();
     this.go("black");
     this.sp.redDot.setVolume(100);
     this.scripts.run("ending", function* () {

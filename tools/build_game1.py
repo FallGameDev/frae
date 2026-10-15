@@ -48,7 +48,8 @@ TEXT_GROUPS = [
     ('Hallucinations', ['hallucinations']),
     ('Secret ending', ['Secret??//']),
 ]
-SETTINGS_TEXTS = ['Settings', 'Jumpscares', 'ON', 'OFF', 'Music', 'Sound', 'Mods', 'CONFIRM', 'Debug mode', 'Golden Freddy Rate?']
+SETTINGS_TEXTS = ['Settings', 'Jumpscares', 'ON', 'OFF', 'Music', 'Sound', 'Mods', 'CONFIRM', 'Debug mode', 'Golden Freddy Rate?',
+                  'Select a file', 'FILE', 'EMPTY', 'Night', 'ERASE', 'Save file', 'CHANGE']
 CHARACTER_NAMES = ['Eddie', 'Weddy', 'Cheddy', '???']
 
 

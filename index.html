@@ -254,6 +254,26 @@
   .dot.lock { border-color: #333342; }
   .dot.lock.on { background: #333342; }
 
+  /* =========================================================
+     SAVE FILE PICKER (under the arrows)
+     The picked file goes in the game's address: 1/?file=2
+     ========================================================= */
+  .files { display: flex; align-items: center; gap: clamp(8px, 1.4vw, 16px); margin-top: clamp(14px, 2.6vh, 26px); }
+  .files .label { font-family: 'Press Start 2P', monospace; font-size: clamp(10px, 1vw, 13px); color: var(--dim); letter-spacing: 2px; }
+  .file {
+    position: relative; font-family: 'VT323', monospace; color: #fff; background: #000;
+    border: 4px solid #555; box-shadow: 5px 5px 0 #1d1d2b; cursor: pointer;
+    padding: 4px clamp(12px, 1.6vw, 20px) 4px clamp(26px, 2.6vw, 34px); text-align: left; min-width: clamp(120px, 12vw, 170px);
+    transition: border-color .12s, transform .08s;
+  }
+  .file:hover { border-color: #aaa; }
+  .file:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 #1d1d2b; }
+  .file.on { border-color: var(--line); }
+  .file .name { display: block; font-size: clamp(20px, 1.8vw, 26px); }
+  .file .info { display: block; font-size: clamp(16px, 1.4vw, 20px); color: var(--dim); }
+  .file.on .info { color: #ffe14a; }
+  .file .soul { position: absolute; left: 8px; top: 50%; translate: 0 -50%; width: 14px; height: 14px; fill: var(--soul); display: none; }
+  .file.on .soul { display: block; animation: bob .9s infinite ease-in-out; }
   .hint { margin-top: 14px; color: var(--dim); font-size: 22px; letter-spacing: 1px; }
 
   /* =========================================================
@@ -285,6 +305,9 @@
     .osd { font-size: 22px; }
     .osd.bl { display: none; }
     .hint { display: none; }   /* no keyboard on phones */
+    .files { flex-wrap: wrap; justify-content: center; }
+    .files .label { width: 100%; text-align: center; }
+    .file { min-width: 0; }
   }
 </style>
 </head>
@@ -316,7 +339,10 @@
       <svg viewBox="0 0 10 12"><polygon points="0,0 0,12 10,6"/></svg>
     </button>
   </div>
-  <div class="hint">◀ ▶ CHOOSE &nbsp; · &nbsp; Z / ENTER START</div>
+  <!-- Save file picker: built by JavaScript -->
+  <div class="files" id="files"><span class="label">SAVE FILE</span></div>
+
+  <div class="hint">◀ ▶ CHOOSE &nbsp; · &nbsp; 1 2 3 FILE &nbsp; · &nbsp; Z / ENTER START</div>
 </div>
 
 <div id="tvoff"></div>
@@ -337,6 +363,7 @@
       color: "#7fdc5a",
       thumb: "img/game1.png",
       url: "1/",
+      saveKey: "frae1-save-file",     // where this game keeps save file N (+ the number)
       unlocked: true
     },
     {
@@ -420,6 +447,45 @@
     dots.push(dot);
   });
 
+  /* ---------- Save files (1-3), remembered in localStorage ---------- */
+  let file = Number(localStorage.getItem("frae-file")) || 1;
+  if (file < 1 || file > 3) file = 1;
+  const filesBox = document.getElementById("files");
+  const fileButtons = [1, 2, 3].map(n => {
+    const b = document.createElement("button");
+    b.className = "file";
+    b.innerHTML = `${SOUL_SVG}<span class="name">FILE ${n}</span><span class="info"></span>`;
+    b.onclick = () => pickFile(n);
+    filesBox.appendChild(b);
+    return b;
+  });
+  function pickFile(n) {
+    if (n === file) return;
+    file = n;
+    try { localStorage.setItem("frae-file", String(n)); } catch (e) {}
+    beep(660, .05);
+    showFiles();
+  }
+  // What each file holds for the game in the middle (night reached + stars)
+  function fileInfo(game, n) {
+    if (!game.unlocked || !game.saveKey) return "---";
+    try {
+      const raw = localStorage.getItem(game.saveKey + n);
+      if (!raw) return "EMPTY";
+      const sv = JSON.parse(raw);
+      // (older saves used the Scratch names: level, "beat 5"...)
+      const has = k => !!Number(sv[k] ?? sv[k.replace("beat", "beat ")] ?? 0);
+      const stars = "★".repeat(has("beat5") + has("beat6") + has("beat420"));
+      return "NIGHT " + (sv.night || sv.level || 1) + (stars ? " " + stars : "");
+    } catch (e) { return "EMPTY"; }
+  }
+  function showFiles() {
+    fileButtons.forEach((b, i) => {
+      b.classList.toggle("on", i + 1 === file);
+      b.querySelector(".info").textContent = fileInfo(GAMES[current], i + 1);
+    });
+  }
+
   /* ---------- Position every card based on the current one ---------- */
   function layout() {
     cards.forEach((card, i) => {
@@ -432,6 +498,7 @@
       card.classList.toggle("far", Math.abs(off) > 1);
     });
     dots.forEach((d, i) => d.classList.toggle("on", i === current));
+    showFiles();
     document.getElementById("prev").disabled = current === 0;
     document.getElementById("next").disabled = current === GAMES.length - 1;
   }
@@ -464,7 +531,7 @@
     // After the TV-off effect, open the game (once its url is filled in)
     setTimeout(() => {
       if (game.url) {
-        location.href = game.url;
+        location.href = game.url + "?file=" + file;      // the game opens on the picked save file
       } else {
         document.getElementById("tvoff").classList.remove("go");
         alert(game.title + " is not hooked up yet. Set its url in the GAMES list.");
@@ -477,6 +544,7 @@
   document.getElementById("next").onclick = () => go(current + 1);
 
   document.addEventListener("keydown", e => {
+    if (e.key === "1" || e.key === "2" || e.key === "3") pickFile(Number(e.key));
     if (e.key === "ArrowLeft"  || e.key === "a") go(current - 1);
     if (e.key === "ArrowRight" || e.key === "d") go(current + 1);
     if (e.key === "Enter" || e.key === "z" || e.key === "Z" || e.key === " ") startGame();

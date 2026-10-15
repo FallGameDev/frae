@@ -4,7 +4,7 @@
    - Mods: load a mod folder (or .zip), load a mod from a GitHub repo,
      download a template mod, and drag mods between "Downloaded" and
      "In use". In use mods replace game files; the top one wins.
-   Mods are saved in this browser (IndexedDB) and applied when the game
+   Mods are saved in this browser (localStorage) and applied when the game
    loads, so the page reloads after mods change.
    ===================================================================== */
 
@@ -85,41 +85,68 @@ function sizeText(bytes) {
 }
 
 /* ---------------------------------------------------------------------
-   Mod storage (IndexedDB)
+   Mod storage (localStorage)
    Store "mods": { id, name, author, version, description, source, size, files: {path: Blob}, texts }
    Store "meta": "state" -> { downloaded: [ids], inUse: [ids] }  (inUse[0] = top = wins)
    --------------------------------------------------------------------- */
+// Mods live in localStorage: "frae1-mods" holds every mod (its files as text,
+// so pictures and sounds are stored as data: URLs), "frae1-mods-state" holds
+// which mods are downloaded and which are in use (top first).
+// Browsers give a site about 5 MB of localStorage, so mods must stay small.
+const MODS_KEY = "frae1-mods", MODS_STATE_KEY = "frae1-mods-state";
+const blobToDataUrl = blob => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(r.result);
+  r.onerror = () => rej(r.error);
+  r.readAsDataURL(blob);
+});
 const ModDB = {
-  db: null,
-  open() {
-    if (this.db) return Promise.resolve(this.db);
-    return new Promise((res, rej) => {
-      const r = indexedDB.open("frae1-mods", 1);
-      r.onupgradeneeded = () => {
-        r.result.createObjectStore("mods", { keyPath: "id" });
-        r.result.createObjectStore("meta");
-      };
-      r.onsuccess = () => { this.db = r.result; res(this.db); };
-      r.onerror = () => rej(r.error);
-    });
+  read() { try { return JSON.parse(localStorage.getItem(MODS_KEY) || "[]"); } catch (e) { return []; } },
+  write(list) {
+    try { localStorage.setItem(MODS_KEY, JSON.stringify(list)); }
+    catch (e) { throw new Error("Not enough room in this browser's storage for that mod (about 5 MB total). Try a smaller mod, or delete one."); }
   },
-  async tx(store, mode, fn) {
-    const db = await this.open();
-    return new Promise((res, rej) => {
-      const t = db.transaction(store, mode);
-      const req = fn(t.objectStore(store));
-      t.oncomplete = () => res(req && req.result);
-      t.onerror = () => rej(t.error);
-    });
+  // every mod, with its files turned back into Blobs
+  async allMods() {
+    const list = this.read();
+    for (const m of list) {
+      const files = {};
+      for (const [path, url] of Object.entries(m.files)) files[path] = await (await fetch(url)).blob();
+      m.files = files;
+    }
+    return list;
   },
-  allMods() { return this.tx("mods", "readonly", s => s.getAll()); },
-  putMod(m) { return this.tx("mods", "readwrite", s => s.put(m)); },
-  deleteMod(id) { return this.tx("mods", "readwrite", s => s.delete(id)); },
+  async putMod(m) {
+    const files = {};
+    for (const [path, blob] of Object.entries(m.files)) files[path] = await blobToDataUrl(blob);
+    this.write([...this.read().filter(x => x.id !== m.id), { ...m, files }]);
+  },
+  async deleteMod(id) { this.write(this.read().filter(x => x.id !== id)); },
   async getState() {
-    const st = await this.tx("meta", "readonly", s => s.get("state"));
-    return st || { downloaded: [], inUse: [] };
+    try { return JSON.parse(localStorage.getItem(MODS_STATE_KEY)) || { downloaded: [], inUse: [] }; }
+    catch (e) { return { downloaded: [], inUse: [] }; }
   },
-  putState(st) { return this.tx("meta", "readwrite", s => s.put(st, "state")); }
+  async putState(st) { localStorage.setItem(MODS_STATE_KEY, JSON.stringify(st)); },
+
+  // Mods saved by the older version (IndexedDB) move over to localStorage once
+  async moveOldMods() {
+    if (localStorage.getItem(MODS_KEY) !== null || !window.indexedDB || !indexedDB.databases) return;
+    const dbs = await indexedDB.databases();
+    if (!dbs.some(d => d.name === "frae1-mods")) return;
+    const db = await new Promise((res, rej) => { const r = indexedDB.open("frae1-mods"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    const get = (store, fn) => new Promise(res => {
+      try { const req = fn(db.transaction(store).objectStore(store)); req.onsuccess = () => res(req.result); req.onerror = () => res(null); }
+      catch (e) { res(null); }
+    });
+    const mods = (await get("mods", s => s.getAll())) || [];
+    const state = (await get("meta", s => s.get("state"))) || { downloaded: [], inUse: [] };
+    db.close();
+    this.write([]);
+    for (const m of mods) { try { await this.putMod(m); } catch (e) { console.warn("Old mod too big to move", m.name); } }
+    const kept = new Set(this.read().map(m => m.id));
+    await this.putState({ downloaded: state.downloaded.filter(id => kept.has(id)), inUse: state.inUse.filter(id => kept.has(id)) });
+    indexedDB.deleteDatabase("frae1-mods");
+  }
 };
 
 /* ---------------------------------------------------------------------
@@ -343,6 +370,7 @@ async function applyMods() {
   mergeTexts(DEFAULT_TEXTS);
   let mods = [];
   try {
+    await ModDB.moveOldMods().catch(e => console.warn("Could not move old mods", e));
     const st = await ModDB.getState();
     const all = await ModDB.allMods();
     mods = st.inUse.map(id => all.find(m => m.id === id)).filter(Boolean);
@@ -442,6 +470,50 @@ function askGoldenRate() {
 }
 
 /* =====================================================================
+   SAVE FILES
+   Shown when the address has no ?file= (or not 1-3). Picking a file puts
+   ?file=N in the address so a refresh or bookmark keeps the same file.
+   ===================================================================== */
+function fileSummary(n) {
+  const p = loadProgress(n);
+  if (!p.started) return T("EMPTY");
+  const stars = "★".repeat(p.beat5 + p.beat6 + p.beat420);
+  return T("Night") + " " + p.night + (stars ? "  " + stars : "");
+}
+function showFiles() {
+  const box = $("#filesPanel");
+  box.innerHTML = "";
+  const slots = el("div", { class: "slots" });
+  for (let n = 1; n <= SAVE_FILES; n++) {
+    const p = loadProgress(n);
+    const slot = el("button", { class: "slot" + (p.started ? "" : " empty"), onclick: () => pickFile(n) },
+      el("span", { class: "fileName" }, T("FILE") + " " + n),
+      el("span", { class: "fileInfo" }, fileSummary(n)));
+    const erase = el("button", { class: "erase", title: "Erase this file", onclick: e => {
+      e.stopPropagation();
+      if (confirm(T("FILE") + " " + n + ": erase this save?")) { eraseProgress(n); showFiles(); }
+    } }, T("ERASE"));
+    slots.append(el("div", { class: "slotWrap" }, slot, p.started ? erase : ""));
+  }
+  box.append(el("h2", {}, T("Select a file")), slots, el("div", { class: "hint" }, "1 / 2 / 3  ·  Esc: game menu"));
+  box.hidden = false;
+}
+function pickFile(n) {
+  blip();
+  history.replaceState(null, "", "?file=" + n);
+  try { localStorage.setItem("frae-file", String(n)); } catch (e) {}      // the game menu remembers it too
+  $("#filesPanel").hidden = true;
+  game.useFile(n);
+  game.boot();
+  canvas.focus();
+}
+document.addEventListener("keydown", e => {
+  if ($("#filesPanel").hidden || e.target.tagName === "INPUT") return;
+  const n = Number(e.key);
+  if (n >= 1 && n <= SAVE_FILES) pickFile(n);
+});
+
+/* =====================================================================
    SETTINGS SCREEN
    ===================================================================== */
 function buildSettings() {
@@ -468,6 +540,17 @@ function buildSettings() {
        el("div", { class: "pair" }, jsBtn("ON", "1"), jsBtn("OFF", "0"))),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Debug mode")),
        el("div", { class: "pair" }, dbBtn("ON", true), dbBtn("OFF", false))),
+    el("div", { class: "row" }, el("span", { class: "label" }, T("Save file")),
+       el("span", { class: "fileNow" }, T("FILE") + " " + game.file + "  (" + fileSummary(game.file) + ")"),
+       el("button", { class: "small", onclick: () => {
+         // back to the file screen
+         $("#settingsPanel").hidden = true;
+         game.paused = false;
+         game.go("black");
+         Sound.stopAll();
+         history.replaceState(null, "", location.pathname);
+         showFiles();
+       } }, T("CHANGE"))),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Music")), ...slider("music")),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Sound")), ...slider("sound")),
     el("div", { class: "row" }, el("span", { class: "label" }, ""),
