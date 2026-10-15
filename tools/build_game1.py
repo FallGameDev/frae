@@ -39,9 +39,10 @@ TEXT_GROUPS = [
     ('Title menu', ['FNaF text', 'dine in', 'new game', 'continue', '6th Night', 'Custom Night', 'selection', 'SettingsButton']),
     ('Settings', []),
     ('Night start and clock', ['what day', 'time AM', 'night', '6am fore', '6am back']),
-    ('Office', ['Power Left %', 'Usage word']),
+    ('Office', ['Power Left %', 'Usage word', 'office', 'Phone Calls', 'left button panel', 'right button panel']),
     ('Cameras', ['CAM']),
-    ('Custom night', ['Backdrop', 'Ready']),
+    ('Custom night', ['Ready']),
+    ('Endings and game over', ['Backdrop']),
     ('Hallucinations', ['hallucinations']),
     ('Secret ending', ['Secret??//']),
 ]
@@ -52,6 +53,7 @@ CHARACTER_NAMES = ['Eddie', 'Weddy', 'Cheddy', '???']
 def default_texts(data):
     """All the words the game shows, grouped, as {group: {text: text}} for texts.json."""
     out = {g: {} for g, _ in TEXT_GROUPS}
+    out['Custom night'] = {}
     out['Settings'] = {t: t for t in SETTINGS_TEXTS}
     out['Characters'] = {}
     for t in data:
@@ -63,6 +65,8 @@ def default_texts(data):
                     continue           # single digits (clock, power) are not worth changing
                 if s in CHARACTER_NAMES:
                     out['Characters'][s] = s
+                elif L.get('group'):
+                    out.setdefault(L['group'], {})[s] = s
                 elif group:
                     out[group][s] = s
     return {g: v for g, v in out.items() if v}
@@ -139,12 +143,30 @@ class Builder:
 
     def costume(self, target, c):
         res = c.get('bitmapResolution', 1)
+        if c['dataFormat'] == 'svg':
+            text = open(os.path.join(self.src, c['md5ext']), encoding='utf-8', errors='replace').read()
+            if '<text' in text:
+                return self.costume_with_words(target, c, text)
         rec = self.image_file(c['md5ext'], slug(f"{target['name']}-{c['name']}"))
         w, h = rec['w'] / res, rec['h'] / res
         cx = (c.get('rotationCenterX', 0)) / res - rec['ox']
         cy = (c.get('rotationCenterY', 0)) / res - rec['oy']
         return dict(name=c['name'], w=round(w, 3), h=round(h, 3), cx=round(cx, 3), cy=round(cy, 3),
                     layers=[dict(img=rec['src'], x=0, y=0, w=round(w, 3), h=round(h, 3))])
+
+    def costume_with_words(self, target, c, text):
+        """An SVG drawing with words: the words become real text, the rest becomes a picture."""
+        import xml.etree.ElementTree as ET
+        from cameras import take_text
+        ox, oy, w, h = self.svg_size(text)
+        root = ET.fromstring(text)
+        words = take_text(root, ox, oy, target['name'])
+        png = self.renderer.svg_to_png(ET.tostring(root, encoding='unicode'), w, h, 2)
+        rel = self.out_name('img', slug(f"{target['name']}-{c['name']}"), 'webp')
+        self.save_webp(Image.open(io.BytesIO(png)), rel)
+        return dict(name=c['name'], w=round(w, 3), h=round(h, 3),
+                    cx=round(c['rotationCenterX'] - ox, 3), cy=round(c['rotationCenterY'] - oy, 3),
+                    layers=[dict(img=rel, x=0, y=0, w=round(w, 3), h=round(h, 3))] + words)
 
     # --------------------------------------------------------------- sounds
     def sound(self, target, s):

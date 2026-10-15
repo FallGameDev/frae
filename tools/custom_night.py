@@ -121,6 +121,8 @@ def custom_night(b):
 
     # 4. the picture area was all black under the words and heads
     img_top = 45 - 6.9807                       # where the old picture started (from the SVG)
+    for L in text_layers:
+        L['group'] = 'Custom night'
     layers = [dict(rect=[0, round(img_top, 3), w, round(h - img_top, 3)], fill='#000000')] + icon_layers + text_layers
     res = c.get('bitmapResolution', 1)
     b.custom[('Backdrop', 'custom night')] = dict(

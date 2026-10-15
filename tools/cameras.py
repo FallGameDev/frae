@@ -32,6 +32,8 @@ ET.register_namespace('xlink', 'http://www.w3.org/1999/xlink')
 
 CAMERAS = ['Show Stage', 'Dining Area', 'Pirate Cove', 'West Hall', 'west hall corner', 'supply closet',
            'east hall', 'east hall corner', 'backstage', 'restrooms', 'kitchen', 'entrance']
+# other sprites with characters drawn in (None = every costume)
+EXTRA = {'office': None, 'back': None, 'Eddie': None, 'Backdrop': ['mike stuffed']}
 CHAR_FILES = {'Eddy': 'Eddy.svg', 'Cheddy': 'Cheddy.svg', 'Weddy': 'Weddy.svg', 'Endo': 'Endo.svg'}
 PALETTE = {
     'Eddy': {'#fffbdc', '#ffe639', '#fff766'},
@@ -42,8 +44,8 @@ PALETTE = {
 FACE = {'#000000', '#ffffff'}
 # FNaF names used in the costume names -> your characters
 NAME_HINT = [('bonnie', 'Weddy'), ('chica', 'Cheddy'), ('freddy', 'Eddy'), ('peeking', 'Endo'), ('standing', 'Endo')]
-# poses hidden behind something (the curtain) that must be kept exactly as drawn
-EXACT_POSES = {('Pirate Cove', 'peeking out'), ('east hall', 'chica close'), ('east hall corner', 'freddy'),
+# poses that only show part of the character (behind the curtain, close-ups)
+OUTLINE_POSES = {('Pirate Cove', 'peeking out'), ('east hall', 'chica close'), ('east hall corner', 'freddy'),
                ('supply closet', 'bonnie'), ('kitchen', 'chicarumble3')}
 # shots where the character is painted into the photo
 BAKED = {('Dining Area', 'bonnie'): ('Weddy', 'empty'), ('restrooms', 'chica'): ('Cheddy', 'clear'),
@@ -75,6 +77,8 @@ def parse_tf(s):
         elif fn == 'rotate':
             r = math.radians(a[0]); t = [math.cos(r), math.sin(r), -math.sin(r), math.cos(r), 0, 0]
             if len(a) == 3: t = mul(mul([1, 0, 0, 1, a[1], a[2]], t), [1, 0, 0, 1, -a[1], -a[2]])
+        elif fn == 'skewX': t = [1, 0, math.tan(math.radians(a[0])), 1, 0, 0]
+        elif fn == 'skewY': t = [1, math.tan(math.radians(a[0])), 0, 1, 0, 0]
         else: raise ValueError(fn)
         m = mul(m, t)
     return m
@@ -192,11 +196,13 @@ def split_cameras(b):
     b.char_assets = assets
     b.variant_hashes = {}
     b.bg_cache = {}            # image content hash -> asset path
-    stats = dict(costumes=0, base=0, silhouette=0, variant=0, exact=0, baked=0)
+    stats = dict(costumes=0, base=0, silhouette=0, variant=0, partial=0, baked=0)
     for t in b.project['targets']:
-        if t['name'] not in CAMERAS:
+        if t['name'] not in CAMERAS + list(EXTRA):
             continue
         for c in t['costumes']:
+            if t['name'] in EXTRA and EXTRA[t['name']] and c['name'] not in EXTRA[t['name']]:
+                continue
             rec = None
             if (t['name'], c['name']) in BAKED:
                 rec = baked_costume(b, t, c, assets, stats)
@@ -206,7 +212,34 @@ def split_cameras(b):
                 b.custom[(t['name'], c['name'])] = rec
                 stats['costumes'] += 1
     b.notes.append('cameras: {costumes} costumes rebuilt, {base} plain character overlays, '
-                   '{silhouette} silhouettes, {variant} face variants, {exact} partial poses, {baked} painted-in characters replaced'.format(**stats))
+                   '{silhouette} silhouettes, {variant} face variants, {partial} partial poses (full file, clipped), {baked} painted-in characters replaced'.format(**stats))
+
+
+SVG_FONTS = {'Sans Serif': 'Sans Serif', 'Serif': 'Serif', 'Pixel': 'Pixel'}
+
+
+def take_text(root, ox, oy, group_sprite):
+    """Remove <text> from an SVG and return it as real text layers (same spot, size and turn)."""
+    out = []
+    parent = {id(ch): par for par in root.iter() for ch in par}
+    for e in flatten(root):
+        if e['sig'] != 'text':
+            continue
+        el = e['el']
+        size = float(el.get('font-size', 40))
+        font = SVG_FONTS.get(el.get('font-family'), 'Sans Serif')
+        color = el.get('fill') or '#000000'
+        tm = [round(v, 5) for v in mul([1, 0, 0, 1, -ox, -oy], e['m'])]
+        spans = el.findall(NS + 'tspan') or [el]
+        y = 0.0
+        for sp in spans:
+            y += float(re.sub(r'[^\d.\-]', '', sp.get('dy', '0')) or 0)
+            words = ''.join(sp.itertext()).strip()
+            if words:
+                out.append(dict(text=words, font=font, color=color, tm=tm, size=size,
+                                pos=[float(sp.get('x', 0) or 0), round(y, 3)]))
+        parent[id(el)].remove(el)
+    return out
 
 
 def room_label(t):
@@ -266,23 +299,29 @@ def svg_costume(b, t, c, assets, stats):
     char_ids = {id(p['el']) for inst in instances for p in inst['parts']}
     orphans = []
     for p in paths:
-        if id(p['el']) in char_ids or p['fill'] not in FACE or not p['sig'].startswith('Mc'):
+        if id(p['el']) in char_ids:
             continue
         cx, cy = p['pts'].mean(axis=0)
+        pw_, ph_ = np.ptp(p['pts'], axis=0)
         home = None
         for inst in instances:
             if inst['silhouette']:
                 continue
+            if p['fill'] not in FACE and p['idx'] < inst['parts'][0]['idx']:
+                continue                     # colored shapes drawn before the character are part of the room
             allp = np.vstack([q['pts'] for q in inst['parts']])
             (x0, y0), (x1, y1) = allp.min(axis=0), allp.max(axis=0)
-            if x0 <= cx <= x1 and y0 <= cy <= y1:
+            small = pw_ * ph_ < 0.25 * (x1 - x0) * (y1 - y0)     # (big shapes like a cover box are room)
+            if x0 <= cx <= x1 and y0 <= cy <= y1 and small:
                 home = inst
         if home:
             home['face'].append(p)
-        else:
+        elif p['fill'] in FACE and p['sig'].startswith('Mc'):
             orphans.append(p)       # leftover face of a character that was removed (invisible on black)
 
-    # 3. remove all character shapes, what is left is the room
+    # 3. words in the drawing become real text, then remove all character shapes:
+    #    what is left is the room
+    word_layers = take_text(root, ox, oy, t['name'])
     remove = {id(p['el']) for inst in instances for p in inst['parts'] + inst['face']} | {id(p['el']) for p in orphans}
     parent = {id(ch): par for par in root.iter() for ch in par}
     for p in paths:
@@ -314,6 +353,7 @@ def svg_costume(b, t, c, assets, stats):
     # 4. put each character back from its own file
     for inst in instances:
         layers.append(place(b, t, c, inst, assets[inst['char']], ox, oy, w, h, root, stats))
+    layers += word_layers
     res = 1
     return dict(name=c['name'], w=round(w, 3), h=round(h, 3),
                 cx=round(c['rotationCenterX'] / res - ox, 3), cy=round(c['rotationCenterY'] / res - oy, 3),
@@ -357,18 +397,15 @@ def place(b, t, c, inst, A, ox, oy, w, h, croot, stats):
         layer['tint'] = '#000000'
         stats['silhouette'] += 1
         return layer
-    # a partial pose (peeking, close-up head)? then the full character would be wrong:
-    # save exactly what was drawn, as its own small file
+    # a partial pose (peeking, close-up head, behind the curtain)? use the full character
+    # file anyway, but only show it inside the drawn shapes
     def clipped_box(pts):
         lo = np.maximum(pts.min(axis=0), [ox, oy]); hi = np.minimum(pts.max(axis=0), [ox + w, oy + h])
         return np.maximum(hi - lo, 0)
     drawn = clipped_box(np.vstack([q['pts'] for q in inst['parts'] + inst['face']]))
     full = clipped_box(apply(m, np.vstack([q['pts'] for q in A.paths])))
-    if (drawn < 0.94 * full).any() or (t['name'], c['name']) in EXACT_POSES:
-        layer.update(exact_pose(b, A, m, inst, croot, f"{t['name']}-{c['name']}", ox, oy))
-        stats['exact'] = stats.get('exact', 0) + 1
-        return layer
-    # does the face match the character file? if not, save a face variant
+    partial = (drawn < 0.94 * full).any() or (t['name'], c['name']) in OUTLINE_POSES
+    # does the face match the character file?
     scale = abs(complex(m[0], m[1])) * A.size
     a_face = [q for q in A.paths if is_face(q)]
     matched_a, extra = set(), []
@@ -385,16 +422,22 @@ def place(b, t, c, inst, A, ox, oy, w, h, croot, stats):
         else:
             matched_a.add(hit)
     missing = [q for i, q in enumerate(a_face) if i not in matched_a]
-    if not extra and not missing:
-        stats['base'] += 1
+    if extra or missing:
+        # a different face: this pose gets its own file, copied exactly from the drawing
+        layer.update(exact_pose(b, A, m, inst, croot, c['name'], ox, oy))
+        stats['variant'] += 1
         return layer
-    layer['img'] = make_variant(b, A, m, missing, extra, f"{t['name']}-{c['name']}")
-    stats['variant'] += 1
+    if partial:
+        # only part of the character shows: the full file, clipped to the drawn outline
+        layer['outline'] = [[q['el'].get('d'), [round(v, 5) for v in mul([1, 0, 0, 1, -ox, -oy], q['m'])]]
+                            for q in inst['parts']]
+        stats['partial'] += 1
+        return layer
+    stats['base'] += 1
     return layer
 
-
 def exact_pose(b, A, m, inst, croot, label, ox, oy):
-    """Save the pose exactly as drawn, in the character file's own coordinates."""
+    """Save a pose with its own face exactly as drawn, as its own file (in the character file's coordinates)."""
     to_asset = inv(m)
     shapes = sorted(inst['parts'] + inst['face'], key=lambda p: p['idx'])
     pts = np.vstack([apply(to_asset, p['pts']) for p in shapes])
@@ -426,35 +469,6 @@ def order_of(root, el):
         if e is el:
             return i
     return 0
-
-
-def make_variant(b, A, m, missing, extra, label):
-    """The character file with its face swapped for the pose's face."""
-    root = ET.fromstring(A.text)
-    flat = flatten(root)
-    parent = {id(ch): par for par in root.iter() for ch in par}
-    miss_d = {q['el'].get('d') for q in missing}
-    first_face = None
-    for e in flat:
-        if e['pts'] is not None and e['fill'] in FACE:
-            if first_face is None:
-                first_face = e
-            if e['el'].get('d') in miss_d:
-                parent[id(e['el'])].remove(e['el'])
-    # extra face shapes, moved into the character file's own coordinates
-    host = parent[id(first_face['el'])] if first_face else root
-    host_m = first_face['m'] if first_face else [1, 0, 0, 1, 0, 0]
-    to_asset = mul(inv(host_m), inv(m))
-    for p in extra:
-        g = ET.SubElement(host, NS + 'g', {'transform': 'matrix(%s)' % ','.join('%.6g' % v for v in mul(to_asset, p['m']))})
-        el = ET.SubElement(g, NS + 'path', {'d': p['el'].get('d'), 'fill': p['fill'], 'stroke': 'none'})
-    svg = ET.tostring(root, encoding='unicode')
-    h = hashlib.md5(svg.encode()).hexdigest()
-    if h not in b.variant_hashes:
-        rel = b.out_name('characters', f"{A.name.lower()}-{re.sub(r'[^a-z0-9]+', '-', label.lower()).strip('-')}", 'svg')
-        open(os.path.join(b.out_root, rel), 'w', encoding='utf-8').write(svg)
-        b.variant_hashes[h] = rel
-    return b.variant_hashes[h]
 
 
 def baked_costume(b, t, c, assets, stats):

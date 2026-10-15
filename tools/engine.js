@@ -198,6 +198,17 @@ function drawCostume(ctx, cos) {
 
 function drawText(ctx, L) {
   const shown = TEXTS[L.text] !== undefined ? String(TEXTS[L.text]) : L.text;
+  if (L.tm) {
+    // text exactly as it was in an SVG drawing (can be turned and stretched)
+    ctx.save();
+    ctx.transform(...L.tm);
+    ctx.font = `${L.size}px "${L.font}"`;
+    ctx.fillStyle = L.color;
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(shown, L.pos[0], L.pos[1]);
+    ctx.restore();
+    return;
+  }
   if (L.at) {
     // text placed like in the original drawing: [left x, baseline y, font size]
     ctx.save();
