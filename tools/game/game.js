@@ -1428,6 +1428,7 @@ class Game {
     // custom night (night 7): 20/20/20/20 earns the last star
     const ai = this.customAI || {};
     if (ai.freddy > 19 && ai.bonnie > 19 && ai.chica > 19 && ai.foxy > 19) { this.progress.beat420 = true; this.unlock("max"); }
+    if (ai.freddy <= 3 && ai.bonnie <= 3 && ai.chica <= 3 && ai.foxy <= 3) this.unlock("easy");
     return this.ending("pink slip");
   }
 
@@ -1478,7 +1479,9 @@ class Game {
         });
       }
     } else this.customHold = 0;
+    this.backHover = m.x < 70 && m.y < 34;                // the "< BACK" button, top left
     for (const c of this.clicks) {
+      if (this.backHover) { this.sp.blip.play("new game", "blip3"); return this.showTitle(); }
       if (hits(pic("Ready", "active"), 415, 290, 50, c.x, c.y)) return this.startCustomNight();
     }
     for (const k of this.keys) if (k === "enter") return this.startCustomNight();
@@ -1518,6 +1521,14 @@ class Game {
       draw(ctx, pic("Custom01", v > 9 ? s[1] : s[0]), onesX[i], 220, { size: 40, alpha: f });
     });
     draw(ctx, pic("Ready", "active"), 415, 290, { size: 50, alpha: f });
+    // "< BACK" in the top left corner (goes back to the title)
+    ctx.save();
+    ctx.globalAlpha = f;
+    ctx.fillStyle = this.backHover ? "#f7931e" : "#fff";
+    ctx.beginPath(); ctx.moveTo(10, 17); ctx.lineTo(19, 10); ctx.lineTo(19, 24); ctx.closePath(); ctx.fill();   // the arrow
+    ctx.font = '10px "Share Tech Mono"'; ctx.textBaseline = "middle";
+    ctx.fillText(ACH_WORD("BACK"), 24, 17.5);
+    ctx.restore();
   }
 
   /* =================================================================

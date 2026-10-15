@@ -19,6 +19,7 @@ const ACHIEVEMENTS = [
   { id: "night5",   icon: "★",  colors: ["#d9b44a", "#6b4a12"], name: "Good Job Sport!",         desc: "Survive all five nights." },
   { id: "night6",   icon: "★",  colors: ["#d97a4a", "#6b2a12"], name: "Overtime",                desc: "Survive the 6th night." },
   { id: "max",      icon: "20", colors: ["#d94a4a", "#5a0d0d"], name: "Pampering",               desc: "Beat a custom night with everyone at 20." },
+  { id: "easy",     icon: "🧸", colors: ["#7ec8e6", "#1d4a6b"], name: "Child's Play",            desc: "Beat a custom night with everyone on 3 or lower." },
   { id: "power",    icon: "⚡", colors: ["#6a6a6a", "#111111"], name: "Lights Out",              desc: "Run out of power." },
   { id: "frugal",   icon: "%",  colors: ["#4ad97a", "#0d5a2a"], name: "Penny Pincher",           desc: "Survive a night with 30% power or more left." },
   { id: "cams",     icon: "◉",  colors: ["#8a8a9a", "#2a2a38"], name: "Security Expert",         desc: "Look at all 12 cameras in one night." },
