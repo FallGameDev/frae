@@ -615,7 +615,7 @@ class Game {
     // the caller picture: a gradient circle with their letters
     const cx = x + 21, cy = y + h / 2, r = 14;
     const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
-    g.addColorStop(0, "#a5a9b6"); g.addColorStop(1, "#6b6f7c");
+    g.addColorStop(0, "#7ee08a"); g.addColorStop(1, "#1f9e4a");     // green, light at the top
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
