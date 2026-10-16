@@ -50,3 +50,6 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 
 ### Testing
 - `/2/?file=3`, then `game.level = N; game.startNight()`; `game.n.at.<role> = "hall"` etc. to place characters; `game.startMinigame("cake")`.
+
+## 3D models (`models/`)
+- `models/basemodel.blend` (original) and `models/toys/` (rigged, four toy colors, .blend/.glb/.fbx). Rebuild with `python3 tools/rig_toys.py models/basemodel.blend models/toys` (needs `pip install bpy`). See `models/README.md`.
