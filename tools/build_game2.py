@@ -12,8 +12,9 @@ What it does:
   3. Swaps every original FNaF character for the fan-made cast
      (tools/tape2/cast.py: empty room + character file on top)
   4. Converts assets: PNG -> WebP, WAV -> MP3
-  5. Writes 2/index.html: the hand-written game (tools/tape2/*.js) plus
-     ART (every picture: size, pin and layers) and SOUNDS.
+  5. flatten.py paints every picture into one plain image file
+     (2/assets/img/<group>/<name>.webp) and lists them in tools/tape2/names.js
+  6. Writes 2/index.html: the hand-written game (tools/tape2/*.js) in <script>.
      The Scratch scripts are NOT converted: the game is written by hand.
 
 Most words are drawn by the game itself (real text), so mods can change
@@ -119,20 +120,22 @@ def words_in_code():
     return out
 
 
-def write_page(data_js):
-    """The data, the hand-written game and the settings/mods UI go into 2/index.html."""
-    code = '\n\n'.join(open(os.path.join(HERE, 'game', f), encoding='utf-8').read() for f in ('pictures.js', 'sound.js'))
+def write_page():
+    """2/index.html: the page, the hand-written game and the settings/mods UI, all in <script>.
+    (Pictures and sounds are plain files in 2/assets, listed by names.js.)"""
+    code = '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read() for f in ('names.js', 'words.js'))
+    code += '\n\n' + '\n\n'.join(open(os.path.join(HERE, 'game', f), encoding='utf-8').read() for f in ('pictures.js', 'sound.js'))
     code += '\n\n' + '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read()
                                  for f in ('game.js', 'minigames.js', 'achievements.js'))
     ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
     shell = open(os.path.join(TAPE, 'shell.html'), encoding='utf-8').read()
-    html = shell.replace('/*DATA*/', data_js).replace('/*GAME*/', code).replace('/*UI*/', ui)
+    html = shell.replace('/*GAME*/', code).replace('/*UI*/', ui)
     open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(html)
 
 
 def main():
     if sys.argv[1] == '--code':
-        write_page(open(os.path.join(TAPE, 'data_cache.js'), encoding='utf-8').read())
+        write_page()
         print('wrote 2/index.html (code only)')
         return
     sb3_dir = sys.argv[1]
@@ -198,8 +201,11 @@ def main():
     data_js += '\nconst ASSET_FILES = ' + json.dumps(files) + ';'
     data_js += '\nconst DEFAULT_TEXTS = ' + json.dumps(words_in_code(), ensure_ascii=False, indent=1) + ';'
     open(os.path.join(TAPE, 'art_debug.json'), 'w').write(json.dumps(art, indent=1))
-    open(os.path.join(TAPE, 'data_cache.js'), 'w', encoding='utf-8').write(data_js)
-    write_page(data_js)
+    open(os.path.join(TAPE, 'data_cache.js'), 'w', encoding='utf-8').write(data_js)    # the layer description (git-ignored)
+    # paint every picture into one plain image file (and write names.js / words.js)
+    import subprocess
+    subprocess.run([sys.executable, os.path.join(HERE, 'flatten.py'), '2'], check=True)
+    write_page()
     print(f'wrote 2/index.html ({len(art)} picture groups, {sum(len(v) for v in sounds.values())} sounds)')
 
 

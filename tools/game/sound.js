@@ -1,7 +1,8 @@
 /* =====================================================================
    SOUND
-   Every sound lives in SOUNDS (made by the build), looked up by group
-   and name, for example Sound.play("office", "Buzz_Fan_Florescent2").
+   Every sound is a plain file, assets/snd/<group>/<name>.mp3, looked up
+   by group and name, for example speaker.play("office", "Buzz_Fan_Florescent2").
+   names.js lists which sounds exist and which ones are music.
 
    Sounds go through a "speaker". A speaker has its own volume
    (0-100), like a radio you can turn up and down while it plays.
@@ -16,9 +17,20 @@ const Sound = {
   buffers: new Map(),       // url -> decoded sound
   speakers: [],
 
-  async load(url) {
-    const data = await (await fetch(url)).arrayBuffer();
-    this.buffers.set(url, await this.ctx.decodeAudioData(data));
+  // where a sound's file is (null if there is no such sound)
+  path(group, name) {
+    return SOUND_NAMES[group] && SOUND_NAMES[group].includes(name) ? `snd/${fileName(group)}/${fileName(name)}.mp3` : null;
+  },
+  // every sound file (for the loading bar and the mod template)
+  allPaths() {
+    const out = [];
+    for (const [group, names] of Object.entries(SOUND_NAMES)) for (const n of names) out.push(this.path(group, n));
+    return out;
+  },
+
+  async load(path) {
+    const data = await (await fetch(assetUrl(path))).arrayBuffer();
+    this.buffers.set(path, await this.ctx.decodeAudioData(data));
   },
 
   // A speaker for one thing in the game (the phone, the fan, the kitchen...)
@@ -60,16 +72,16 @@ class Speaker {
      speaker starts it over. Options: loop (repeat forever).
      Returns a handle: handle.done turns true when it finishes. */
   play(group, name, o = {}) {
-    const info = SOUNDS[group] && SOUNDS[group][name];
-    const buffer = info && Sound.buffers.get(info.src);
+    const path = Sound.path(group, name);
+    const buffer = path && Sound.buffers.get(path);
     const handle = { done: true, stop() {} };
-    if (!buffer) { if (!info) console.warn("No sound", group, name); return handle; }
+    if (!buffer) { if (!path) console.warn("No sound", group, name); return handle; }
     this.stop(name);
     const src = Sound.ctx.createBufferSource();
     src.buffer = buffer;
     src.loop = !!o.loop;
     const gain = Sound.ctx.createGain();          // this sound's own volume (for fading out)
-    src.connect(gain).connect(info.music ? this.music : this.sfx);
+    src.connect(gain).connect(MUSIC_NAMES.has(name) ? this.music : this.sfx);
     handle.done = false;
     handle.stop = () => { try { src.stop(); } catch (e) {} handle.done = true; };
     // fade to silence over `secs` seconds, then stop

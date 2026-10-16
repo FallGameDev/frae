@@ -15,8 +15,9 @@ What it does:
          characters (Eddy, Cheddy, Weddy, Endo) as separate pictures
        - costumes that no script can ever show are dropped
   3. Converts assets: PNG -> WebP, WAV -> MP3, SVGs with photos or text -> WebP
-  4. Writes 1/index.html: the hand-written game (tools/game/*.js) plus
-     ART (every picture: size, center and layers) and SOUNDS.
+  4. flatten.py paints every picture into one plain image file
+     (1/assets/img/<group>/<name>.webp) and lists them in tools/game/names.js
+  5. Writes 1/index.html: the hand-written game (tools/game/*.js) in <script>.
      The Scratch scripts are NOT converted: the game logic was rewritten
      by hand in tools/game/game.js.
 """
@@ -223,23 +224,22 @@ class Builder:
                 volume=t.get('volume', 100), layer=t.get('layerOrder', 0), vars=locals_))
 
 
-def write_page(data_js):
-    """Puts the data, the hand-written game and the settings/mods UI into 1/index.html."""
+def write_page():
+    """1/index.html: the page, the hand-written game and the settings/mods UI, all in <script>.
+    (Pictures and sounds are plain files in 1/assets, listed by names.js.)"""
     game_dir = os.path.join(HERE, 'game')
     code = '\n\n'.join(open(os.path.join(game_dir, f), encoding='utf-8').read()
-                        for f in ('pictures.js', 'sound.js', 'game.js', 'secret.js', 'achievements.js'))
+                        for f in ('names.js', 'words.js', 'pictures.js', 'sound.js', 'game.js', 'secret.js', 'achievements.js'))
     ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
     shell = open(os.path.join(HERE, 'game_shell.html'), encoding='utf-8').read()
-    html = (shell.replace('/*DATA*/', data_js)
-                 .replace('/*GAME*/', code)
-                 .replace('/*UI*/', ui))
+    html = shell.replace('/*GAME*/', code).replace('/*UI*/', ui)
     open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(html)
 
 
 def main():
     if sys.argv[1] == '--code':
-        # quick rebuild: only the game code changed (reuses the last data)
-        write_page(open(os.path.join(HERE, 'data_cache.js'), encoding='utf-8').read())
+        # quick rebuild: only the game code changed
+        write_page()
         print('wrote 1/index.html (code only)')
         return
     sb3_dir = sys.argv[1]
@@ -286,8 +286,10 @@ def main():
     data_js += '\nconst DEFAULT_TEXTS = ' + json.dumps(default_texts(data), ensure_ascii=False, indent=1) + ';'
     open(os.path.join(HERE, 'art_debug.json'), 'w').write(json.dumps(art, indent=1))   # for checking (git-ignored)
 
-    open(os.path.join(HERE, 'data_cache.js'), 'w', encoding='utf-8').write(data_js)   # for --code rebuilds (git-ignored)
-    write_page(data_js)
+    open(os.path.join(HERE, 'data_cache.js'), 'w', encoding='utf-8').write(data_js)   # the layer description (git-ignored)
+    # paint every picture into one plain image file (and write names.js / words.js)
+    subprocess.run([sys.executable, os.path.join(HERE, 'flatten.py'), '1'], check=True)
+    write_page()
     print(f'wrote 1/index.html ({len(data)} sprites of art, {sum(len(v) for v in sounds.values())} sounds)')
 
 

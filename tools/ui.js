@@ -55,12 +55,14 @@ function typed(blob, path) {
 const KINDS = { image: ["png", "webp", "jpg", "jpeg", "gif", "svg"], audio: ["mp3", "wav", "ogg", "m4a"], font: ["ttf", "otf", "woff", "woff2"] };
 const kindOf = p => { const e = p.split(".").pop().toLowerCase(); return Object.keys(KINDS).find(k => KINDS[k].includes(e)) || e; };
 const stemOf = p => p.split("/").slice(-2).join("/").replace(/\.[^./]+$/, "").toLowerCase();
+// Every file the game has (pictures, sounds, fonts): what a mod can replace
+function assetFiles() { return [...allImagePaths(), ...Sound.allPaths(), ...Object.keys(FONT_FAMILY)]; }
 let GAME_FILE_BY_STEM = null;
 // "anything/img/office-normal.png" -> "img/office-normal.webp" (the game's own file), or null
 function gameFile(path) {
   if (!GAME_FILE_BY_STEM) {
     GAME_FILE_BY_STEM = {};
-    for (const a of ASSET_FILES) GAME_FILE_BY_STEM[stemOf(a)] = a;
+    for (const a of assetFiles()) GAME_FILE_BY_STEM[stemOf(a)] = a;
   }
   const a = GAME_FILE_BY_STEM[stemOf(path)];
   return a && kindOf(a) === kindOf(path) ? a : null;
@@ -74,7 +76,7 @@ async function toPng(blob, path) {
     img.src = url;
     await img.decode();
     let scale = 1;
-    if (path.endsWith(".svg")) scale = path.startsWith("characters/") ? 6 : 4;
+    if (path.endsWith(".svg")) scale = 4;
     const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
     const k = Math.min(1, 4096 / Math.max(w, h));             // keep huge pictures a sane size
     const c = document.createElement("canvas");
@@ -292,12 +294,13 @@ async function buildTemplate(onProgress) {
     version: "1.0.0",
     description: "Describe your mod here",
     game: GI.gameId,
-    howTo: "Replace any file in img, snd, characters or fonts with your own using the SAME file name. Pictures can be PNG, JPG, WEBP or SVG at any size (they are stretched to fit the same spot). Sounds can be MP3, WAV or OGG. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods."
+    howTo: "Replace any file in img, snd or fonts with your own using the SAME file name. Pictures can be PNG, JPG, WEBP or SVG at any size (they are stretched to fit the same spot). Sounds can be MP3, WAV or OGG. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods."
   };
   entries.push({ path: "manifest.json", bytes: enc.encode(JSON.stringify(manifest, null, 2)) });
   entries.push({ path: "texts.json", bytes: enc.encode(JSON.stringify(DEFAULT_TEXTS, null, 2)) });
   let done = 0;
-  const queue = [...ASSET_FILES];
+  const files = assetFiles();
+  const queue = [...files];
   const workers = Array.from({ length: 6 }, async () => {
     while (queue.length) {
       const f = queue.shift();
@@ -309,7 +312,7 @@ async function buildTemplate(onProgress) {
       } else {
         entries.push({ path: f, bytes: new Uint8Array(await blob.arrayBuffer()) });
       }
-      onProgress(++done / ASSET_FILES.length);
+      onProgress(++done / files.length);
     }
   });
   await Promise.all(workers);
@@ -362,8 +365,10 @@ const FONT_FAMILY = {
   "fonts/Grand9K-Pixel.ttf": "Pixel", "fonts/PressStart2P.woff2": "Press Start 2P",
   "fonts/CourierPrime.woff2": "Courier Prime", "fonts/ShareTechMono.woff2": "Share Tech Mono"
 };
+let DEFAULT_TEXTS = {};      // every word the game shows (assets/texts.json), by group
 async function applyMods() {
   // start with the game's own words
+  try { DEFAULT_TEXTS = await (await fetch("assets/texts.json")).json(); } catch (e) { console.warn("No texts.json", e); }
   const texts = {};
   const mergeTexts = obj => {
     for (const [k, v] of Object.entries(obj || {})) {
@@ -386,9 +391,8 @@ async function applyMods() {
     if (mod.texts) mergeTexts(mod.texts);
   }
   TEXTS = texts;
-  const url = {};
   for (const [path, blob] of Object.entries(files)) {
-    url["assets/" + path] = URL.createObjectURL(blob);
+    MOD_FILES[path] = URL.createObjectURL(blob);         // the game loads this instead of its own file
     if (FONT_FAMILY[path]) {
       try {
         const face = new FontFace(FONT_FAMILY[path], await blob.arrayBuffer());
@@ -397,11 +401,6 @@ async function applyMods() {
       } catch (e) { console.warn("Mod font did not load", path); }
     }
   }
-  // point every picture layer and sound at the mod's file instead
-  for (const group of Object.values(ART))
-    for (const p of Object.values(group.pics)) for (const L of p.layers) if (L.img && url[L.img]) L.img = url[L.img];
-  for (const group of Object.values(SOUNDS))
-    for (const s of Object.values(group)) if (url[s.src]) s.src = url[s.src];
   return mods.length;
 }
 

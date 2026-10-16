@@ -364,7 +364,7 @@ class Game {
   // Menu words are wide boxes; only count the part with letters in it
   textHit(item) {
     const p = pic(item.group, item.name);
-    const L = p.layers.find(l => l.text !== undefined);
+    const L = (p.words || []).find(l => l.text !== undefined);
     if (!L || !L.box) return true;
     const u = (this.mouse.x - item.x) / 0.4 + p.cx;
     const shown = TEXTS[L.text] !== undefined ? String(TEXTS[L.text]) : L.text;

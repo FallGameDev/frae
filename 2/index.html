@@ -261,211 +261,6 @@
 </div>
 
 <script>
-/* =====================================================================
-   GAME DATA: every picture (ART), sound (SOUNDS), the mod template file
-   list and the default words. Made by tools/build_game2.py.
-   ===================================================================== */
-const ART = {"Light Left":{"list":["0","1"],"pics":{"0":{"w":57.0,"h":87.0,"cx":31.0,"cy":43.0,"layers":[{"img":"assets/img/light-left-0.webp","x":0,"y":0,"w":57.0,"h":87.0}]},"1":{"w":57.0,"h":87.0,"cx":31.0,"cy":43.0,"layers":[{"img":"assets/img/light-left-1.webp","x":0,"y":0,"w":57.0,"h":87.0}]}}},"Right Right":{"list":["0","1"],"pics":{"0":{"w":57.0,"h":87.0,"cx":26.0,"cy":43.0,"layers":[{"img":"assets/img/right-right-0.webp","x":0,"y":0,"w":57.0,"h":87.0}]},"1":{"w":57.0,"h":87.0,"cx":26.0,"cy":43.0,"layers":[{"img":"assets/img/right-right-1.webp","x":0,"y":0,"w":57.0,"h":87.0}]}}},"Sprite1":{"list":["95"],"pics":{"95":{"w":462.0,"h":38.0,"cx":232.0,"cy":19.0,"layers":[{"img":"assets/img/sprite1-95.webp","x":0,"y":0,"w":462.0,"h":38.0}]}}},"Sprite2":{"list":["119"],"pics":{"119":{"w":462.0,"h":38.0,"cx":232.0,"cy":19.0,"layers":[{"img":"assets/img/sprite2-119.webp","x":0,"y":0,"w":462.0,"h":38.0}]}}},"Sprite3":{"list":["88"],"pics":{"88":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite3-88.webp","x":0,"y":0,"w":480.0,"h":360.0}]}}},"Sprite4":{"list":["0","1","2","3","4","5"],"pics":{"0":{"w":469.0,"h":168.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite4-0.webp","x":0,"y":0,"w":469.0,"h":168.0}]},"1":{"w":480.0,"h":196.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite4-1.webp","x":0,"y":0,"w":480.0,"h":196.0}]},"2":{"w":480.0,"h":326.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite4-2.webp","x":0,"y":0,"w":480.0,"h":326.0}]},"3":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite4-3.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"4":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite4-4.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"5":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite3-88.webp","x":0,"y":0,"w":480.0,"h":360.0}]}}},"Sprite5":{"list":["114","97","116","99","103","104","105","106","110","112","113","none"],"pics":{"114":{"w":464.0,"h":19.0,"cx":231.0,"cy":-161.0,"layers":[{"img":"assets/img/sprite5-114.webp","x":0,"y":0,"w":464.0,"h":19.0}]},"97":{"w":472.0,"h":33.0,"cx":235.0,"cy":-147.0,"layers":[{"img":"assets/img/sprite5-97.webp","x":0,"y":0,"w":472.0,"h":33.0}]},"116":{"w":480.0,"h":65.0,"cx":240.0,"cy":-115.0,"layers":[{"img":"assets/img/sprite5-116.webp","x":0,"y":0,"w":480.0,"h":65.0}]},"99":{"w":480.0,"h":112.0,"cx":240.0,"cy":-68.0,"layers":[{"img":"assets/img/sprite5-99.webp","x":0,"y":0,"w":480.0,"h":112.0}]},"103":{"w":480.0,"h":167.0,"cx":240.0,"cy":-13.0,"layers":[{"img":"assets/img/sprite5-103.webp","x":0,"y":0,"w":480.0,"h":167.0}]},"104":{"w":480.0,"h":223.0,"cx":240.0,"cy":43.0,"layers":[{"img":"assets/img/sprite5-104.webp","x":0,"y":0,"w":480.0,"h":223.0}]},"105":{"w":480.0,"h":277.0,"cx":240.0,"cy":97.0,"layers":[{"img":"assets/img/sprite5-105.webp","x":0,"y":0,"w":480.0,"h":277.0}]},"106":{"w":480.0,"h":321.0,"cx":240.0,"cy":141.0,"layers":[{"img":"assets/img/sprite5-106.webp","x":0,"y":0,"w":480.0,"h":321.0}]},"110":{"w":480.0,"h":353.0,"cx":240.0,"cy":173.0,"layers":[{"img":"assets/img/sprite5-110.webp","x":0,"y":0,"w":480.0,"h":353.0}]},"112":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite5-112.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"113":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite5-113.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"none":{"w":1.0,"h":1.0,"cx":0.0,"cy":0.0,"layers":[{"img":"assets/img/sprite5-none.webp","x":0,"y":0,"w":1.0,"h":1.0}]}}},"Wind up":{"list":["Wind up0","Wind up1"],"pics":{"Wind up0":{"w":100.0,"h":55.5,"cx":49.5,"cy":27.5,"layers":[{"img":"assets/img/wind-up-wind-up0.webp","x":0,"y":0,"w":100.0,"h":55.5}]},"Wind up1":{"w":100.0,"h":55.5,"cx":49.5,"cy":27.5,"layers":[{"img":"assets/img/wind-up-wind-up1.webp","x":0,"y":0,"w":100.0,"h":55.5}]}}},"Sprite7":{"list":["REDALERT!","Normal alert"],"pics":{"REDALERT!":{"w":63.0,"h":55.0,"cx":31.0,"cy":27.0,"layers":[{"img":"assets/img/sprite7-redalert.webp","x":0,"y":0,"w":63.0,"h":55.0}]},"Normal alert":{"w":63.0,"h":55.0,"cx":31.0,"cy":27.0,"layers":[{"img":"assets/img/sprite7-normal-alert.webp","x":0,"y":0,"w":63.0,"h":55.0}]}}},"Sprite10":{"list":["66","67","68","70"],"pics":{"66":{"w":480.0,"h":235.0,"cx":240.0,"cy":144.0,"layers":[{"img":"assets/img/sprite10-66.webp","x":0,"y":0,"w":480.0,"h":235.0}]},"67":{"w":480.0,"h":26.0,"cx":240.0,"cy":68.0,"layers":[{"img":"assets/img/sprite10-67.webp","x":0,"y":0,"w":480.0,"h":26.0}]},"68":{"w":480.0,"h":345.0,"cx":240.0,"cy":165.0,"layers":[{"img":"assets/img/sprite10-68.webp","x":0,"y":0,"w":480.0,"h":345.0}]},"70":{"w":480.0,"h":295.0,"cx":240.0,"cy":159.0,"layers":[{"img":"assets/img/sprite10-70.webp","x":0,"y":0,"w":480.0,"h":295.0}]}}},"Sprite12":{"list":["1","2","3","4","0"],"pics":{"1":{"w":89.0,"h":43.0,"cx":40.0,"cy":22.0,"layers":[{"img":"assets/img/sprite12-1.webp","x":0,"y":0,"w":89.0,"h":43.0}]},"2":{"w":89.0,"h":43.0,"cx":40.0,"cy":22.0,"layers":[{"img":"assets/img/sprite12-2.webp","x":0,"y":0,"w":89.0,"h":43.0}]},"3":{"w":89.0,"h":43.0,"cx":40.0,"cy":22.0,"layers":[{"img":"assets/img/sprite12-3.webp","x":0,"y":0,"w":89.0,"h":43.0}]},"4":{"w":89.0,"h":43.0,"cx":40.0,"cy":22.0,"layers":[{"img":"assets/img/sprite12-4.webp","x":0,"y":0,"w":89.0,"h":43.0}]},"0":{"w":89.0,"h":43.0,"cx":40.0,"cy":22.0,"layers":[{"img":"assets/img/sprite12-0.webp","x":0,"y":0,"w":89.0,"h":43.0}]}}},"Sprite13":{"list":["1","2"],"pics":{"1":{"w":480.0,"h":300.0,"cx":240.0,"cy":150.0,"layers":[{"img":"assets/img/sprite13-1.webp","x":0,"y":0,"w":480.0,"h":300.0}]},"2":{"w":480.0,"h":300.0,"cx":240.0,"cy":150.0,"layers":[{"img":"assets/img/sprite13-2.webp","x":0,"y":0,"w":480.0,"h":300.0}]}}},"Sprite28":{"list":["costume1","costume2","costume3","costume4"],"pics":{"costume1":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite28-costume1.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"costume2":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite28-costume2.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"costume3":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite28-costume3.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"costume4":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite28-costume4.webp","x":0,"y":0,"w":480.0,"h":360.0}]}}},"Sprite29":{"list":["Gold_Star"],"pics":{"Gold_Star":{"w":50.0,"h":48.0,"cx":25.0,"cy":24.0,"layers":[{"img":"assets/img/sprite29-gold-star.webp","x":0,"y":0,"w":50.0,"h":48.0}]}}},"Sprite45":{"list":["give cake","foxy GET READY","foxy GO! GO! GO!","foxy blank","foxy stage","foxy stage2"],"pics":{"give cake":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite45-give-cake.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"foxy GET READY":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite45-foxy-get-ready.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"foxy GO! GO! GO!":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite45-foxy-go-go-go.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"foxy blank":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite45-foxy-blank.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"foxy stage":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite45-foxy-stage.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"foxy stage2":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"layers":[{"img":"assets/img/sprite45-foxy-stage2.webp","x":0,"y":0,"w":480.0,"h":360.0}]}}},"Sprite47":{"list":["CakeChildSprite-0","CakeChildSprite-1","CakeChildSprite-2","CakeChildSprite-3","CakeChildIrritatedSprite-0","CakeChildIrritatedSprite-1","CakeChildIrritatedSprite-2","CakeChildIrritatedSprite-3","CakeChildIrritatedSprite-4","CakeChildIrritatedSprite-5"],"pics":{"CakeChildSprite-0":{"w":108.0,"h":99.0,"cx":52.0,"cy":40.0,"layers":[{"img":"assets/img/sprite47-cakechildsprite-0.webp","x":0,"y":0,"w":108.0,"h":99.0}]},"CakeChildSprite-1":{"w":108.0,"h":103.0,"cx":52.0,"cy":44.0,"layers":[{"img":"assets/img/sprite47-cakechildsprite-1.webp","x":0,"y":0,"w":108.0,"h":103.0}]},"CakeChildSprite-2":{"w":108.0,"h":99.0,"cx":52.0,"cy":40.0,"layers":[{"img":"assets/img/sprite47-cakechildsprite-2.webp","x":0,"y":0,"w":108.0,"h":99.0}]},"CakeChildSprite-3":{"w":108.0,"h":103.0,"cx":52.0,"cy":44.0,"layers":[{"img":"assets/img/sprite47-cakechildsprite-3.webp","x":0,"y":0,"w":108.0,"h":103.0}]},"CakeChildIrritatedSprite-0":{"w":108.0,"h":103.0,"cx":52.0,"cy":44.0,"layers":[{"img":"assets/img/sprite47-cakechildirritatedsprite-0.webp","x":0,"y":0,"w":108.0,"h":103.0}]},"CakeChildIrritatedSprite-1":{"w":108.0,"h":99.0,"cx":52.0,"cy":40.0,"layers":[{"img":"assets/img/sprite47-cakechildirritatedsprite-1.webp","x":0,"y":0,"w":108.0,"h":99.0}]},"CakeChildIrritatedSprite-2":{"w":108.0,"h":103.0,"cx":52.0,"cy":44.0,"layers":[{"img":"assets/img/sprite47-cakechildirritatedsprite-0.webp","x":0,"y":0,"w":108.0,"h":103.0}]},"CakeChildIrritatedSprite-3":{"w":108.0,"h":99.0,"cx":52.0,"cy":40.0,"layers":[{"img":"assets/img/sprite47-cakechildirritatedsprite-1.webp","x":0,"y":0,"w":108.0,"h":99.0}]},"CakeChildIrritatedSprite-4":{"w":108.0,"h":103.0,"cx":52.0,"cy":44.0,"layers":[{"img":"assets/img/sprite47-cakechildirritatedsprite-0.webp","x":0,"y":0,"w":108.0,"h":103.0}]},"CakeChildIrritatedSprite-5":{"w":108.0,"h":99.0,"cx":52.0,"cy":40.0,"layers":[{"img":"assets/img/sprite47-cakechildirritatedsprite-1.webp","x":0,"y":0,"w":108.0,"h":99.0}]}}},"Sprite53":{"list":["CakeChildCryingDying-0","CakeChildCryingDying-1","CakeChildCryingDying-4","CakeChildCryingDying-6","CakeChildCryingDying-8","CakeChildCryingDying-11","CakeChildCryingDying-12","CakeChildCryingDying-13","CakeChildCryingDying-14","CakeChildCryingDying-16"],"pics":{"CakeChildCryingDying-0":{"w":71.0,"h":86.0,"cx":37.0,"cy":31.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-0.webp","x":0,"y":0,"w":71.0,"h":86.0}]},"CakeChildCryingDying-1":{"w":113.0,"h":113.0,"cx":57.0,"cy":58.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-1.webp","x":0,"y":0,"w":113.0,"h":113.0}]},"CakeChildCryingDying-4":{"w":71.0,"h":86.0,"cx":37.0,"cy":31.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-4.webp","x":0,"y":0,"w":71.0,"h":86.0}]},"CakeChildCryingDying-6":{"w":71.0,"h":86.0,"cx":37.0,"cy":31.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-6.webp","x":0,"y":0,"w":71.0,"h":86.0}]},"CakeChildCryingDying-8":{"w":71.0,"h":86.0,"cx":37.0,"cy":31.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-8.webp","x":0,"y":0,"w":71.0,"h":86.0}]},"CakeChildCryingDying-11":{"w":71.0,"h":90.0,"cx":37.0,"cy":31.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-11.webp","x":0,"y":0,"w":71.0,"h":90.0}]},"CakeChildCryingDying-12":{"w":71.0,"h":90.0,"cx":37.0,"cy":31.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-12.webp","x":0,"y":0,"w":71.0,"h":90.0}]},"CakeChildCryingDying-13":{"w":71.0,"h":90.0,"cx":37.0,"cy":31.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-12.webp","x":0,"y":0,"w":71.0,"h":90.0}]},"CakeChildCryingDying-14":{"w":71.0,"h":90.0,"cx":37.0,"cy":31.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-14.webp","x":0,"y":0,"w":71.0,"h":90.0}]},"CakeChildCryingDying-16":{"w":77.0,"h":101.0,"cx":39.0,"cy":42.0,"layers":[{"img":"assets/img/sprite53-cakechildcryingdying-16.webp","x":0,"y":0,"w":77.0,"h":101.0}]}}},"Sprite54":{"list":["Purple_Car"],"pics":{"Purple_Car":{"w":369.0,"h":108.0,"cx":183.0,"cy":54.0,"layers":[{"img":"assets/img/sprite54-purple-car.webp","x":0,"y":0,"w":369.0,"h":108.0}]}}},"Sprite67":{"list":["costume1"],"pics":{"costume1":{"w":255.0,"h":360.0,"cx":127.5,"cy":180.0,"layers":[{"img":"assets/img/sprite67-costume1.webp","x":0,"y":0,"w":255.0,"h":360.0}]}}},"Sprite69":{"list":["GiveThemLifeEndo","GiveThemLifeEndo2"],"pics":{"GiveThemLifeEndo":{"w":104.0,"h":95.0,"cx":56.0,"cy":36.0,"layers":[{"img":"assets/img/sprite69-givethemlifeendo.webp","x":0,"y":0,"w":104.0,"h":95.0}]},"GiveThemLifeEndo2":{"w":265.0,"h":96.0,"cx":56.0,"cy":37.0,"layers":[{"img":"assets/img/sprite69-givethemlifeendo2.webp","x":0,"y":0,"w":265.0,"h":96.0}]}}},"Sprite75":{"list":["ConfettiBurst-0","ConfettiBurst-1","ConfettiBurst-2","ConfettiBurst-3","ConfettiBurst-4","ConfettiBurst-5","ConfettiBurst-6","ConfettiBurst-7"],"pics":{"ConfettiBurst-0":{"w":86.0,"h":79.0,"cx":42.0,"cy":49.0,"layers":[{"img":"assets/img/sprite75-confettiburst-0.webp","x":0,"y":0,"w":86.0,"h":79.0}]},"ConfettiBurst-1":{"w":119.0,"h":121.0,"cx":61.0,"cy":61.0,"layers":[{"img":"assets/img/sprite75-confettiburst-1.webp","x":0,"y":0,"w":119.0,"h":121.0}]},"ConfettiBurst-2":{"w":160.0,"h":161.0,"cx":81.0,"cy":84.0,"layers":[{"img":"assets/img/sprite75-confettiburst-2.webp","x":0,"y":0,"w":160.0,"h":161.0}]},"ConfettiBurst-3":{"w":169.0,"h":179.0,"cx":87.0,"cy":89.0,"layers":[{"img":"assets/img/sprite75-confettiburst-3.webp","x":0,"y":0,"w":169.0,"h":179.0}]},"ConfettiBurst-4":{"w":173.0,"h":173.0,"cx":85.0,"cy":91.0,"layers":[{"img":"assets/img/sprite75-confettiburst-4.webp","x":0,"y":0,"w":173.0,"h":173.0}]},"ConfettiBurst-5":{"w":156.0,"h":173.0,"cx":74.0,"cy":86.0,"layers":[{"img":"assets/img/sprite75-confettiburst-5.webp","x":0,"y":0,"w":156.0,"h":173.0}]},"ConfettiBurst-6":{"w":146.0,"h":173.0,"cx":76.0,"cy":86.0,"layers":[{"img":"assets/img/sprite75-confettiburst-6.webp","x":0,"y":0,"w":146.0,"h":173.0}]},"ConfettiBurst-7":{"w":145.0,"h":169.0,"cx":74.0,"cy":87.0,"layers":[{"img":"assets/img/sprite75-confettiburst-7.webp","x":0,"y":0,"w":145.0,"h":169.0}]}}},"Sprite76":{"list":["Purple_man"],"pics":{"Purple_man":{"w":160.0,"h":270.0,"cx":80.0,"cy":134.0,"layers":[{"img":"assets/img/sprite76-purple-man.webp","x":0,"y":0,"w":160.0,"h":270.0}]}}},"Office":{"list":["000","010","100","001"],"pics":{"000":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/office-000.webp","x":0,"y":0,"w":480.0,"h":230.0},{"rect":[7.0,30.0,63.0,82.5],"fill":"#0c0a12"},{"img":"assets/characters/tfreddy.svg","m":[0.49172,0.0,-0.0,0.49172,10.09791,44.85],"iw":115.61,"ih":185.327,"shade":0.85,"cut":[7.0,30.0,63.0,82.5]}]},"010":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/office-010.webp","x":0,"y":0,"w":480.0,"h":230.0},{"rect":[7.0,30.0,63.0,82.5],"fill":"#1a1424"},{"img":"assets/characters/tfreddy.svg","m":[0.49172,0.0,-0.0,0.49172,10.09791,44.85],"iw":115.61,"ih":185.327,"shade":0.35,"cut":[7.0,30.0,63.0,82.5]}]},"100":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/office-100.webp","x":0,"y":0,"w":480.0,"h":230.0},{"rect":[7.0,30.0,63.0,82.5],"fill":"#0c0a12"},{"img":"assets/characters/tfreddy.svg","m":[0.49172,0.0,-0.0,0.49172,10.09791,44.85],"iw":115.61,"ih":185.327,"shade":0.85,"cut":[7.0,30.0,63.0,82.5]}]},"001":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/office-001.webp","x":0,"y":0,"w":480.0,"h":230.0},{"rect":[7.0,30.0,63.0,82.5],"fill":"#0c0a12"},{"img":"assets/characters/tfreddy.svg","m":[0.49172,0.0,-0.0,0.49172,10.09791,44.85],"iw":115.61,"ih":185.327,"shade":0.85,"cut":[7.0,30.0,63.0,82.5]}]}}},"OfficePose":{"list":["hall-wfreddy","hall-foxy","hall-tfreddy","hall-tchica","hall-wbonnie","hall-mangle","hall-golden","ventL-tchica","ventL-bb","ventL-wbonnie","ventL-endo","ventR-tbonnie","ventR-mangle","ventR-wchica","in-wchica","in-wbonnie","in-tfreddy","in-wfreddy","in-tchica","in-tbonnie"],"pics":{"hall-wfreddy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wfreddy.svg","m":[0.82965,0.0,-0.0,0.82965,190.33556,75.0],"iw":115.61,"ih":185.327,"shade":0.265}]},"hall-foxy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/foxy.svg","m":[1.07081,0.0,-0.0,1.07081,185.38945,75.0],"iw":102.061,"ih":126.706,"shade":0.268}]},"hall-tfreddy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tfreddy.svg","m":[0.83775,0.0,-0.0,0.83775,206.86978,70.0],"iw":115.61,"ih":185.327,"shade":0.283}]},"hall-tchica":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[0.49451,0.0,-0.0,0.49451,216.58806,80.0],"iw":115.874,"ih":177.237,"shade":0.015}]},"hall-wbonnie":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[0.85772,0.0,-0.0,0.85772,200.7107,75.0],"iw":115.145,"ih":175.468,"shade":0.306}]},"hall-mangle":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[0.75353,0.0,-0.0,0.75353,219.07035,70.0],"iw":102.061,"ih":126.706,"shade":0.019}]},"hall-golden":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/golden.svg","m":[0.66692,0.0,-0.0,0.66692,196.82008,75.0],"iw":177.5,"ih":263.5,"shade":0.35}]},"ventL-tchica":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[0.6374,0.0,-0.0,0.6374,0.69038,140.0],"iw":115.874,"ih":177.237,"shade":0.621,"cut":[10.0,140.0,57.5,90.0]}]},"ventL-bb":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/bb.svg","m":[0.71542,0.0,-0.0,0.71542,-2.02703,144.66216],"iw":100.0,"ih":170.0,"shade":0.698,"cut":[10.0,140.0,57.5,90.0]}]},"ventL-wbonnie":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[0.75429,0.0,-0.0,0.75429,-7.31618,135.0],"iw":115.145,"ih":175.468,"shade":0.637,"cut":[10.0,140.0,57.5,90.0]}]},"ventL-endo":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/endo.svg","m":[0.89534,0.0,-0.0,0.89534,-10.85084,150.0],"iw":102.061,"ih":126.706,"shade":0.741,"cut":[10.0,140.0,57.5,90.0]}]},"ventR-tbonnie":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[0.71837,0.0,-0.0,0.71837,401.0084,140.0],"iw":115.145,"ih":175.468,"shade":0.731,"cut":[412.5,135.0,57.5,95.0]}]},"ventR-mangle":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[1.14405,0.0,-0.0,1.14405,385.16282,142.5],"iw":102.061,"ih":126.706,"shade":0.702,"cut":[412.5,135.0,57.5,95.0]}]},"ventR-wchica":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[0.77904,0.0,-0.0,0.77904,397.51046,137.5],"iw":115.874,"ih":177.237,"shade":0.747,"cut":[412.5,135.0,57.5,95.0]}]},"in-wchica":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[1.32812,0.0,-0.0,1.32812,163.69366,-0.0],"iw":115.874,"ih":177.237,"shade":0.534}]},"in-wbonnie":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[1.40094,0.0,-0.0,1.40094,154.49415,-15.0],"iw":115.145,"ih":175.468,"shade":0.656}]},"in-tfreddy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tfreddy.svg","m":[1.27014,0.0,-0.0,1.27014,247.02838,0.0],"iw":115.61,"ih":185.327,"shade":0.585}]},"in-wfreddy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wfreddy.svg","m":[1.27014,0.0,-0.0,1.27014,184.52838,0.0],"iw":115.61,"ih":185.327,"shade":0.569}]},"in-tchica":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[1.27161,0.0,-0.0,1.27161,166.94073,10.0],"iw":115.874,"ih":177.237,"shade":0.548}]},"in-tbonnie":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[1.37235,0.0,-0.0,1.37235,161.13712,-5.0],"iw":115.145,"ih":175.468,"shade":0.657}]}}},"Cam1":{"list":["dark","light","wbonnie","wbonnie-dark","tchica","tchica-dark"],"pics":{"dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam1-dark.webp","x":0,"y":0,"w":480.0,"h":360.0},{"rect":[70.0,70.0,165.0,85.0],"fill":"#0c0a12"},{"img":"assets/characters/tbonnie.svg","m":[0.53734,0.0,-0.0,0.53734,66.46429,85.3],"iw":115.145,"ih":175.468,"shade":0.85,"cut":[70.0,70.0,165.0,85.0]},{"img":"assets/characters/tfreddy.svg","m":[0.50662,0.0,-0.0,0.50662,123.23724,85.3],"iw":115.61,"ih":185.327,"shade":0.85,"cut":[70.0,70.0,165.0,85.0]},{"img":"assets/characters/tchica.svg","m":[0.52975,0.0,-0.0,0.52975,176.90711,85.3],"iw":115.874,"ih":177.237,"shade":0.85,"cut":[70.0,70.0,165.0,85.0]}]},"light":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam1-light.webp","x":0,"y":0,"w":480.0,"h":360.0},{"rect":[70.0,70.0,165.0,85.0],"fill":"#1a1424"},{"img":"assets/characters/tbonnie.svg","m":[0.53734,0.0,-0.0,0.53734,66.46429,85.3],"iw":115.145,"ih":175.468,"shade":0.35,"cut":[70.0,70.0,165.0,85.0]},{"img":"assets/characters/tfreddy.svg","m":[0.50662,0.0,-0.0,0.50662,123.23724,85.3],"iw":115.61,"ih":185.327,"shade":0.35,"cut":[70.0,70.0,165.0,85.0]},{"img":"assets/characters/tchica.svg","m":[0.52975,0.0,-0.0,0.52975,176.90711,85.3],"iw":115.874,"ih":177.237,"shade":0.35,"cut":[70.0,70.0,165.0,85.0]}]},"wbonnie":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[1.57248,0.0,-0.0,1.57248,12.13629,75.0],"iw":115.145,"ih":175.468,"shade":0.479}]},"wbonnie-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[1.57248,0.0,-0.0,1.57248,12.13629,75.0],"iw":115.145,"ih":175.468,"shade":0.86}]},"tchica":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[0.98903,0.0,-0.0,0.98903,50.67613,125.0],"iw":115.874,"ih":177.237,"shade":0.091}]},"tchica-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[0.98903,0.0,-0.0,0.98903,50.67613,125.0],"iw":115.874,"ih":177.237,"shade":0.86}]}}},"Cam2":{"list":["dark","light","wchica","wchica-dark","tbonnie","tbonnie-dark"],"pics":{"dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam2-dark.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"light":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam2-light.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"wchica":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[2.76207,0.0,-0.0,2.76207,45.49163,15.0],"iw":115.874,"ih":177.237,"shade":0.342}]},"wchica-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[2.76207,0.0,-0.0,2.76207,45.49163,15.0],"iw":115.874,"ih":177.237,"shade":0.86}]},"tbonnie":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[0.77194,0.0,-0.0,0.77194,323.13963,75.0],"iw":115.145,"ih":175.468}]},"tbonnie-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[0.77194,0.0,-0.0,0.77194,323.13963,75.0],"iw":115.145,"ih":175.468,"shade":0.86}]}}},"Cam3":{"list":["dark","light","wfreddy","wfreddy-dark","tbonnie","tbonnie-dark"],"pics":{"dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam3-dark.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"light":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam3-light.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"wfreddy":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wfreddy.svg","m":[4.06382,0.0,-0.0,4.06382,0.27197,60.0],"iw":115.61,"ih":185.327,"shade":0.548}]},"wfreddy-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wfreddy.svg","m":[4.06382,0.0,-0.0,4.06382,0.27197,60.0],"iw":115.61,"ih":185.327,"shade":0.86}]},"tbonnie":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[1.08644,0.0,-0.0,1.08644,157.56689,30.0],"iw":115.145,"ih":175.468,"shade":0.266}]},"tbonnie-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[1.08644,0.0,-0.0,1.08644,157.56689,30.0],"iw":115.145,"ih":175.468,"shade":0.86}]}}},"Cam4":{"list":["dark","light","tbonnie","tbonnie-dark","wchica","wchica-dark","tchica","tchica-dark"],"pics":{"dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam4-dark.webp","x":0,"y":0,"w":480.0,"h":360.0},{"img":"assets/characters/tbonnie.svg","m":[0.704,0.0,-0.0,0.704,261.83824,76.0],"iw":115.145,"ih":175.468,"shade":0.8,"cut":[277.5,70.0,50.0,61.0]},{"img":"assets/characters/tfreddy.svg","m":[0.65021,0.0,-0.0,0.65021,328.69351,96.0],"iw":115.61,"ih":185.327,"shade":0.8,"cut":[340.0,90.0,52.5,60.0]}]},"light":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam4-light.webp","x":0,"y":0,"w":480.0,"h":360.0},{"img":"assets/characters/tbonnie.svg","m":[0.704,0.0,-0.0,0.704,261.83824,76.0],"iw":115.145,"ih":175.468,"shade":0.3,"cut":[277.5,70.0,50.0,61.0]},{"img":"assets/characters/tfreddy.svg","m":[0.65021,0.0,-0.0,0.65021,328.69351,96.0],"iw":115.61,"ih":185.327,"shade":0.3,"cut":[340.0,90.0,52.5,60.0]}]},"tbonnie":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[4.59755,0.0,-0.0,4.59755,-30.54622,-30.0],"iw":115.145,"ih":175.468,"shade":0.282}]},"tbonnie-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[4.59755,0.0,-0.0,4.59755,-30.54622,-30.0],"iw":115.145,"ih":175.468,"shade":0.86}]},"wchica":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[1.0738,0.0,-0.0,1.0738,193.30551,85.0],"iw":115.874,"ih":177.237,"shade":0.17}]},"wchica-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[1.0738,0.0,-0.0,1.0738,193.30551,85.0],"iw":115.874,"ih":177.237,"shade":0.86}]},"tchica":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[1.04554,0.0,-0.0,1.04554,137.42905,65.0],"iw":115.874,"ih":177.237}]},"tchica-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[1.04554,0.0,-0.0,1.04554,137.42905,65.0],"iw":115.874,"ih":177.237,"shade":0.86}]}}},"Cam5":{"list":["dark","light","wbonnie","wbonnie-dark","tchica","tchica-dark","bb","bb-dark","endo","endo-dark"],"pics":{"dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam5-dark.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"light":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam5-light.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"wbonnie":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[3.30449,0.0,-0.0,3.30449,46.63866,50.0],"iw":115.145,"ih":175.468,"shade":0.341}]},"wbonnie-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[3.30449,0.0,-0.0,3.30449,46.63866,50.0],"iw":115.145,"ih":175.468,"shade":0.86}]},"tchica":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[2.19549,0.0,-0.0,2.19549,73.2113,95.0],"iw":115.874,"ih":177.237}]},"tchica-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[2.19549,0.0,-0.0,2.19549,73.2113,95.0],"iw":115.874,"ih":177.237,"shade":0.86}]},"bb":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/bb.svg","m":[3.02067,0.0,-0.0,3.02067,71.44144,78.01802],"iw":100.0,"ih":170.0}]},"bb-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/bb.svg","m":[3.02067,0.0,-0.0,3.02067,71.44144,78.01802],"iw":100.0,"ih":170.0,"shade":0.86}]},"endo":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/endo.svg","m":[2.68603,0.0,-0.0,2.68603,104.94748,145.0],"iw":102.061,"ih":126.706,"shade":0.389}]},"endo-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/endo.svg","m":[2.68603,0.0,-0.0,2.68603,104.94748,145.0],"iw":102.061,"ih":126.706,"shade":0.86}]}}},"Cam6":{"list":["dark","light","tbonnie","tbonnie-dark","mangle","mangle-dark","wchica","wchica-dark"],"pics":{"dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam6-dark.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"light":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/img/cam6-light.webp","x":0,"y":0,"w":480.0,"h":360.0}]},"tbonnie":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[2.29878,0.0,-0.0,2.29878,179.72689,90.0],"iw":115.145,"ih":175.468}]},"tbonnie-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[2.29878,0.0,-0.0,2.29878,179.72689,90.0],"iw":115.145,"ih":175.468,"shade":0.86}]},"mangle":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[3.9793,0.0,-0.0,3.9793,93.71849,95.0],"iw":102.061,"ih":126.706}]},"mangle-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[3.9793,0.0,-0.0,3.9793,93.71849,95.0],"iw":102.061,"ih":126.706,"shade":0.86}]},"wchica":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[3.75358,0.0,-0.0,3.75358,68.23222,85.0],"iw":115.874,"ih":177.237,"shade":0.207}]},"wchica-dark":{"w":480.0,"h":360.0,"cx":240.0,"cy":180.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[3.75358,0.0,-0.0,3.75358,68.23222,85.0],"iw":115.874,"ih":177.237,"shade":0.86}]}}},"Cam7":{"list":["dark","light","tchica","tchica-dark","wbonnie","wbonnie-dark","wfreddy","wfreddy-dark","puppetwalk1","puppetwalk2","puppetwalk3","mangle","mangle-dark"],"pics":{"dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam7-dark.webp","x":0,"y":0,"w":480.0,"h":230.0},{"rect":[0.0,50.0,70.0,180.0],"fill":"#0c0a12"},{"img":"assets/characters/tbonnie.svg","m":[1.13789,0.0,-0.0,1.13789,-30.72269,82.4],"iw":115.145,"ih":175.468,"shade":0.85,"cut":[0.0,50.0,70.0,180.0]},{"rect":[75.0,35.0,34.0,165.0],"fill":"#0c0a12"},{"img":"assets/characters/tchica.svg","m":[1.02834,0.0,-0.0,1.02834,32.61381,64.7],"iw":115.874,"ih":177.237,"shade":0.85,"cut":[75.0,35.0,34.0,165.0]},{"rect":[421.0,60.0,59.0,130.0],"fill":"#0c0a12"},{"img":"assets/characters/tfreddy.svg","m":[0.77484,0.0,-0.0,0.77484,405.74519,83.4],"iw":115.61,"ih":185.327,"shade":0.85,"cut":[421.0,60.0,59.0,130.0]}]},"light":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam7-light.webp","x":0,"y":0,"w":480.0,"h":230.0},{"rect":[0.0,50.0,70.0,180.0],"fill":"#1a1424"},{"img":"assets/characters/tbonnie.svg","m":[1.13789,0.0,-0.0,1.13789,-30.72269,82.4],"iw":115.145,"ih":175.468,"shade":0.35,"cut":[0.0,50.0,70.0,180.0]},{"rect":[75.0,35.0,34.0,165.0],"fill":"#1a1424"},{"img":"assets/characters/tchica.svg","m":[1.02834,0.0,-0.0,1.02834,32.61381,64.7],"iw":115.874,"ih":177.237,"shade":0.35,"cut":[75.0,35.0,34.0,165.0]},{"rect":[421.0,60.0,59.0,130.0],"fill":"#1a1424"},{"img":"assets/characters/tfreddy.svg","m":[0.77484,0.0,-0.0,0.77484,405.74519,83.4],"iw":115.61,"ih":185.327,"shade":0.35,"cut":[421.0,60.0,59.0,130.0]}]},"tchica":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[1.2748,0.0,-0.0,1.2748,71.38075,75.0],"iw":115.874,"ih":177.237,"shade":0.379}]},"tchica-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[1.2748,0.0,-0.0,1.2748,71.38075,75.0],"iw":115.874,"ih":177.237,"shade":0.86}]},"wbonnie":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[0.47174,0.0,-0.0,0.47174,172.89089,67.5],"iw":115.145,"ih":175.468,"shade":0.621}]},"wbonnie-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[0.47174,0.0,-0.0,0.47174,172.89089,67.5],"iw":115.145,"ih":175.468,"shade":0.86}]},"wfreddy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wfreddy.svg","m":[0.87829,0.0,-0.0,0.87829,187.0409,62.5],"iw":115.61,"ih":185.327,"shade":0.407}]},"wfreddy-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wfreddy.svg","m":[0.87829,0.0,-0.0,0.87829,187.0409,62.5],"iw":115.61,"ih":185.327,"shade":0.86}]},"puppetwalk1":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/puppet.svg","m":[0.90239,0.0,-0.0,0.90239,192.33524,-1.01933],"iw":100.0,"ih":260.0,"shade":0.598}]},"puppetwalk2":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/puppet.svg","m":[1.52491,0.0,-0.0,1.52491,171.17841,24.05286],"iw":100.0,"ih":260.0,"shade":0.21}]},"puppetwalk3":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/puppet.svg","m":[1.82989,0.0,-0.0,1.82989,148.4141,12.86344],"iw":100.0,"ih":260.0,"shade":0.334}]},"mangle":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[1.79069,0.0,-0.0,1.79069,53.29832,75.0],"iw":102.061,"ih":126.706,"shade":0.379}]},"mangle-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[1.79069,0.0,-0.0,1.79069,53.29832,75.0],"iw":102.061,"ih":126.706,"shade":0.86}]}}},"Cam8":{"list":["dark","light","wchica","wchica-dark","wbonnie","wbonnie-dark","foxy","foxy-dark","wfreddy","wfreddy-dark","shadow"],"pics":{"dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam8-dark.webp","x":0,"y":0,"w":480.0,"h":230.0}]},"light":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam8-light.webp","x":0,"y":0,"w":480.0,"h":230.0}]},"wchica":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[0.73471,0.0,-0.0,0.73471,70.28798,50.0],"iw":115.874,"ih":177.237,"shade":0.313}]},"wchica-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[0.73471,0.0,-0.0,0.73471,70.28798,50.0],"iw":115.874,"ih":177.237,"shade":0.86}]},"wbonnie":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[1.02926,0.0,-0.0,1.02926,65.85284,-10.0],"iw":115.145,"ih":175.468,"shade":0.173}]},"wbonnie-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[1.02926,0.0,-0.0,1.02926,65.85284,-10.0],"iw":115.145,"ih":175.468,"shade":0.86}]},"foxy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/foxy.svg","m":[1.70537,0.0,-0.0,1.70537,155.52764,10.0],"iw":102.061,"ih":126.706,"shade":0.135}]},"foxy-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/foxy.svg","m":[1.70537,0.0,-0.0,1.70537,155.52764,10.0],"iw":102.061,"ih":126.706,"shade":0.86}]},"wfreddy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wfreddy.svg","m":[0.8805,0.0,-0.0,0.8805,249.14226,85.0],"iw":115.61,"ih":185.327,"shade":0.133}]},"wfreddy-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/wfreddy.svg","m":[0.8805,0.0,-0.0,0.8805,249.14226,85.0],"iw":115.61,"ih":185.327,"shade":0.86}]},"shadow":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/shadow.svg","m":[0.81073,0.0,-0.0,0.81073,140.92237,15.0],"iw":115.61,"ih":185.327,"shade":0.05,"tint":"#050505"}]}}},"Cam9":{"list":["dark","light","tbonnie","tbonnie-dark","tfreddy","tfreddy-dark","tchica","tchica-dark"],"pics":{"dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam9-dark.webp","x":0,"y":0,"w":480.0,"h":230.0}]},"light":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam9-light.webp","x":0,"y":0,"w":480.0,"h":230.0}]},"tbonnie":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[2.58612,0.0,-0.0,2.58612,-15.61975,-30.0],"iw":115.145,"ih":175.468,"shade":0.293}]},"tbonnie-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[2.58612,0.0,-0.0,2.58612,-15.61975,-30.0],"iw":115.145,"ih":175.468,"shade":0.86}]},"tfreddy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tfreddy.svg","m":[1.96418,0.0,-0.0,1.96418,134.04812,10.0],"iw":115.61,"ih":185.327,"shade":0.277}]},"tfreddy-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tfreddy.svg","m":[1.96418,0.0,-0.0,1.96418,134.04812,10.0],"iw":115.61,"ih":185.327,"shade":0.86}]},"tchica":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[1.98302,0.0,-0.0,1.98302,252.98117,5.0],"iw":115.874,"ih":177.237,"shade":0.427}]},"tchica-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[1.98302,0.0,-0.0,1.98302,252.98117,5.0],"iw":115.874,"ih":177.237,"shade":0.86}]}}},"Cam10":{"list":["dark","light","bb","bb-dark","tfreddy","tfreddy-dark","mangle","mangle-dark"],"pics":{"dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam10-dark.webp","x":0,"y":0,"w":480.0,"h":230.0}]},"light":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam10-light.webp","x":0,"y":0,"w":480.0,"h":230.0}]},"bb":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/bb.svg","m":[0.88552,0.0,-0.0,0.88552,48.21685,81.48746],"iw":100.0,"ih":170.0,"shade":0.313}]},"bb-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/bb.svg","m":[0.88552,0.0,-0.0,0.88552,48.21685,81.48746],"iw":100.0,"ih":170.0,"shade":0.86}]},"tfreddy":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tfreddy.svg","m":[0.58102,0.0,-0.0,0.58102,136.61937,65.0],"iw":115.61,"ih":185.327}]},"tfreddy-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/tfreddy.svg","m":[0.58102,0.0,-0.0,0.58102,136.61937,65.0],"iw":115.61,"ih":185.327,"shade":0.86}]},"mangle":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[0.85268,0.0,-0.0,0.85268,126.51382,65.0],"iw":102.061,"ih":126.706}]},"mangle-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[0.85268,0.0,-0.0,0.85268,126.51382,65.0],"iw":102.061,"ih":126.706,"shade":0.86}]}}},"Cam11":{"list":["dark","light","puppet1","puppet2","puppet3","endo"],"pics":{"dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam11-dark.webp","x":0,"y":0,"w":480.0,"h":230.0},{"rect":[181.0,20.0,99.0,60.0],"fill":"#0c0a12"},{"img":"assets/characters/tbonnie.svg","m":[0.3793,0.0,-0.0,0.3793,175.59244,30.8],"iw":115.145,"ih":175.468,"shade":0.85,"cut":[181.0,20.0,99.0,60.0]},{"img":"assets/characters/tfreddy.svg","m":[0.35762,0.0,-0.0,0.35762,209.84393,30.8],"iw":115.61,"ih":185.327,"shade":0.85,"cut":[181.0,20.0,99.0,60.0]},{"img":"assets/characters/tchica.svg","m":[0.37394,0.0,-0.0,0.37394,241.90502,30.8],"iw":115.874,"ih":177.237,"shade":0.85,"cut":[181.0,20.0,99.0,60.0]},{"img":"assets/characters/tchica.svg","m":[0.28258,0.0,-0.0,0.28258,43.01461,35.0],"iw":115.874,"ih":177.237,"shade":0.9},{"img":"assets/characters/tfreddy.svg","m":[0.19458,0.0,-0.0,0.19458,138.07137,114.0],"iw":115.61,"ih":185.327,"shade":0.9}]},"light":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam11-light.webp","x":0,"y":0,"w":480.0,"h":230.0},{"rect":[181.0,20.0,99.0,60.0],"fill":"#1a1424"},{"img":"assets/characters/tbonnie.svg","m":[0.3793,0.0,-0.0,0.3793,175.59244,30.8],"iw":115.145,"ih":175.468,"shade":0.35,"cut":[181.0,20.0,99.0,60.0]},{"img":"assets/characters/tfreddy.svg","m":[0.35762,0.0,-0.0,0.35762,209.84393,30.8],"iw":115.61,"ih":185.327,"shade":0.35,"cut":[181.0,20.0,99.0,60.0]},{"img":"assets/characters/tchica.svg","m":[0.37394,0.0,-0.0,0.37394,241.90502,30.8],"iw":115.874,"ih":177.237,"shade":0.35,"cut":[181.0,20.0,99.0,60.0]},{"img":"assets/characters/tchica.svg","m":[0.28258,0.0,-0.0,0.28258,43.01461,35.0],"iw":115.874,"ih":177.237,"shade":0.55},{"img":"assets/characters/tfreddy.svg","m":[0.19458,0.0,-0.0,0.19458,138.07137,114.0],"iw":115.61,"ih":185.327,"shade":0.55}]},"puppet1":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/puppet.svg","m":[0.36501,0.0,-0.0,0.36501,304.23111,73.57645],"iw":100.0,"ih":260.0,"shade":0.502,"cut":[0.0,0.0,480.0,129.0]}]},"puppet2":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/puppet.svg","m":[0.41571,0.0,-0.0,0.41571,299.19376,60.87873],"iw":100.0,"ih":260.0,"shade":0.506,"cut":[0.0,0.0,480.0,129.0]}]},"puppet3":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/puppet.svg","m":[0.65905,0.0,-0.0,0.65905,282.0145,44.9297],"iw":100.0,"ih":260.0,"shade":0.595}]},"endo":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/endo.svg","m":[1.82435,0.0,-0.0,1.82435,229.4598,0.0],"iw":102.061,"ih":126.706,"shade":0.538}]}}},"Cam12":{"list":["dark","light","mangle","mangle-dark"],"pics":{"dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam12-dark.webp","x":0,"y":0,"w":480.0,"h":230.0}]},"light":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/img/cam12-light.webp","x":0,"y":0,"w":480.0,"h":230.0}]},"mangle":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[0.19503,-0.72786,0.72786,0.19503,188.29072,177.53238],"iw":102.061,"ih":126.706,"shade":0.139}]},"mangle-dark":{"w":480.0,"h":230.0,"cx":240.0,"cy":115.0,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[0.19503,-0.72786,0.72786,0.19503,188.29072,177.53238],"iw":102.061,"ih":126.706,"shade":0.86}]}}},"Chars":{"list":["tfreddy","tbonnie","tchica","wfreddy","wbonnie","wchica","foxy","mangle","golden","endo","shadow","bb","puppet"],"pics":{"tfreddy":{"w":186.31051752921536,"h":300.0,"cx":93.15525876460768,"cy":300.0,"layers":[{"img":"assets/characters/tfreddy.svg","m":[1.62146,0.0,-0.0,1.62146,0.0,0.0],"iw":115.61,"ih":185.327}]},"tbonnie":{"w":197.1571906354515,"h":300.0,"cx":98.57859531772576,"cy":300.0,"layers":[{"img":"assets/characters/tbonnie.svg","m":[1.71543,0.0,-0.0,1.71543,0.0,0.0],"iw":115.145,"ih":175.468}]},"tchica":{"w":194.82470784641072,"h":300.0,"cx":97.41235392320536,"cy":300.0,"layers":[{"img":"assets/characters/tchica.svg","m":[1.69548,0.0,-0.0,1.69548,0.0,0.0],"iw":115.874,"ih":177.237}]},"wfreddy":{"w":186.31051752921536,"h":300.0,"cx":93.15525876460768,"cy":300.0,"layers":[{"img":"assets/characters/wfreddy.svg","m":[1.62146,0.0,-0.0,1.62146,0.0,0.0],"iw":115.61,"ih":185.327}]},"wbonnie":{"w":197.1571906354515,"h":300.0,"cx":98.57859531772576,"cy":300.0,"layers":[{"img":"assets/characters/wbonnie.svg","m":[1.71543,0.0,-0.0,1.71543,0.0,0.0],"iw":115.145,"ih":175.468}]},"wchica":{"w":194.82470784641072,"h":300.0,"cx":97.41235392320536,"cy":300.0,"layers":[{"img":"assets/characters/wchica.svg","m":[1.69548,0.0,-0.0,1.69548,0.0,0.0],"iw":115.874,"ih":177.237}]},"foxy":{"w":242.71356783919597,"h":300.0,"cx":121.35678391959799,"cy":300.0,"layers":[{"img":"assets/characters/foxy.svg","m":[2.37958,0.0,-0.0,2.37958,0.0,0.0],"iw":102.061,"ih":126.706}]},"mangle":{"w":242.71356783919597,"h":300.0,"cx":121.35678391959799,"cy":300.0,"layers":[{"img":"assets/characters/mangle.svg","m":[2.37958,0.0,-0.0,2.37958,0.0,0.0],"iw":102.061,"ih":126.706}]},"golden":{"w":201.83639398998332,"h":300.0,"cx":100.91819699499166,"cy":300.0,"layers":[{"img":"assets/characters/golden.svg","m":[1.14042,0.0,-0.0,1.14042,0.0,0.0],"iw":177.5,"ih":263.5}]},"endo":{"w":242.71356783919597,"h":300.0,"cx":121.35678391959799,"cy":300.0,"layers":[{"img":"assets/characters/endo.svg","m":[2.37958,0.0,-0.0,2.37958,0.0,0.0],"iw":102.061,"ih":126.706}]},"shadow":{"w":186.31051752921536,"h":300.0,"cx":93.15525876460768,"cy":300.0,"layers":[{"img":"assets/characters/shadow.svg","m":[1.62146,0.0,-0.0,1.62146,0.0,0.0],"iw":115.61,"ih":185.327}]},"bb":{"w":137.09677419354838,"h":300.0,"cx":68.54838709677419,"cy":300.0,"layers":[{"img":"assets/characters/bb.svg","m":[1.89753,0.0,-0.0,1.89753,-26.34409,-7.52688],"iw":100.0,"ih":170.0}]},"puppet":{"w":117.57469244288225,"h":300.0,"cx":58.787346221441126,"cy":300.0,"layers":[{"img":"assets/characters/puppet.svg","m":[1.21671,0.0,-0.0,1.21671,-2.10896,-4.74517],"iw":100.0,"ih":260.0}]}}},"Heads":{"list":["tfreddy","tbonnie","tchica","wfreddy","wbonnie","wchica","foxy","mangle","golden","endo","shadow","bb","puppet"],"pics":{"tfreddy":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/tfreddy.svg","m":[0.83986,0.0,-0.0,0.83986,-8.51046,4.0],"iw":115.61,"ih":185.327}]},"tbonnie":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/tbonnie.svg","m":[0.89078,0.0,-0.0,0.89078,-11.44958,4.0],"iw":115.145,"ih":175.468}]},"tchica":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/tchica.svg","m":[0.8782,0.0,-0.0,0.8782,-10.71548,4.0],"iw":115.874,"ih":177.237}]},"wfreddy":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/wfreddy.svg","m":[0.83986,0.0,-0.0,0.83986,-8.51046,4.0],"iw":115.61,"ih":185.327}]},"wbonnie":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/wbonnie.svg","m":[0.89078,0.0,-0.0,0.89078,-11.44958,4.0],"iw":115.145,"ih":175.468}]},"wchica":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/wchica.svg","m":[0.8782,0.0,-0.0,0.8782,-10.71548,4.0],"iw":115.874,"ih":177.237}]},"foxy":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/foxy.svg","m":[1.23358,0.0,-0.0,1.23358,-23.17227,4.0],"iw":102.061,"ih":126.706}]},"mangle":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/mangle.svg","m":[1.23358,0.0,-0.0,1.23358,-23.17227,4.0],"iw":102.061,"ih":126.706}]},"golden":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/golden.svg","m":[0.5907,0.0,-0.0,0.5907,-2.67364,4.0],"iw":177.5,"ih":263.5}]},"endo":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/endo.svg","m":[1.23358,0.0,-0.0,1.23358,-23.17227,4.0],"iw":102.061,"ih":126.706}]},"shadow":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/shadow.svg","m":[0.83986,0.0,-0.0,0.83986,-8.51046,4.0],"iw":115.61,"ih":185.327}]},"bb":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/bb.svg","m":[0.98569,0.0,-0.0,0.98569,-9.29279,0.09009],"iw":100.0,"ih":170.0}]},"puppet":{"w":80,"h":70,"cx":40,"cy":35,"clip":true,"layers":[{"img":"assets/characters/puppet.svg","m":[0.63029,0.0,-0.0,0.63029,8.45374,1.54185],"iw":100.0,"ih":260.0}]}}},"Scare":{"list":["tfreddy-1","tfreddy-2","tfreddy-3","tfreddy-4","tfreddy-5","tfreddy-6","tfreddy-7","tfreddy-8","tfreddy-9","tbonnie-1","tbonnie-2","tbonnie-3","tbonnie-4","tbonnie-5","tbonnie-6","tbonnie-7","tbonnie-8","tbonnie-9","tchica-1","tchica-2","tchica-3","tchica-4","tchica-5","tchica-6","tchica-7","tchica-8","tchica-9","mangle-1","mangle-2","mangle-3","mangle-4","mangle-5","mangle-6","mangle-7","mangle-8","mangle-9","bb-1","bb-2","bb-3","bb-4","bb-5","bb-6","bb-7","bb-8","bb-9","puppet-1","puppet-2","puppet-3","puppet-4","puppet-5","puppet-6","puppet-7","puppet-8","puppet-9","wfreddy-1","wfreddy-2","wfreddy-3","wfreddy-4","wfreddy-5","wfreddy-6","wfreddy-7","wfreddy-8","wfreddy-9","wbonnie-1","wbonnie-2","wbonnie-3","wbonnie-4","wbonnie-5","wbonnie-6","wbonnie-7","wbonnie-8","wbonnie-9","wchica-1","wchica-2","wchica-3","wchica-4","wchica-5","wchica-6","wchica-7","wchica-8","wchica-9","foxy-1","foxy-2","foxy-3","foxy-4","foxy-5","foxy-6","foxy-7","foxy-8","foxy-9","golden-1"],"pics":{"tfreddy-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/tfreddy.svg","m":[1.62553,0.0,-0.0,1.62553,146.10879,130.0],"iw":115.61,"ih":185.327,"shade":0.18}]},"tfreddy-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/tfreddy.svg","m":[1.77684,0.00883,-0.00883,1.77684,137.80487,123.04565],"iw":115.61,"ih":185.327,"shade":0.18}]},"tfreddy-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/tfreddy.svg","m":[2.17569,-0.02541,0.02541,2.17569,112.66877,108.03587],"iw":115.61,"ih":185.327,"shade":0.18}]},"tfreddy-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/tfreddy.svg","m":[2.73929,-0.05832,0.05832,2.73929,81.46639,85.93064],"iw":115.61,"ih":185.327,"shade":0.18}]},"tfreddy-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/tfreddy.svg","m":[3.3806,0.20012,-0.20012,3.3806,49.17887,43.65957],"iw":115.61,"ih":185.327,"shade":0.18}]},"tfreddy-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/tfreddy.svg","m":[4.03305,-0.02531,0.02531,4.03305,9.41167,28.92598],"iw":115.61,"ih":185.327,"shade":0.18}]},"tfreddy-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/tfreddy.svg","m":[4.57657,-0.43501,0.43501,4.57657,-42.79306,29.32547],"iw":115.61,"ih":185.327,"shade":0.18}]},"tfreddy-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/tfreddy.svg","m":[4.98087,0.39074,-0.39074,4.98087,-32.98481,-35.5593],"iw":115.61,"ih":185.327,"shade":0.18}]},"tfreddy-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/tfreddy.svg","m":[5.13842,0.30571,-0.30571,5.13842,-43.22579,-37.32254],"iw":115.61,"ih":185.327,"shade":0.18}]},"tbonnie-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/tbonnie.svg","m":[1.72408,0.0,-0.0,1.72408,140.42017,130.0],"iw":115.145,"ih":175.468,"shade":0.18}]},"tbonnie-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/tbonnie.svg","m":[1.88457,0.00936,-0.00936,1.88457,131.58673,123.01476],"iw":115.145,"ih":175.468,"shade":0.18}]},"tbonnie-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/tbonnie.svg","m":[2.3076,-0.02695,0.02695,2.3076,105.05484,108.1248],"iw":115.145,"ih":175.468,"shade":0.18}]},"tbonnie-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/tbonnie.svg","m":[2.90536,-0.06186,0.06186,2.90536,71.88013,86.13473],"iw":115.145,"ih":175.468,"shade":0.18}]},"tbonnie-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/tbonnie.svg","m":[3.58556,0.21225,-0.21225,3.58556,37.34829,42.95924],"iw":115.145,"ih":175.468,"shade":0.18}]},"tbonnie-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/tbonnie.svg","m":[4.27757,-0.02685,0.02685,4.27757,-4.70219,29.01456],"iw":115.145,"ih":175.468,"shade":0.18}]},"tbonnie-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/tbonnie.svg","m":[4.85404,-0.46139,0.46139,4.85404,-58.80899,30.84783],"iw":115.145,"ih":175.468,"shade":0.18}]},"tbonnie-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/tbonnie.svg","m":[5.28285,0.41443,-0.41443,5.28285,-50.41561,-36.92673],"iw":115.145,"ih":175.468,"shade":0.18}]},"tbonnie-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/tbonnie.svg","m":[5.44995,0.32424,-0.32424,5.44995,-61.20795,-38.39239],"iw":115.145,"ih":175.468,"shade":0.18}]},"tchica-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/tchica.svg","m":[1.69973,0.0,-0.0,1.69973,141.841,130.0],"iw":115.874,"ih":177.237,"shade":0.18}]},"tchica-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/tchica.svg","m":[1.85795,0.00923,-0.00923,1.85795,133.13982,123.02248],"iw":115.874,"ih":177.237,"shade":0.18}]},"tchica-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/tchica.svg","m":[2.27501,-0.02657,0.02657,2.27501,106.95655,108.10259],"iw":115.874,"ih":177.237,"shade":0.18}]},"tchica-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/tchica.svg","m":[2.86433,-0.06098,0.06098,2.86433,74.27447,86.08376],"iw":115.874,"ih":177.237,"shade":0.18}]},"tchica-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/tchica.svg","m":[3.53492,0.20925,-0.20925,3.53492,40.30319,43.13416],"iw":115.874,"ih":177.237,"shade":0.18}]},"tchica-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/tchica.svg","m":[4.21716,-0.02647,0.02647,4.21716,-1.177,28.99243],"iw":115.874,"ih":177.237,"shade":0.18}]},"tchica-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/tchica.svg","m":[4.78549,-0.45487,0.45487,4.78549,-54.80872,30.46759],"iw":115.874,"ih":177.237,"shade":0.18}]},"tchica-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/tchica.svg","m":[5.20824,0.40858,-0.40858,5.20824,-46.06195,-36.58519],"iw":115.874,"ih":177.237,"shade":0.18}]},"tchica-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/tchica.svg","m":[5.37299,0.31967,-0.31967,5.37299,-56.71658,-38.12517],"iw":115.874,"ih":177.237,"shade":0.18}]},"mangle-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/mangle.svg","m":[2.38758,0.0,-0.0,2.38758,117.73109,130.0],"iw":102.061,"ih":126.706,"shade":0.18}]},"mangle-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/mangle.svg","m":[2.60983,0.01297,-0.01297,2.60983,106.78563,122.89155],"iw":102.061,"ih":126.706,"shade":0.18}]},"mangle-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/mangle.svg","m":[3.19566,-0.03733,0.03733,3.19566,74.68663,108.47952],"iw":102.061,"ih":126.706,"shade":0.18}]},"mangle-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/mangle.svg","m":[4.02347,-0.08566,0.08566,4.02347,33.64529,86.94878],"iw":102.061,"ih":126.706,"shade":0.18}]},"mangle-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/mangle.svg","m":[4.96544,0.29393,-0.29393,4.96544,-9.83802,40.16601],"iw":102.061,"ih":126.706,"shade":0.18}]},"mangle-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/mangle.svg","m":[5.92376,-0.03718,0.03718,5.92376,-60.9954,29.36788],"iw":102.061,"ih":126.706,"shade":0.18}]},"mangle-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/mangle.svg","m":[6.72208,-0.63895,0.63895,6.72208,-122.68861,36.91973],"iw":102.061,"ih":126.706,"shade":0.18}]},"mangle-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/mangle.svg","m":[7.31592,0.57392,-0.57392,7.31592,-119.93842,-42.3807],"iw":102.061,"ih":126.706,"shade":0.18}]},"mangle-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/mangle.svg","m":[7.54733,0.44903,-0.44903,7.54733,-132.92987,-42.65947],"iw":102.061,"ih":126.706,"shade":0.18}]},"bb-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/bb.svg","m":[1.90779,0.0,-0.0,1.90779,144.59459,122.43243],"iw":100.0,"ih":170.0,"shade":0.18}]},"bb-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/bb.svg","m":[2.08538,0.01036,-0.01036,2.08538,136.19083,114.76543],"iw":100.0,"ih":170.0,"shade":0.18}]},"bb-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/bb.svg","m":[2.55348,-0.02983,0.02983,2.55348,110.52379,97.93073],"iw":100.0,"ih":170.0,"shade":0.18}]},"bb-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/bb.svg","m":[3.21494,-0.06845,0.06845,3.21494,78.64322,73.23236],"iw":100.0,"ih":170.0,"shade":0.18}]},"bb-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/bb.svg","m":[3.96762,0.23487,-0.23487,3.96762,46.96145,27.73494],"iw":100.0,"ih":170.0,"shade":0.18}]},"bb-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/bb.svg","m":[4.73336,-0.02971,0.02971,4.73336,5.53701,10.17388],"iw":100.0,"ih":170.0,"shade":0.18}]},"bb-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/bb.svg","m":[5.37126,-0.51055,0.51055,5.37126,-49.08135,8.4247],"iw":100.0,"ih":170.0,"shade":0.18}]},"bb-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/bb.svg","m":[5.84576,0.45859,-0.45859,5.84576,-35.80545,-59.11147],"iw":100.0,"ih":170.0,"shade":0.18}]},"bb-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/bb.svg","m":[6.03067,0.35879,-0.35879,6.03067,-46.58905,-61.52898],"iw":100.0,"ih":170.0,"shade":0.18}]},"puppet-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/puppet.svg","m":[1.21993,0.0,-0.0,1.21993,178.94273,235.24229],"iw":100.0,"ih":260.0,"shade":0.18}]},"puppet-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/puppet.svg","m":[1.33348,0.00662,-0.00662,1.33348,173.72102,223.72649],"iw":100.0,"ih":260.0,"shade":0.18}]},"puppet-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/puppet.svg","m":[1.63281,-0.01907,0.01907,1.63281,156.54099,195.52959],"iw":100.0,"ih":260.0,"shade":0.18}]},"puppet-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/puppet.svg","m":[2.05578,-0.04377,0.04377,2.05578,136.62631,155.09446],"iw":100.0,"ih":260.0,"shade":0.18}]},"puppet-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/puppet.svg","m":[2.53707,0.15018,-0.15018,2.53707,118.0491,97.80715],"iw":100.0,"ih":260.0,"shade":0.18}]},"puppet-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/puppet.svg","m":[3.02672,-0.019,0.019,3.02672,90.80093,58.25109],"iw":100.0,"ih":260.0,"shade":0.18}]},"puppet-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/puppet.svg","m":[3.43462,-0.32647,0.32647,3.43462,48.37555,32.76864],"iw":100.0,"ih":260.0,"shade":0.18}]},"puppet-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/puppet.svg","m":[3.73804,0.29324,-0.29324,3.73804,68.76708,-27.94819],"iw":100.0,"ih":260.0,"shade":0.18}]},"puppet-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/puppet.svg","m":[3.85628,0.22943,-0.22943,3.85628,61.45961,-36.18702],"iw":100.0,"ih":260.0,"shade":0.18}]},"wfreddy-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/wfreddy.svg","m":[1.62553,0.0,-0.0,1.62553,146.10879,130.0],"iw":115.61,"ih":185.327,"shade":0.18}]},"wfreddy-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/wfreddy.svg","m":[1.77684,0.00883,-0.00883,1.77684,137.80487,123.04565],"iw":115.61,"ih":185.327,"shade":0.18}]},"wfreddy-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/wfreddy.svg","m":[2.17569,-0.02541,0.02541,2.17569,112.66877,108.03587],"iw":115.61,"ih":185.327,"shade":0.18}]},"wfreddy-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/wfreddy.svg","m":[2.73929,-0.05832,0.05832,2.73929,81.46639,85.93064],"iw":115.61,"ih":185.327,"shade":0.18}]},"wfreddy-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/wfreddy.svg","m":[3.3806,0.20012,-0.20012,3.3806,49.17887,43.65957],"iw":115.61,"ih":185.327,"shade":0.18}]},"wfreddy-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/wfreddy.svg","m":[4.03305,-0.02531,0.02531,4.03305,9.41167,28.92598],"iw":115.61,"ih":185.327,"shade":0.18}]},"wfreddy-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/wfreddy.svg","m":[4.57657,-0.43501,0.43501,4.57657,-42.79306,29.32547],"iw":115.61,"ih":185.327,"shade":0.18}]},"wfreddy-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/wfreddy.svg","m":[4.98087,0.39074,-0.39074,4.98087,-32.98481,-35.5593],"iw":115.61,"ih":185.327,"shade":0.18}]},"wfreddy-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/wfreddy.svg","m":[5.13842,0.30571,-0.30571,5.13842,-43.22579,-37.32254],"iw":115.61,"ih":185.327,"shade":0.18}]},"wbonnie-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/wbonnie.svg","m":[1.72408,0.0,-0.0,1.72408,140.42017,130.0],"iw":115.145,"ih":175.468,"shade":0.18}]},"wbonnie-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/wbonnie.svg","m":[1.88457,0.00936,-0.00936,1.88457,131.58673,123.01476],"iw":115.145,"ih":175.468,"shade":0.18}]},"wbonnie-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/wbonnie.svg","m":[2.3076,-0.02695,0.02695,2.3076,105.05484,108.1248],"iw":115.145,"ih":175.468,"shade":0.18}]},"wbonnie-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/wbonnie.svg","m":[2.90536,-0.06186,0.06186,2.90536,71.88013,86.13473],"iw":115.145,"ih":175.468,"shade":0.18}]},"wbonnie-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/wbonnie.svg","m":[3.58556,0.21225,-0.21225,3.58556,37.34829,42.95924],"iw":115.145,"ih":175.468,"shade":0.18}]},"wbonnie-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/wbonnie.svg","m":[4.27757,-0.02685,0.02685,4.27757,-4.70219,29.01456],"iw":115.145,"ih":175.468,"shade":0.18}]},"wbonnie-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/wbonnie.svg","m":[4.85404,-0.46139,0.46139,4.85404,-58.80899,30.84783],"iw":115.145,"ih":175.468,"shade":0.18}]},"wbonnie-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/wbonnie.svg","m":[5.28285,0.41443,-0.41443,5.28285,-50.41561,-36.92673],"iw":115.145,"ih":175.468,"shade":0.18}]},"wbonnie-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/wbonnie.svg","m":[5.44995,0.32424,-0.32424,5.44995,-61.20795,-38.39239],"iw":115.145,"ih":175.468,"shade":0.18}]},"wchica-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/wchica.svg","m":[1.69973,0.0,-0.0,1.69973,141.841,130.0],"iw":115.874,"ih":177.237,"shade":0.18}]},"wchica-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/wchica.svg","m":[1.85795,0.00923,-0.00923,1.85795,133.13982,123.02248],"iw":115.874,"ih":177.237,"shade":0.18}]},"wchica-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/wchica.svg","m":[2.27501,-0.02657,0.02657,2.27501,106.95655,108.10259],"iw":115.874,"ih":177.237,"shade":0.18}]},"wchica-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/wchica.svg","m":[2.86433,-0.06098,0.06098,2.86433,74.27447,86.08376],"iw":115.874,"ih":177.237,"shade":0.18}]},"wchica-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/wchica.svg","m":[3.53492,0.20925,-0.20925,3.53492,40.30319,43.13416],"iw":115.874,"ih":177.237,"shade":0.18}]},"wchica-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/wchica.svg","m":[4.21716,-0.02647,0.02647,4.21716,-1.177,28.99243],"iw":115.874,"ih":177.237,"shade":0.18}]},"wchica-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/wchica.svg","m":[4.78549,-0.45487,0.45487,4.78549,-54.80872,30.46759],"iw":115.874,"ih":177.237,"shade":0.18}]},"wchica-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/wchica.svg","m":[5.20824,0.40858,-0.40858,5.20824,-46.06195,-36.58519],"iw":115.874,"ih":177.237,"shade":0.18}]},"wchica-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/wchica.svg","m":[5.37299,0.31967,-0.31967,5.37299,-56.71658,-38.12517],"iw":115.874,"ih":177.237,"shade":0.18}]},"foxy-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/foxy.svg","m":[2.38758,0.0,-0.0,2.38758,117.73109,130.0],"iw":102.061,"ih":126.706,"shade":0.18}]},"foxy-2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.36)"},{"img":"assets/characters/foxy.svg","m":[2.60983,0.01297,-0.01297,2.60983,106.78563,122.89155],"iw":102.061,"ih":126.706,"shade":0.18}]},"foxy-3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.39)"},{"img":"assets/characters/foxy.svg","m":[3.19566,-0.03733,0.03733,3.19566,74.68663,108.47952],"iw":102.061,"ih":126.706,"shade":0.18}]},"foxy-4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.43)"},{"img":"assets/characters/foxy.svg","m":[4.02347,-0.08566,0.08566,4.02347,33.64529,86.94878],"iw":102.061,"ih":126.706,"shade":0.18}]},"foxy-5":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.47)"},{"img":"assets/characters/foxy.svg","m":[4.96544,0.29393,-0.29393,4.96544,-9.83802,40.16601],"iw":102.061,"ih":126.706,"shade":0.18}]},"foxy-6":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.52)"},{"img":"assets/characters/foxy.svg","m":[5.92376,-0.03718,0.03718,5.92376,-60.9954,29.36788],"iw":102.061,"ih":126.706,"shade":0.18}]},"foxy-7":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.56)"},{"img":"assets/characters/foxy.svg","m":[6.72208,-0.63895,0.63895,6.72208,-122.68861,36.91973],"iw":102.061,"ih":126.706,"shade":0.18}]},"foxy-8":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.59)"},{"img":"assets/characters/foxy.svg","m":[7.31592,0.57392,-0.57392,7.31592,-119.93842,-42.3807],"iw":102.061,"ih":126.706,"shade":0.18}]},"foxy-9":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.60)"},{"img":"assets/characters/foxy.svg","m":[7.54733,0.44903,-0.44903,7.54733,-132.92987,-42.65947],"iw":102.061,"ih":126.706,"shade":0.18}]},"golden-1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/img/scare-office.webp","x":-60,"y":0,"w":600,"h":360},{"rect":[0,0,480,360],"fill":"rgba(0,0,0,0.35)"},{"img":"assets/characters/golden.svg","m":[3.14403,0.0,-0.0,3.14403,12.86611,25.0],"iw":177.5,"ih":263.5,"shade":0.18}]}}},"OfficeExtra":{"list":["bb","mangle","golden","shadow","tbonnie","bbEyes"],"pics":{"bb":{"w":295,"h":345,"cx":141,"cy":180,"layers":[{"img":"assets/characters/bb.svg","m":[2.05566,0.0,-0.0,2.05566,42.19982,11.84588],"iw":100.0,"ih":170.0,"shade":0.35}]},"mangle":{"w":359,"h":207,"cx":205,"cy":108,"layers":[{"img":"assets/characters/mangle.svg","m":[-2.48276,0.52773,-0.52773,-2.48276,373.15024,486.09364],"iw":102.061,"ih":126.706,"shade":0.45}]},"golden":{"w":360,"h":360,"cx":180,"cy":180,"layers":[{"img":"assets/characters/golden.svg","m":[1.1155,-0.23711,0.23711,1.1155,18.9136,67.53779],"iw":177.5,"ih":263.5,"shade":0.5}]},"shadow":{"w":168,"h":360,"cx":84,"cy":180,"layers":[{"img":"assets/characters/shadow.svg","m":[1.83765,0.0,-0.0,1.83765,-21.57596,20.0],"iw":115.61,"ih":185.327,"tint":"#040404"}]},"tbonnie":{"w":150,"h":208,"cx":75,"cy":104,"layers":[{"img":"assets/characters/tbonnie.svg","m":[1.99185,-0.27994,0.27994,1.99185,-49.78797,26.84987],"iw":115.145,"ih":175.468,"shade":0.4}]},"bbEyes":{"w":166,"h":139,"cx":83,"cy":69,"layers":[{"img":"assets/characters/bb.svg","m":[1.90779,0.0,-0.0,1.90779,-12.40541,2.43243],"iw":100.0,"ih":170.0,"shade":0.7}]}}},"Plush":{"list":["Sprite58","Sprite59","Sprite60","Sprite62","Sprite63","Sprite64","Sprite66","Sprite61","Sprite65"],"pics":{"Sprite58":{"w":120,"h":170,"cx":60,"cy":85,"layers":[{"img":"assets/characters/bb.svg","m":[0.98039,0.0,-0.0,0.98039,10.97222,6.11111],"iw":100.0,"ih":170.0,"shade":0.3}]},"Sprite59":{"w":120,"h":170,"cx":60,"cy":85,"layers":[{"img":"assets/characters/wbonnie.svg","m":[0.88631,0.0,-0.0,0.88631,9.06773,10.0],"iw":115.145,"ih":175.468,"shade":0.3}]},"Sprite60":{"w":120,"h":170,"cx":60,"cy":85,"layers":[{"img":"assets/characters/wchica.svg","m":[0.876,0.0,-0.0,0.876,9.67028,10.0],"iw":115.874,"ih":177.237,"shade":0.3}]},"Sprite62":{"w":120,"h":170,"cx":60,"cy":85,"layers":[{"img":"assets/characters/foxy.svg","m":[1.22945,0.0,-0.0,1.22945,-2.70101,10.0],"iw":102.061,"ih":126.706,"shade":0.3}]},"Sprite63":{"w":120,"h":170,"cx":60,"cy":85,"layers":[{"img":"assets/characters/wfreddy.svg","m":[0.83775,0.0,-0.0,0.83775,11.86978,10.0],"iw":115.61,"ih":185.327,"shade":0.3}]},"Sprite64":{"w":120,"h":170,"cx":60,"cy":85,"layers":[{"img":"assets/characters/golden.svg","m":[0.58922,0.0,-0.0,0.58922,7.85893,10.0],"iw":177.5,"ih":263.5,"shade":0.3}]},"Sprite66":{"w":120,"h":170,"cx":60,"cy":85,"layers":[{"img":"assets/characters/tbonnie.svg","m":[0.88631,0.0,-0.0,0.88631,9.06773,10.0],"iw":115.145,"ih":175.468,"shade":0.3}]},"Sprite61":{"w":84.0,"h":147.0,"cx":42.0,"cy":73.0,"layers":[{"img":"assets/img/sprite61-fnaf2cupcakeplushie.webp","x":0,"y":0,"w":84.0,"h":147.0}]},"Sprite65":{"w":236.0,"h":86.0,"cx":118.0,"cy":43.0,"layers":[{"img":"assets/img/sprite65-lonemicrophone.webp","x":0,"y":0,"w":236.0,"h":86.0}]}}},"Title":{"list":["face1","face2","face3","face4"],"pics":{"face1":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/characters/tfreddy.svg","m":[4.05825,-0.21268,0.21268,4.05825,142.74326,42.49029],"iw":115.61,"ih":185.327,"shade":0.5}]},"face2":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/characters/wfreddy.svg","m":[4.311,-0.4531,0.4531,4.311,119.27047,47.04797],"iw":115.61,"ih":185.327,"shade":0.45}]},"face3":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/characters/wbonnie.svg","m":[4.85814,-0.51061,0.51061,4.85814,86.63291,20.42324],"iw":115.145,"ih":175.468,"shade":0.45}]},"face4":{"w":480,"h":360,"cx":240,"cy":180,"clip":true,"layers":[{"rect":[0,0,480,360],"fill":"#000000"},{"img":"assets/characters/wchica.svg","m":[4.50779,-0.47379,0.47379,4.50779,107.95206,48.23759],"iw":115.874,"ih":177.237,"shade":0.45}]}}},"Loading":{"list":["icon"],"pics":{"icon":{"w":40,"h":40,"cx":20,"cy":20,"spin":true,"layers":[{"img":"assets/loading-rice.webp","x":-3,"y":4.85,"w":46,"h":34.85}]}}},"Pixel":{"list":["wfreddy","head-wfreddy","foxy","head-foxy","puppet","head-puppet","wbonnie","head-wbonnie","wchica","head-wchica","tfreddy","head-tfreddy"],"pics":{"wfreddy":{"w":87,"h":138,"cx":43.5,"cy":138,"pixel":true,"layers":[{"img":"assets/img/pixel-body-wfreddy.webp","x":0,"y":0,"w":87,"h":138}]},"head-wfreddy":{"w":96,"h":60,"cx":48.0,"cy":30.0,"pixel":true,"layers":[{"img":"assets/img/pixel-head-wfreddy.webp","x":0,"y":0,"w":96,"h":60}]},"foxy":{"w":114,"h":138,"cx":57.0,"cy":138,"pixel":true,"layers":[{"img":"assets/img/pixel-body-foxy.webp","x":0,"y":0,"w":114,"h":138}]},"head-foxy":{"w":123,"h":60,"cx":61.5,"cy":30.0,"pixel":true,"layers":[{"img":"assets/img/pixel-head-foxy.webp","x":0,"y":0,"w":123,"h":60}]},"puppet":{"w":72,"h":183,"cx":36.0,"cy":183,"pixel":true,"layers":[{"img":"assets/img/pixel-body-puppet.webp","x":0,"y":0,"w":72,"h":183}]},"head-puppet":{"w":45,"h":63,"cx":22.5,"cy":31.5,"pixel":true,"layers":[{"img":"assets/img/pixel-head-puppet.webp","x":0,"y":0,"w":45,"h":63}]},"wbonnie":{"w":93,"h":138,"cx":46.5,"cy":138,"pixel":true,"layers":[{"img":"assets/img/pixel-body-wbonnie.webp","x":0,"y":0,"w":93,"h":138}]},"head-wbonnie":{"w":102,"h":60,"cx":51.0,"cy":30.0,"pixel":true,"layers":[{"img":"assets/img/pixel-head-wbonnie.webp","x":0,"y":0,"w":102,"h":60}]},"wchica":{"w":90,"h":138,"cx":45.0,"cy":138,"pixel":true,"layers":[{"img":"assets/img/pixel-body-wchica.webp","x":0,"y":0,"w":90,"h":138}]},"head-wchica":{"w":99,"h":60,"cx":49.5,"cy":30.0,"pixel":true,"layers":[{"img":"assets/img/pixel-head-wchica.webp","x":0,"y":0,"w":99,"h":60}]},"tfreddy":{"w":87,"h":138,"cx":43.5,"cy":138,"pixel":true,"layers":[{"img":"assets/img/pixel-body-tfreddy.webp","x":0,"y":0,"w":87,"h":138}]},"head-tfreddy":{"w":96,"h":60,"cx":48.0,"cy":30.0,"pixel":true,"layers":[{"img":"assets/img/pixel-head-tfreddy.webp","x":0,"y":0,"w":96,"h":60}]}}},"Map":{"list":["map","lit1","lit2","lit3","lit4","lit5","lit6","lit7","lit8","lit9","lit10","lit11","lit12"],"pics":{"map":{"w":426.5,"h":312.0,"cx":208.0,"cy":156.0,"layers":[{"img":"assets/img/camera-map.webp","x":0,"y":0,"w":426.5,"h":312.0}],"buttons":{"1":[42.0,199.0,36.5,22.5],"2":[162.0,199.0,36.5,22.5],"3":[42.0,143.0,36.5,22.5],"4":[165.0,142.0,36.5,22.5],"5":[42.5,285.5,36.5,22.5],"6":[167.0,284.0,36.5,22.5],"7":[203.0,75.0,36.5,22.5],"8":[49.0,63.0,36.5,22.5],"9":[359.0,31.0,36.5,22.5],"10":[279.0,152.0,36.5,22.5],"11":[387.0,117.0,36.5,22.5],"12":[374.0,190.0,36.5,22.5]}},"lit1":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-01.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit2":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-02.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit3":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-03.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit4":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-04.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit5":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-05.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit6":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-06.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit7":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-07.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit8":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-08.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit9":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-09.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit10":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-10.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit11":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-11.webp","x":0,"y":0,"w":36.5,"h":22.5}]},"lit12":{"w":36.5,"h":22.5,"cx":0,"cy":0,"layers":[{"img":"assets/img/cam-button-12.webp","x":0,"y":0,"w":36.5,"h":22.5}]}}}};
-const SOUNDS = {"Stage":{"Ambient":{"src":"assets/snd/ambient.mp3","music":0}},"Light Left":{"ComputerInteriorLong_EVL02_2":{"src":"assets/snd/computerinteriorlong-evl02-2.mp3","music":0}},"Sprite3":{"deepbreaths":{"src":"assets/snd/deepbreaths.mp3","music":0}},"Sprite4":{"mask.show":{"src":"assets/snd/mask-show.mp3","music":0},"mask.hide":{"src":"assets/snd/mask-hide.mp3","music":0}},"Sprite5":{"Cam Up":{"src":"assets/snd/cam-up.mp3","music":0},"Cam down":{"src":"assets/snd/cam-down.mp3","music":0}},"Mangle":{"elec garble":{"src":"assets/snd/elec-garble.mp3","music":0}},"The office":{"buzzlight":{"src":"assets/snd/buzzlight.mp3","music":0}},"Party 01":{"With_S3":{"src":"assets/snd/with-s3.mp3","music":1}},"Left Vent":{"ventwalk1":{"src":"assets/snd/ventwalk1.mp3","music":0},"ventwalk2":{"src":"assets/snd/ventwalk2.mp3","music":0}},"Wind up":{"windup2":{"src":"assets/snd/windup2.mp3","music":0}},"Sprite6":{"Music_Box_Melody_Playful":{"src":"assets/snd/music-box-melody-playful.mp3","music":1}},"Sprite10":{"Change camera":{"src":"assets/snd/change-camera.mp3","music":0},"COMPUTER_DIGITAL_L2076605":{"src":"assets/snd/computer-digital-l2076605.mp3","music":0},"ComputerInteriorLong_EVL02_14":{"src":"assets/snd/computerinteriorlong-evl02-14.mp3","music":0}},"Sprite11":{"call 1b":{"src":"assets/snd/call-1b.mp3","music":0},"call 2b":{"src":"assets/snd/call-2b.mp3","music":0},"call 3b":{"src":"assets/snd/call-3b.mp3","music":0},"call 4b":{"src":"assets/snd/deepbreaths.mp3","music":0},"call 5b":{"src":"assets/snd/call-5b.mp3","music":0},"call 6b":{"src":"assets/snd/call-6b.mp3","music":0}},"Fansound":{"Fake":{"src":"assets/snd/fake.mp3","music":0},"Fake1":{"src":"assets/snd/fake1.mp3","music":0},"fansound":{"src":"assets/snd/fansound.mp3","music":0}},"Ambience":{"Chimes":{"src":"assets/snd/chimes.mp3","music":1},"CROWD_SMALL_CHIL_EC049202":{"src":"assets/snd/crowd-small-chil-ec049202.mp3","music":0}},"BB":{"Hello?":{"src":"assets/snd/hello.mp3","music":0},"Hi!":{"src":"assets/snd/hi.mp3","music":0},"Laugh":{"src":"assets/snd/laugh.mp3","music":0}},"Sprite16":{"ambience2":{"src":"assets/snd/ambience2.mp3","music":0}},"Sprite17":{"machineturn2":{"src":"assets/snd/machineturn2.mp3","music":0}},"Sprite19":{"FNAF 2 - Win Music-Lullaby Waltz (End Of The Game).mp3":{"src":"assets/snd/fnaf-2-win-music-lullaby-waltz-end-of-the-game-m.mp3","music":1}},"BB in the office":{"echo4b":{"src":"assets/snd/laugh.mp3","music":0}},"Sprite28":{"After Death":{"src":"assets/snd/after-death.mp3","music":0}},"Sprite45":{"During mini game.mp3":{"src":"assets/snd/during-mini-game-mp3.mp3","music":1}},"Sprite21":{"PartyFavorraspyPart_AC01__3":{"src":"assets/snd/partyfavorraspypart-ac01-3.mp3","music":0},"recording1":{"src":"assets/snd/deepbreaths.mp3","music":0}},"Sprite27":{"Xscream2":{"src":"assets/snd/xscream2.mp3","music":0},"After Death":{"src":"assets/snd/after-death-2.mp3","music":0},"jackinthebox":{"src":"assets/snd/jackinthebox.mp3","music":1}},"Title":{"title":{"src":"assets/snd/title.mp3","music":1}},"Ringtone":{"ringtone":{"src":"assets/snd/ringtone.mp3","music":0}}};
-const ASSET_FILES = ["characters/bb.svg", "characters/endo.svg", "characters/foxy.svg", "characters/golden.svg", "characters/mangle.svg", "characters/puppet.svg", "characters/shadow.svg", "characters/tbonnie.svg", "characters/tchica.svg", "characters/tfreddy.svg", "characters/wbonnie.svg", "characters/wchica.svg", "characters/wfreddy.svg", "fonts/CourierPrime.woff2", "fonts/Grand9K-Pixel.ttf", "fonts/NotoSans-Medium.ttf", "fonts/PressStart2P.woff2", "fonts/ShareTechMono.woff2", "fonts/SourceSerifPro-Regular.otf", "img/cam-button-01.webp", "img/cam-button-02.webp", "img/cam-button-03.webp", "img/cam-button-04.webp", "img/cam-button-05.webp", "img/cam-button-06.webp", "img/cam-button-07.webp", "img/cam-button-08.webp", "img/cam-button-09.webp", "img/cam-button-10.webp", "img/cam-button-11.webp", "img/cam-button-12.webp", "img/cam1-dark.webp", "img/cam1-light.webp", "img/cam10-dark.webp", "img/cam10-light.webp", "img/cam11-dark.webp", "img/cam11-light.webp", "img/cam12-dark.webp", "img/cam12-light.webp", "img/cam2-dark.webp", "img/cam2-light.webp", "img/cam3-dark.webp", "img/cam3-light.webp", "img/cam4-dark.webp", "img/cam4-light.webp", "img/cam5-dark.webp", "img/cam5-light.webp", "img/cam6-dark.webp", "img/cam6-light.webp", "img/cam7-dark.webp", "img/cam7-light.webp", "img/cam8-dark.webp", "img/cam8-light.webp", "img/cam9-dark.webp", "img/cam9-light.webp", "img/camera-map.webp", "img/light-left-0.webp", "img/light-left-1.webp", "img/office-000.webp", "img/office-001.webp", "img/office-010.webp", "img/office-100.webp", "img/pixel-body-foxy.webp", "img/pixel-body-puppet.webp", "img/pixel-body-tfreddy.webp", "img/pixel-body-wbonnie.webp", "img/pixel-body-wchica.webp", "img/pixel-body-wfreddy.webp", "img/pixel-head-foxy.webp", "img/pixel-head-puppet.webp", "img/pixel-head-tfreddy.webp", "img/pixel-head-wbonnie.webp", "img/pixel-head-wchica.webp", "img/pixel-head-wfreddy.webp", "img/right-right-0.webp", "img/right-right-1.webp", "img/scare-office.webp", "img/sprite1-95.webp", "img/sprite10-66.webp", "img/sprite10-67.webp", "img/sprite10-68.webp", "img/sprite10-70.webp", "img/sprite12-0.webp", "img/sprite12-1.webp", "img/sprite12-2.webp", "img/sprite12-3.webp", "img/sprite12-4.webp", "img/sprite13-1.webp", "img/sprite13-2.webp", "img/sprite2-119.webp", "img/sprite28-costume1.webp", "img/sprite28-costume2.webp", "img/sprite28-costume3.webp", "img/sprite28-costume4.webp", "img/sprite29-gold-star.webp", "img/sprite3-88.webp", "img/sprite4-0.webp", "img/sprite4-1.webp", "img/sprite4-2.webp", "img/sprite4-3.webp", "img/sprite4-4.webp", "img/sprite45-foxy-blank.webp", "img/sprite45-foxy-get-ready.webp", "img/sprite45-foxy-go-go-go.webp", "img/sprite45-foxy-stage.webp", "img/sprite45-foxy-stage2.webp", "img/sprite45-give-cake.webp", "img/sprite47-cakechildirritatedsprite-0.webp", "img/sprite47-cakechildirritatedsprite-1.webp", "img/sprite47-cakechildsprite-0.webp", "img/sprite47-cakechildsprite-1.webp", "img/sprite47-cakechildsprite-2.webp", "img/sprite47-cakechildsprite-3.webp", "img/sprite5-103.webp", "img/sprite5-104.webp", "img/sprite5-105.webp", "img/sprite5-106.webp", "img/sprite5-110.webp", "img/sprite5-112.webp", "img/sprite5-113.webp", "img/sprite5-114.webp", "img/sprite5-116.webp", "img/sprite5-97.webp", "img/sprite5-99.webp", "img/sprite5-none.webp", "img/sprite53-cakechildcryingdying-0.webp", "img/sprite53-cakechildcryingdying-1.webp", "img/sprite53-cakechildcryingdying-11.webp", "img/sprite53-cakechildcryingdying-12.webp", "img/sprite53-cakechildcryingdying-14.webp", "img/sprite53-cakechildcryingdying-16.webp", "img/sprite53-cakechildcryingdying-4.webp", "img/sprite53-cakechildcryingdying-6.webp", "img/sprite53-cakechildcryingdying-8.webp", "img/sprite54-purple-car.webp", "img/sprite61-fnaf2cupcakeplushie.webp", "img/sprite65-lonemicrophone.webp", "img/sprite67-costume1.webp", "img/sprite69-givethemlifeendo.webp", "img/sprite69-givethemlifeendo2.webp", "img/sprite7-normal-alert.webp", "img/sprite7-redalert.webp", "img/sprite75-confettiburst-0.webp", "img/sprite75-confettiburst-1.webp", "img/sprite75-confettiburst-2.webp", "img/sprite75-confettiburst-3.webp", "img/sprite75-confettiburst-4.webp", "img/sprite75-confettiburst-5.webp", "img/sprite75-confettiburst-6.webp", "img/sprite75-confettiburst-7.webp", "img/sprite76-purple-man.webp", "img/wind-up-wind-up0.webp", "img/wind-up-wind-up1.webp", "snd/after-death-2.mp3", "snd/after-death.mp3", "snd/ambience2.mp3", "snd/ambient.mp3", "snd/buzzlight.mp3", "snd/call-1b.mp3", "snd/call-2b.mp3", "snd/call-3b.mp3", "snd/call-5b.mp3", "snd/call-6b.mp3", "snd/cam-down.mp3", "snd/cam-up.mp3", "snd/change-camera.mp3", "snd/chimes.mp3", "snd/computer-digital-l2076605.mp3", "snd/computerinteriorlong-evl02-14.mp3", "snd/computerinteriorlong-evl02-2.mp3", "snd/crowd-small-chil-ec049202.mp3", "snd/deepbreaths.mp3", "snd/during-mini-game-mp3.mp3", "snd/elec-garble.mp3", "snd/fake.mp3", "snd/fake1.mp3", "snd/fansound.mp3", "snd/fnaf-2-win-music-lullaby-waltz-end-of-the-game-m.mp3", "snd/hello.mp3", "snd/hi.mp3", "snd/jackinthebox.mp3", "snd/laugh.mp3", "snd/machineturn2.mp3", "snd/mask-hide.mp3", "snd/mask-show.mp3", "snd/music-box-melody-playful.mp3", "snd/partyfavorraspypart-ac01-3.mp3", "snd/ringtone.mp3", "snd/title.mp3", "snd/ventwalk1.mp3", "snd/ventwalk2.mp3", "snd/windup2.mp3", "snd/with-s3.mp3", "snd/xscream2.mp3"];
-const DEFAULT_TEXTS = {
- "...": {
-  "...": "..."
- },
- "Characters": {
-  "Toy Eddy": "Toy Eddy",
-  "Toy Weddy": "Toy Weddy",
-  "Toy Cheddy": "Toy Cheddy",
-  "Mangled Endo": "Mangled Endo",
-  "Balloon Kid": "Balloon Kid",
-  "The Puppet": "The Puppet",
-  "Withered Eddy": "Withered Eddy",
-  "Withered Weddy": "Withered Weddy",
-  "Withered Cheddy": "Withered Cheddy",
-  "Withered Endo": "Withered Endo",
-  "Golden Eddie": "Golden Eddie"
- },
- "Cameras": {
-  "Party Room 1": "Party Room 1",
-  "Party Room 2": "Party Room 2",
-  "Party Room 3": "Party Room 3",
-  "Party Room 4": "Party Room 4",
-  "Left Air Vent": "Left Air Vent",
-  "Right Air Vent": "Right Air Vent",
-  "Main Hall": "Main Hall",
-  "Parts/Service": "Parts/Service",
-  "Show Stage": "Show Stage",
-  "Game Area": "Game Area",
-  "Prize Corner": "Prize Corner",
-  "Kid's Cove": "Kid's Cove"
- },
- "Custom night": {
-  "Custom": "Custom",
-  "20/20/20/20": "20/20/20/20",
-  "New & Shiny": "New & Shiny",
-  "Double Trouble": "Double Trouble",
-  "Night of Misfits": "Night of Misfits",
-  "Endo Endo": "Endo Endo",
-  "Ladies Night": "Ladies Night",
-  "Eddy's Circus": "Eddy's Circus",
-  "Cupcake Challenge": "Cupcake Challenge",
-  "Eddie Fever": "Eddie Fever",
-  "Golden Eddie": "Golden Eddie",
-  "Customize Night": "Customize Night",
-  "(0-2) easy   (3-6) med   (7-12) hard   (13-20) extreme": "(0-2) easy   (3-6) med   (7-12) hard   (13-20) extreme",
-  "READY": "READY"
- },
- "Title menu": {
-  "New Game": "New Game",
-  "Continue": "Continue",
-  "6th Night": "6th Night",
-  "It's still dark.": "It's still dark.",
-  "Fried": "Fried",
-  "Rice": "Rice",
-  "at": "at",
-  "Eddie's": "Eddie's",
-  "2": "2",
-  "Night": "Night"
- },
- "Settings": {
-  "Settings": "Settings",
-  "Jumpscares": "Jumpscares",
-  "ON": "ON",
-  "OFF": "OFF",
-  "Music": "Music",
-  "Sound": "Sound",
-  "Mods": "Mods",
-  "CONFIRM": "CONFIRM",
-  "Debug mode": "Debug mode",
-  "Golden Freddy Rate?": "Golden Freddy Rate?",
-  "Select a file": "Select a file",
-  "FILE": "FILE",
-  "EMPTY": "EMPTY",
-  "Night": "Night",
-  "ERASE": "ERASE",
-  "Save file": "Save file",
-  "CHANGE": "CHANGE",
-  "Saving and achievements are off": "Saving and achievements are off",
-  "no saving or achievements while on": "no saving or achievements while on"
- },
- "Night start": {
-  "Night": "Night"
- },
- "Help": {
-  "Hold SPACE (or click and hold) for the flashlight": "Hold SPACE (or click and hold) for the flashlight",
-  "Q / bottom-left bar: mask    E / bottom-right bar: cameras": "Q / bottom-left bar: mask    E / bottom-right bar: cameras",
-  "A / D (or hold the LIGHT buttons): vent lights": "A / D (or hold the LIGHT buttons): vent lights"
- },
- "Phone": {
-  "AM": "AM",
-  "Aidan": "Aidan",
-  "Manager": "Manager",
-  "incoming call...": "incoming call..."
- },
- "Game over": {
-  "You were caught by": "You were caught by",
-  "GAME OVER": "GAME OVER"
- },
- "Newspaper": {
-  "HELP WANTED": "HELP WANTED",
-  "Grand Re-Opening!!!": "Grand Re-Opening!!!",
-  "Old rice shop": "Old rice shop",
-  "given new life!": "given new life!",
-  "Come be a part of": "Come be a part of",
-  "the new face of": "the new face of",
-  "Fried Rice at Eddie's!": "Fried Rice at Eddie's!",
-  "What could go wrong?": "What could go wrong?",
-  "$100.50 a week!": "$100.50 a week!",
-  "To apply call:": "To apply call:",
-  "1-555-EDDIES": "1-555-EDDIES"
- },
- "Endings": {
-  "PAY TO THE ORDER OF": "PAY TO THE ORDER OF",
-  "Night Guard": "Night Guard",
-  "Fried Rice at Eddie's": "Fried Rice at Eddie's",
-  "THE END": "THE END",
-  "One hundred dollars and 50/100": "One hundred dollars and 50/100",
-  "Welcome to the family!": "Welcome to the family!",
-  "ROBOTS SCRAPPED": "ROBOTS SCRAPPED",
-  "Fried Rice at Eddie's is Closing": "Fried Rice at Eddie's is Closing",
-  "After being open only": "After being open only",
-  "a few short weeks,": "a few short weeks,",
-  "is closing its doors.": "is closing its doors.",
-  "The new characters": "The new characters",
-  "will be scrapped, but": "will be scrapped, but",
-  "the old ones are being": "the old ones are being",
-  "kept for later...": "kept for later...",
-  "It's a minor setback.": "It's a minor setback.",
-  "Twenty dollars and 10/100": "Twenty dollars and 10/100",
-  "Overtime": "Overtime",
-  "GREAT!!": "GREAT!!",
-  "(Now get out.)": "(Now get out.)",
-  "PINK SLIP": "PINK SLIP",
-  "You're fired.": "You're fired.",
-  "Reasons:": "Reasons:",
-  "-Tampering with the characters": "-Tampering with the characters",
-  "-Odor": "-Odor"
- },
- "Office": {
-  "Night": "Night"
- },
- "Minigames": {
-  "Take cake to the children.": "Take cake to the children.",
-  "Give gifts.": "Give gifts.",
-  "Give life.": "Give life."
- },
- "Achievements": {
-  "Achievements": "Achievements",
-  "Achievement Unlocked!": "Achievement Unlocked!",
-  "Hidden achievement": "Hidden achievement",
-  "Keep playing to find it.": "Keep playing to find it.",
-  "Unlocked": "Unlocked",
-  "BACK": "BACK",
-  "New Hire": "New Hire",
-  "Survive Night 1.": "Survive Night 1.",
-  "Grand Re-Opening": "Grand Re-Opening",
-  "Survive Night 2.": "Survive Night 2.",
-  "Old Friends": "Old Friends",
-  "Survive Night 3.": "Survive Night 3.",
-  "Parts and Service": "Parts and Service",
-  "Survive Night 4.": "Survive Night 4.",
-  "Payday": "Payday",
-  "Survive all five nights.": "Survive all five nights.",
-  "Bonus Shift": "Bonus Shift",
-  "Survive the 6th night.": "Survive the 6th night.",
-  "20/20/20/20": "20/20/20/20",
-  "Beat the 20/20/20/20 custom night.": "Beat the 20/20/20/20 custom night.",
-  "Prize Winner": "Prize Winner",
-  "Win a prize on a custom night challenge.": "Win a prize on a custom night challenge.",
-  "Full Desk": "Full Desk",
-  "Win every custom night prize.": "Win every custom night prize.",
-  "One of Us": "One of Us",
-  "Fool someone in the office with the mask.": "Fool someone in the office with the mask.",
-  "Lights, Camera": "Lights, Camera",
-  "Flash Withered Endo back down the hall.": "Flash Withered Endo back down the hall.",
-  "Wind It Up": "Wind It Up",
-  "Wind the music box all the way up.": "Wind the music box all the way up.",
-  "Battery Saver": "Battery Saver",
-  "Survive a night with half the battery left.": "Survive a night with half the battery left.",
-  "Security Expert": "Security Expert",
-  "Look at all 12 cameras in one night.": "Look at all 12 cameras in one night.",
-  "Hello? Hello?": "Hello? Hello?",
-  "Listen to a whole phone call.": "Listen to a whole phone call.",
-  "Not Now, Aidan": "Not Now, Aidan",
-  "Hang up on the manager.": "Hang up on the manager.",
-  "Everybody's Here": "Everybody's Here",
-  "Get caught by 8 different characters.": "Get caught by 8 different characters.",
-  "Honk": "Honk",
-  "Honk the poster's nose.": "Honk the poster's nose.",
-  "It's Me": "It's Me",
-  "Meet Golden Eddie.": "Meet Golden Eddie.",
-  "Insert Coin": "Insert Coin",
-  "Play one of the strange 8-bit games.": "Play one of the strange 8-bit games.",
-  "Take Cake": "Take Cake",
-  "Give cake to every child.": "Give cake to every child."
- }
-};
-
 // Which game this is (settings, mods and saves are kept apart from Tape 1)
 const GAME_INFO = { key: "frae2", modName: "My Eddie's 2 Mod", gameId: "fried-rice-at-eddies-2",
   template: "eddies-2-mod-template.zip", debugKeys: "H next hour &middot; P full battery + music box &middot; G Golden" };
@@ -474,99 +269,214 @@ const GAME_INFO = { key: "frae2", modName: "My Eddie's 2 Mod", gameId: "fried-ri
    THE GAME (tools/tape2/*.js)
    ===================================================================== */
 /* =====================================================================
+   PICTURES AND SOUNDS
+   Every picture is the file assets/img/<group>/<name>.webp and every sound
+   is assets/snd/<group>/<name>.mp3 (names written in lower case with
+   dashes, see fileName in pictures.js). This list says which ones exist,
+   in order (picAt(group, 3) is the third picture of a group).
+   Made by tools/flatten.py.
+   ===================================================================== */
+"use strict";
+
+const PICTURE_NAMES = {
+  "Light Left": ["0", "1"],
+  "Right Right": ["0", "1"],
+  "Sprite1": ["95"],
+  "Sprite2": ["119"],
+  "Sprite3": ["88"],
+  "Sprite4": ["0", "1", "2", "3", "4", "5"],
+  "Sprite5": ["114", "97", "116", "99", "103", "104", "105", "106", "110", "112", "113", "none"],
+  "Wind up": ["Wind up0", "Wind up1"],
+  "Sprite7": ["REDALERT!", "Normal alert"],
+  "Sprite10": ["66", "67", "68", "70"],
+  "Sprite12": ["1", "2", "3", "4", "0"],
+  "Sprite13": ["1", "2"],
+  "Sprite28": ["costume1", "costume2", "costume3", "costume4"],
+  "Sprite29": ["Gold_Star"],
+  "Sprite45": ["give cake", "foxy GET READY", "foxy GO! GO! GO!", "foxy blank", "foxy stage", "foxy stage2"],
+  "Sprite47": ["CakeChildSprite-0", "CakeChildSprite-1", "CakeChildSprite-2", "CakeChildSprite-3", "CakeChildIrritatedSprite-0", "CakeChildIrritatedSprite-1", "CakeChildIrritatedSprite-2", "CakeChildIrritatedSprite-3", "CakeChildIrritatedSprite-4", "CakeChildIrritatedSprite-5"],
+  "Sprite53": ["CakeChildCryingDying-0", "CakeChildCryingDying-1", "CakeChildCryingDying-4", "CakeChildCryingDying-6", "CakeChildCryingDying-8", "CakeChildCryingDying-11", "CakeChildCryingDying-12", "CakeChildCryingDying-13", "CakeChildCryingDying-14", "CakeChildCryingDying-16"],
+  "Sprite54": ["Purple_Car"],
+  "Sprite67": ["costume1"],
+  "Sprite69": ["GiveThemLifeEndo", "GiveThemLifeEndo2"],
+  "Sprite75": ["ConfettiBurst-0", "ConfettiBurst-1", "ConfettiBurst-2", "ConfettiBurst-3", "ConfettiBurst-4", "ConfettiBurst-5", "ConfettiBurst-6", "ConfettiBurst-7"],
+  "Sprite76": ["Purple_man"],
+  "Office": ["000", "010", "100", "001"],
+  "OfficePose": ["hall-wfreddy", "hall-foxy", "hall-tfreddy", "hall-tchica", "hall-wbonnie", "hall-mangle", "hall-golden", "ventL-tchica", "ventL-bb", "ventL-wbonnie", "ventL-endo", "ventR-tbonnie", "ventR-mangle", "ventR-wchica", "in-wchica", "in-wbonnie", "in-tfreddy", "in-wfreddy", "in-tchica", "in-tbonnie"],
+  "Cam1": ["dark", "light", "wbonnie", "wbonnie-dark", "tchica", "tchica-dark"],
+  "Cam2": ["dark", "light", "wchica", "wchica-dark", "tbonnie", "tbonnie-dark"],
+  "Cam3": ["dark", "light", "wfreddy", "wfreddy-dark", "tbonnie", "tbonnie-dark"],
+  "Cam4": ["dark", "light", "tbonnie", "tbonnie-dark", "wchica", "wchica-dark", "tchica", "tchica-dark"],
+  "Cam5": ["dark", "light", "wbonnie", "wbonnie-dark", "tchica", "tchica-dark", "bb", "bb-dark", "endo", "endo-dark"],
+  "Cam6": ["dark", "light", "tbonnie", "tbonnie-dark", "mangle", "mangle-dark", "wchica", "wchica-dark"],
+  "Cam7": ["dark", "light", "tchica", "tchica-dark", "wbonnie", "wbonnie-dark", "wfreddy", "wfreddy-dark", "puppetwalk1", "puppetwalk2", "puppetwalk3", "mangle", "mangle-dark"],
+  "Cam8": ["dark", "light", "wchica", "wchica-dark", "wbonnie", "wbonnie-dark", "foxy", "foxy-dark", "wfreddy", "wfreddy-dark", "shadow"],
+  "Cam9": ["dark", "light", "tbonnie", "tbonnie-dark", "tfreddy", "tfreddy-dark", "tchica", "tchica-dark"],
+  "Cam10": ["dark", "light", "bb", "bb-dark", "tfreddy", "tfreddy-dark", "mangle", "mangle-dark"],
+  "Cam11": ["dark", "light", "puppet1", "puppet2", "puppet3", "endo"],
+  "Cam12": ["dark", "light", "mangle", "mangle-dark"],
+  "Chars": ["tfreddy", "tbonnie", "tchica", "wfreddy", "wbonnie", "wchica", "foxy", "mangle", "golden", "endo", "shadow", "bb", "puppet"],
+  "Heads": ["tfreddy", "tbonnie", "tchica", "wfreddy", "wbonnie", "wchica", "foxy", "mangle", "golden", "endo", "shadow", "bb", "puppet"],
+  "Scare": ["tfreddy-1", "tfreddy-2", "tfreddy-3", "tfreddy-4", "tfreddy-5", "tfreddy-6", "tfreddy-7", "tfreddy-8", "tfreddy-9", "tbonnie-1", "tbonnie-2", "tbonnie-3", "tbonnie-4", "tbonnie-5", "tbonnie-6", "tbonnie-7", "tbonnie-8", "tbonnie-9", "tchica-1", "tchica-2", "tchica-3", "tchica-4", "tchica-5", "tchica-6", "tchica-7", "tchica-8", "tchica-9", "mangle-1", "mangle-2", "mangle-3", "mangle-4", "mangle-5", "mangle-6", "mangle-7", "mangle-8", "mangle-9", "bb-1", "bb-2", "bb-3", "bb-4", "bb-5", "bb-6", "bb-7", "bb-8", "bb-9", "puppet-1", "puppet-2", "puppet-3", "puppet-4", "puppet-5", "puppet-6", "puppet-7", "puppet-8", "puppet-9", "wfreddy-1", "wfreddy-2", "wfreddy-3", "wfreddy-4", "wfreddy-5", "wfreddy-6", "wfreddy-7", "wfreddy-8", "wfreddy-9", "wbonnie-1", "wbonnie-2", "wbonnie-3", "wbonnie-4", "wbonnie-5", "wbonnie-6", "wbonnie-7", "wbonnie-8", "wbonnie-9", "wchica-1", "wchica-2", "wchica-3", "wchica-4", "wchica-5", "wchica-6", "wchica-7", "wchica-8", "wchica-9", "foxy-1", "foxy-2", "foxy-3", "foxy-4", "foxy-5", "foxy-6", "foxy-7", "foxy-8", "foxy-9", "golden-1"],
+  "OfficeExtra": ["bb", "mangle", "golden", "shadow", "tbonnie", "bbEyes"],
+  "Plush": ["Sprite58", "Sprite59", "Sprite60", "Sprite62", "Sprite63", "Sprite64", "Sprite66", "Sprite61", "Sprite65"],
+  "Title": ["face1", "face2", "face3", "face4"],
+  "Loading": ["icon"],
+  "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy"],
+  "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],
+};
+
+const SOUND_NAMES = {
+  "Stage": ["Ambient"],
+  "Light Left": ["ComputerInteriorLong_EVL02_2"],
+  "Sprite3": ["deepbreaths"],
+  "Sprite4": ["mask.show", "mask.hide"],
+  "Sprite5": ["Cam Up", "Cam down"],
+  "Mangle": ["elec garble"],
+  "The office": ["buzzlight"],
+  "Party 01": ["With_S3"],
+  "Left Vent": ["ventwalk1", "ventwalk2"],
+  "Wind up": ["windup2"],
+  "Sprite6": ["Music_Box_Melody_Playful"],
+  "Sprite10": ["Change camera", "COMPUTER_DIGITAL_L2076605", "ComputerInteriorLong_EVL02_14"],
+  "Sprite11": ["call 1b", "call 2b", "call 3b", "call 4b", "call 5b", "call 6b"],
+  "Fansound": ["Fake", "Fake1", "fansound"],
+  "Ambience": ["Chimes", "CROWD_SMALL_CHIL_EC049202"],
+  "BB": ["Hello?", "Hi!", "Laugh"],
+  "Sprite16": ["ambience2"],
+  "Sprite17": ["machineturn2"],
+  "Sprite19": ["FNAF 2 - Win Music-Lullaby Waltz (End Of The Game).mp3"],
+  "BB in the office": ["echo4b"],
+  "Sprite28": ["After Death"],
+  "Sprite45": ["During mini game.mp3"],
+  "Sprite21": ["PartyFavorraspyPart_AC01__3", "recording1"],
+  "Sprite27": ["Xscream2", "After Death", "jackinthebox"],
+  "Title": ["title"],
+  "Ringtone": ["ringtone"],
+};
+
+// sounds that follow the Music slider (all others follow the Sound slider)
+const MUSIC_NAMES = new Set(["Chimes", "During mini game.mp3", "FNAF 2 - Win Music-Lullaby Waltz (End Of The Game).mp3", "Music_Box_Melody_Playful", "With_S3", "jackinthebox", "title"]);
+
+
+/* =====================================================================
+   WORDS ON PICTURES
+   Real text drawn on top of some pictures (menus, clock, camera buttons,
+   the secret song lyrics...). Mods can change any of it in texts.json.
+   box: the picture's [width, height, pin x, pin y]; each word has its
+   font, color and where it sits in the picture. Made by tools/flatten.py.
+   ===================================================================== */
+"use strict";
+
+const PICTURE_WORDS = {
+};
+
+
+/* =====================================================================
    PICTURES
    Loads every picture and draws it on the game screen.
 
    The game screen is 480 x 360 "game pixels" (it is scaled up to fit
    the window). (0, 0) is the TOP-LEFT corner, x goes right, y goes down.
 
-   Every picture lives in ART (made by tools/build_game1.py), looked up
-   by group and name, for example pic("office", "normal").
-   A picture has:
-     w, h     its size in game pixels at 100%
-     cx, cy   its "pin": the point that goes on the spot you draw it at
-     layers   what it is made of, back to front:
-                {img, x, y, w, h}            an image file
-                {img, m, iw, ih, tint?, ...} a character image placed with a matrix
-                {rect, fill, stroke, lw, hole?}  a box
-                {text, font, color, ...}     real text (mods can change it)
+   Every picture is a plain image file:
+       assets/img/<group>/<name>.webp
+   (names in lower case with dashes, see fileName). Each image is 2 image
+   pixels per game pixel, and its middle is its "pin": the point that goes
+   on the spot you draw it at. names.js lists which pictures exist.
+   Some pictures also have real words drawn on top (words.js), so mods can
+   change them in texts.json.
    ===================================================================== */
 "use strict";
 
 const VIEW_W = 480, VIEW_H = 360;
+const IMG_SCALE = 2;                  // image pixels per game pixel
+
+// "Show Stage" -> "show-stage" (how names become file names)
+function fileName(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "x";
+}
+const picturePath = (group, name) => `img/${fileName(group)}/${fileName(name)}.webp`;
+
+// Files a mod replaces: asset path -> its own file (see applyMods in ui.js)
+const MOD_FILES = {};
+const assetUrl = path => MOD_FILES[path] || "assets/" + path;
 
 /* ---------------------------------------------------------------------
    Loading files
    --------------------------------------------------------------------- */
 const Files = {
-  images: new Map(),   // url -> <img>
-  tints: new Map(),    // "url|color" -> canvas filled with one color (silhouettes, shading)
+  images: new Map(),   // asset path -> <img>
+  sizes: new Map(),    // asset path -> the game's own [width, height] (only for pictures a mod replaced)
 
-  image(url) { return this.images.get(url); },
-
-  // The same image, but every visible pixel painted one flat color
-  tinted(url, color) {
-    const key = url + "|" + color;
-    if (!this.tints.has(key)) {
-      const img = this.image(url);
-      const c = document.createElement("canvas");
-      c.width = Math.max(1, Math.ceil(img.naturalWidth * 2));
-      c.height = Math.max(1, Math.ceil(img.naturalHeight * 2));
-      const g = c.getContext("2d");
-      g.drawImage(img, 0, 0, c.width, c.height);
-      g.globalCompositeOperation = "source-in";
-      g.fillStyle = color;
-      g.fillRect(0, 0, c.width, c.height);
-      this.tints.set(key, c);
-    }
-    return this.tints.get(key);
-  },
+  image(path) { return this.images.get(path); },
 
   // Loads every picture and sound, reporting progress from 0 to 1
-  async loadAll(imageUrls, soundUrls, onProgress) {
-    const total = imageUrls.length + soundUrls.length;
+  async loadAll(imagePaths, soundPaths, onProgress) {
+    const total = imagePaths.length + soundPaths.length;
     let done = 0;
     const tick = () => onProgress(++done / total);
-    const loadImage = url => new Promise(res => {
+    const loadOne = url => new Promise(res => {
       const img = new Image();
-      img.onload = () => { this.images.set(url, img); tick(); res(); };
-      img.onerror = () => { console.warn("Missing image", url); this.images.set(url, img); tick(); res(); };
+      img.onload = () => res(img);
+      img.onerror = () => { console.warn("Missing image", url); res(null); };
       img.src = url;
     });
-    const loadSound = async url => {
-      try { await Sound.load(url); } catch (e) { console.warn("Missing sound", url, e); }
+    const loadImage = async path => {
+      const img = await loadOne(assetUrl(path));
+      if (img) this.images.set(path, img);
+      // a mod's picture may be any size: remember the game's own size so it fills the same spot
+      if (MOD_FILES[path]) {
+        const own = await loadOne("assets/" + path);
+        if (own) this.sizes.set(path, [own.naturalWidth, own.naturalHeight]);
+      }
+      tick();
+    };
+    const loadSound = async path => {
+      try { await Sound.load(path); } catch (e) { console.warn("Missing sound", path, e); }
       tick();
     };
     // a few files at a time so the browser stays responsive
-    const queue = [...imageUrls.map(u => () => loadImage(u)), ...soundUrls.map(u => () => loadSound(u))];
+    const queue = [...imagePaths.map(u => () => loadImage(u)), ...soundPaths.map(u => () => loadSound(u))];
     const workers = Array.from({ length: 8 }, async () => { while (queue.length) await queue.shift()(); });
     await Promise.all(workers);
   }
 };
 
-// Every image file any picture uses (for the loading bar)
-function allImageUrls() {
-  const urls = new Set();
-  for (const group of Object.values(ART))
-    for (const p of Object.values(group.pics))
-      for (const L of p.layers) if (L.img) urls.add(L.img);
-  return [...urls];
+// Every picture file (for the loading bar and the mod template)
+function allImagePaths() {
+  const out = [];
+  for (const [group, names] of Object.entries(PICTURE_NAMES)) for (const n of names) out.push(picturePath(group, n));
+  return out;
 }
 
 /* ---------------------------------------------------------------------
    Finding pictures
+   A picture: its image (img, iw x ih game pixels, pin in the middle) and
+   its box (w, h, pin cx, cy) that hit tests and words use.
    --------------------------------------------------------------------- */
+const pictureCache = new Map();
+function hasPic(group, name) { return !!(PICTURE_NAMES[group] && PICTURE_NAMES[group].includes(name)); }
 function pic(group, name) {
-  const g = ART[group];
-  const p = g && g.pics[name];
-  if (!p) console.warn("No picture", group, name);
+  const key = group + "/" + name;
+  if (pictureCache.has(key)) return pictureCache.get(key);
+  if (!hasPic(group, name)) { console.warn("No picture", group, name); return undefined; }
+  const path = picturePath(group, name), img = Files.image(path);
+  const [nw, nh] = Files.sizes.get(path) || (img ? [img.naturalWidth, img.naturalHeight] : [0, 0]);
+  const iw = nw / IMG_SCALE, ih = nh / IMG_SCALE;
+  const words = typeof PICTURE_WORDS !== "undefined" ? PICTURE_WORDS[key] : undefined;
+  const [w, h, cx, cy] = words ? words.box : [iw, ih, iw / 2, ih / 2];
+  const p = { img, iw, ih, w, h, cx, cy, words: words ? words.words : null,
+              pixel: group === "Pixel",                         // 8-bit pictures stay blocky
+              spin: group.toLowerCase() === "loading" };         // the spinning rice bowl
+  pictureCache.set(key, p);
   return p;
 }
 // The n-th picture of a group (1 = first), for random picks and number names
 function picAt(group, n) {
-  const list = ART[group].list;
+  const list = PICTURE_NAMES[group];
   const i = ((Math.round(n) - 1) % list.length + list.length) % list.length;
-  return ART[group].pics[list[i]];
+  return pic(group, list[i]);
 }
 
 /* ---------------------------------------------------------------------
@@ -634,51 +544,11 @@ function drawText(ctx, L) {
 }
 
 /* ---------------------------------------------------------------------
-   Drawing one picture's layers (in picture units, top-left = 0,0)
+   Painting one picture (in picture units, top-left of its box = 0,0)
    --------------------------------------------------------------------- */
-function drawLayers(ctx, p) {
-  ctx.save();
-  if (p.clip) { ctx.beginPath(); ctx.rect(0, 0, p.w, p.h); ctx.clip(); }     // nothing pokes out of the picture
-  for (const L of p.layers) {
-    if (L.img) {
-      const img = L.tint ? Files.tinted(L.img, L.tint) : Files.image(L.img);
-      if (!img || img.complete === false) continue;
-      ctx.save();
-      if (L.cut) { ctx.beginPath(); ctx.rect(...L.cut); ctx.clip(); }     // only part of the image
-      if (L.outline) {                                                     // only inside these shapes
-        if (!L._clip) {
-          L._clip = new Path2D();
-          for (const [d, m] of L.outline) L._clip.addPath(new Path2D(d), new DOMMatrix(m));
-        }
-        ctx.clip(L._clip);
-      }
-      if (L.m) { ctx.transform(...L.m); ctx.drawImage(img, 0, 0, L.iw, L.ih); }
-      else ctx.drawImage(img, L.x, L.y, L.w, L.h);
-      if (L.shade) {                                                       // darker (characters in dark rooms)
-        ctx.globalAlpha *= L.shade;
-        const dark = Files.tinted(L.img, "#000");
-        if (L.m) ctx.drawImage(dark, 0, 0, L.iw, L.ih); else ctx.drawImage(dark, L.x, L.y, L.w, L.h);
-      }
-      ctx.restore();
-    } else if (L.rect) {
-      const [x, y, w, h] = L.rect;
-      if (L.fill && L.hole) {
-        // a filled box with a see-through window
-        ctx.beginPath();
-        ctx.rect(x, y, w, h);
-        ctx.rect(...L.hole);
-        ctx.fillStyle = L.fill;
-        ctx.fill("evenodd");
-      } else if (L.fill) { ctx.fillStyle = L.fill; ctx.fillRect(x, y, w, h); }
-      if (L.stroke) {
-        ctx.strokeStyle = L.stroke; ctx.lineWidth = L.lw;
-        ctx.strokeRect(x + L.lw / 2, y + L.lw / 2, w - L.lw, h - L.lw);
-      }
-    } else if (L.text !== undefined) {
-      drawText(ctx, L);
-    }
-  }
-  ctx.restore();
+function paintPicture(ctx, p) {
+  if (p.img) ctx.drawImage(p.img, p.cx - p.iw / 2, p.cy - p.ih / 2, p.iw, p.ih);
+  if (p.words) for (const L of p.words) drawText(ctx, L);
 }
 
 /* ---------------------------------------------------------------------
@@ -701,10 +571,10 @@ function draw(ctx, p, x, y, o = {}) {
     ctx.scale(Math.cos(performance.now() / 2400 * Math.PI * 2), 1);
   }
   ctx.translate(-p.cx, -p.cy);
-  if (p.pixel) ctx.imageSmoothingEnabled = false;                 // 8-bit pictures stay blocky
+  if (p.pixel) ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha *= alpha;
   if (o.bright) ctx.filter = `brightness(${Math.max(0, 1 + o.bright / 100)})`;
-  drawLayers(ctx, p);
+  paintPicture(ctx, p);
   ctx.restore();
 }
 
@@ -718,7 +588,7 @@ function pictureMask(p) {
   const c = document.createElement("canvas");
   c.width = w; c.height = h;
   const g = c.getContext("2d");
-  drawLayers(g, p);
+  paintPicture(g, p);
   let data = null;
   try { data = g.getImageData(0, 0, w, h).data; } catch (e) { /* opened from a file: treat as solid */ }
   const alpha = new Uint8Array(w * h);
@@ -737,7 +607,7 @@ function hits(p, x, y, size, px, py) {
   return m.alpha[v * m.w + u] > 0;
 }
 
-// Was screen point (px, py) inside the picture's rectangle (good for words)?
+// Was screen point (px, py) inside the picture's box (good for words)?
 function inBox(p, x, y, size, px, py, pad = 0) {
   if (!p) return false;
   const k = (size || 100) / 100;
@@ -769,8 +639,9 @@ class Smooth {
 
 /* =====================================================================
    SOUND
-   Every sound lives in SOUNDS (made by the build), looked up by group
-   and name, for example Sound.play("office", "Buzz_Fan_Florescent2").
+   Every sound is a plain file, assets/snd/<group>/<name>.mp3, looked up
+   by group and name, for example speaker.play("office", "Buzz_Fan_Florescent2").
+   names.js lists which sounds exist and which ones are music.
 
    Sounds go through a "speaker". A speaker has its own volume
    (0-100), like a radio you can turn up and down while it plays.
@@ -785,9 +656,20 @@ const Sound = {
   buffers: new Map(),       // url -> decoded sound
   speakers: [],
 
-  async load(url) {
-    const data = await (await fetch(url)).arrayBuffer();
-    this.buffers.set(url, await this.ctx.decodeAudioData(data));
+  // where a sound's file is (null if there is no such sound)
+  path(group, name) {
+    return SOUND_NAMES[group] && SOUND_NAMES[group].includes(name) ? `snd/${fileName(group)}/${fileName(name)}.mp3` : null;
+  },
+  // every sound file (for the loading bar and the mod template)
+  allPaths() {
+    const out = [];
+    for (const [group, names] of Object.entries(SOUND_NAMES)) for (const n of names) out.push(this.path(group, n));
+    return out;
+  },
+
+  async load(path) {
+    const data = await (await fetch(assetUrl(path))).arrayBuffer();
+    this.buffers.set(path, await this.ctx.decodeAudioData(data));
   },
 
   // A speaker for one thing in the game (the phone, the fan, the kitchen...)
@@ -829,16 +711,16 @@ class Speaker {
      speaker starts it over. Options: loop (repeat forever).
      Returns a handle: handle.done turns true when it finishes. */
   play(group, name, o = {}) {
-    const info = SOUNDS[group] && SOUNDS[group][name];
-    const buffer = info && Sound.buffers.get(info.src);
+    const path = Sound.path(group, name);
+    const buffer = path && Sound.buffers.get(path);
     const handle = { done: true, stop() {} };
-    if (!buffer) { if (!info) console.warn("No sound", group, name); return handle; }
+    if (!buffer) { if (!path) console.warn("No sound", group, name); return handle; }
     this.stop(name);
     const src = Sound.ctx.createBufferSource();
     src.buffer = buffer;
     src.loop = !!o.loop;
     const gain = Sound.ctx.createGain();          // this sound's own volume (for fading out)
-    src.connect(gain).connect(info.music ? this.music : this.sfx);
+    src.connect(gain).connect(MUSIC_NAMES.has(name) ? this.music : this.sfx);
     handle.done = false;
     handle.stop = () => { try { src.stop(); } catch (e) {} handle.done = true; };
     // fade to silence over `secs` seconds, then stop
@@ -960,6 +842,14 @@ const CAMS = {
   4: W("Cameras", "Party Room 4"), 5: W("Cameras", "Left Air Vent"), 6: W("Cameras", "Right Air Vent"),
   7: W("Cameras", "Main Hall"), 8: W("Cameras", "Parts/Service"), 9: W("Cameras", "Show Stage"),
   10: W("Cameras", "Game Area"), 11: W("Cameras", "Prize Corner"), 12: W("Cameras", "Kid's Cove"),
+};
+
+// The 12 buttons on the camera map: [left, top, width, height] from the map's middle
+// (map picture units; the map is drawn at 45%). Each "lit<N>" picture's pin is its top-left corner.
+const MAP_BUTTONS = {
+  1: [-166, 43, 36.5, 22.5], 2: [-46, 43, 36.5, 22.5], 3: [-166, -13, 36.5, 22.5], 4: [-43, -14, 36.5, 22.5],
+  5: [-165.5, 129.5, 36.5, 22.5], 6: [-41, 128, 36.5, 22.5], 7: [-5, -81, 36.5, 22.5], 8: [-159, -93, 36.5, 22.5],
+  9: [151, -125, 36.5, 22.5], 10: [71, -4, 36.5, 22.5], 11: [179, -39, 36.5, 22.5], 12: [166, 34, 36.5, 22.5],
 };
 
 /* ---------------------------------------------------------------------
@@ -1981,9 +1871,8 @@ class Game {
     const n = this.n;
     if (this.onPhone(x, y)) { this.phoneTap(); return; }
     if (n.camsUp) {
-      const mp = pic("Map", "map");
-      for (const [k, r] of Object.entries(mp.buttons)) {
-        const bx = SX(139) + (r[0] - mp.cx) * 0.45, by = SY(-73) + (r[1] - mp.cy) * 0.45;
+      for (const [k, r] of Object.entries(MAP_BUTTONS)) {
+        const bx = SX(139) + r[0] * 0.45, by = SY(-73) + r[1] * 0.45;
         if (x >= bx - 2 && x <= bx + r[2] * 0.45 + 2 && y >= by - 2 && y <= by + r[3] * 0.45 + 2) { this.switchCam(Number(k)); return; }
       }
       return;
@@ -2011,7 +1900,7 @@ class Game {
     if (who === "golden") return this.goldenCrash();
     if (settings.jumpscares !== "1") return this.dead();
     this.sp.scream.play("Sprite27", "Xscream2");
-    const frames = ART.Scare.list.filter(s => s.startsWith(who + "-"));
+    const frames = PICTURE_NAMES.Scare.filter(s => s.startsWith(who + "-"));
     n.jumpscare = { who, frames, i: 0 };
   }
   updateJumpscare() {
@@ -2393,7 +2282,7 @@ class Game {
     const flick = v && !n.maskUp ? (this.tick % 6 < 2 ? -85 : 0) : 0;
     draw(ctx, pic("Office", base), ox, oy, { size: 150, bright: n.hallFlicker ? -60 : flick });
     // who is in the hall / at a vent
-    const pose = name => { const p = ART.OfficePose.pics[name]; if (p) draw(ctx, p, ox, oy, { size: 150, bright: flick }); };
+    const pose = name => { if (hasPic("OfficePose", name)) draw(ctx, pic("OfficePose", name), ox, oy, { size: 150, bright: flick }); };
     if (n.flash) {
       for (const [who, at] of Object.entries(n.at)) if (at === "hall") pose("hall-" + who);
       if (n.golden === "hall") pose("hall-golden");
@@ -2408,7 +2297,7 @@ class Game {
     draw(ctx, pic("Sprite13", String(n.fanFrame)), SX(pan + 90), SY(-100), { size: 65 });
     for (const prize of this.progress.prizes) {
       const p = PRIZE_SPOT[prize];
-      if (p && ART.Plush && ART.Plush.pics[prize]) draw(ctx, pic("Plush", prize), SX(pan + p[0]), SY(p[1]), { size: 50 });
+      if (p && hasPic("Plush", prize)) draw(ctx, pic("Plush", prize), SX(pan + p[0]), SY(p[1]), { size: 50 });
     }
     // others in the office
     if (n.bbIn) draw(ctx, pic("OfficeExtra", "bb"), SX(pan - 90), SY(-20), { size: 65 });
@@ -2427,11 +2316,11 @@ class Game {
 
   drawCams(ctx, a) {
     const n = this.n, c = n.cam;
-    const group = ART["Cam" + c];
+    const group = "Cam" + c;
     const light = n.camFlash;
     const x = 240 + this.smooth.at("camPan", a);
-    draw(ctx, group.pics[light ? "light" : "dark"], x, 180, { size: 150 });
-    const pose = name => { const p = group.pics[name]; if (p) draw(ctx, p, x, 180, { size: 150 }); };
+    draw(ctx, pic(group, light ? "light" : "dark"), x, 180, { size: 150 });
+    const pose = name => { if (hasPic(group, name)) draw(ctx, pic(group, name), x, 180, { size: 150 }); };
     for (const [who, at] of Object.entries(n.at)) if (at === c) pose(who + (light ? "" : "-dark"));
     // the Puppet coming out of the box, and walking down the main hall
     if (c === 11 && n.puppet > 0) pose("puppet" + Math.min(3, n.puppet));
@@ -2442,11 +2331,10 @@ class Game {
     this.drawStatic(ctx, 0.12 + n.switchFx * 0.8);
     if (n.switchFx > 0.5) draw(ctx, picAt("Sprite10", rand(1, 4)), 240, 180, { alpha: n.switchFx - 0.5 });
     // the map and its buttons
-    const mp = pic("Map", "map");
-    draw(ctx, mp, SX(139), SY(-73), { size: 45 });
-    const r = mp.buttons[c];
+    draw(ctx, pic("Map", "map"), SX(139), SY(-73), { size: 45 });
+    const r = MAP_BUTTONS[c];
     if (Math.floor(this.tick / 15) % 2 === 0)
-      draw(ctx, pic("Map", "lit" + c), SX(139) + (r[0] - mp.cx) * 0.45, SY(-73) + (r[1] - mp.cy) * 0.45, { size: 45 });
+      draw(ctx, pic("Map", "lit" + c), SX(139) + r[0] * 0.45, SY(-73) + r[1] * 0.45, { size: 45 });
     this.text(ctx, CAMS[c], 292, 178, { size: 12, shadow: "#000" });
     // music box controls on camera 11
     if (c === 11) {
@@ -2889,12 +2777,14 @@ function typed(blob, path) {
 const KINDS = { image: ["png", "webp", "jpg", "jpeg", "gif", "svg"], audio: ["mp3", "wav", "ogg", "m4a"], font: ["ttf", "otf", "woff", "woff2"] };
 const kindOf = p => { const e = p.split(".").pop().toLowerCase(); return Object.keys(KINDS).find(k => KINDS[k].includes(e)) || e; };
 const stemOf = p => p.split("/").slice(-2).join("/").replace(/\.[^./]+$/, "").toLowerCase();
+// Every file the game has (pictures, sounds, fonts): what a mod can replace
+function assetFiles() { return [...allImagePaths(), ...Sound.allPaths(), ...Object.keys(FONT_FAMILY)]; }
 let GAME_FILE_BY_STEM = null;
 // "anything/img/office-normal.png" -> "img/office-normal.webp" (the game's own file), or null
 function gameFile(path) {
   if (!GAME_FILE_BY_STEM) {
     GAME_FILE_BY_STEM = {};
-    for (const a of ASSET_FILES) GAME_FILE_BY_STEM[stemOf(a)] = a;
+    for (const a of assetFiles()) GAME_FILE_BY_STEM[stemOf(a)] = a;
   }
   const a = GAME_FILE_BY_STEM[stemOf(path)];
   return a && kindOf(a) === kindOf(path) ? a : null;
@@ -2908,7 +2798,7 @@ async function toPng(blob, path) {
     img.src = url;
     await img.decode();
     let scale = 1;
-    if (path.endsWith(".svg")) scale = path.startsWith("characters/") ? 6 : 4;
+    if (path.endsWith(".svg")) scale = 4;
     const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
     const k = Math.min(1, 4096 / Math.max(w, h));             // keep huge pictures a sane size
     const c = document.createElement("canvas");
@@ -3126,12 +3016,13 @@ async function buildTemplate(onProgress) {
     version: "1.0.0",
     description: "Describe your mod here",
     game: GI.gameId,
-    howTo: "Replace any file in img, snd, characters or fonts with your own using the SAME file name. Pictures can be PNG, JPG, WEBP or SVG at any size (they are stretched to fit the same spot). Sounds can be MP3, WAV or OGG. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods."
+    howTo: "Replace any file in img, snd or fonts with your own using the SAME file name. Pictures can be PNG, JPG, WEBP or SVG at any size (they are stretched to fit the same spot). Sounds can be MP3, WAV or OGG. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods."
   };
   entries.push({ path: "manifest.json", bytes: enc.encode(JSON.stringify(manifest, null, 2)) });
   entries.push({ path: "texts.json", bytes: enc.encode(JSON.stringify(DEFAULT_TEXTS, null, 2)) });
   let done = 0;
-  const queue = [...ASSET_FILES];
+  const files = assetFiles();
+  const queue = [...files];
   const workers = Array.from({ length: 6 }, async () => {
     while (queue.length) {
       const f = queue.shift();
@@ -3143,7 +3034,7 @@ async function buildTemplate(onProgress) {
       } else {
         entries.push({ path: f, bytes: new Uint8Array(await blob.arrayBuffer()) });
       }
-      onProgress(++done / ASSET_FILES.length);
+      onProgress(++done / files.length);
     }
   });
   await Promise.all(workers);
@@ -3196,8 +3087,10 @@ const FONT_FAMILY = {
   "fonts/Grand9K-Pixel.ttf": "Pixel", "fonts/PressStart2P.woff2": "Press Start 2P",
   "fonts/CourierPrime.woff2": "Courier Prime", "fonts/ShareTechMono.woff2": "Share Tech Mono"
 };
+let DEFAULT_TEXTS = {};      // every word the game shows (assets/texts.json), by group
 async function applyMods() {
   // start with the game's own words
+  try { DEFAULT_TEXTS = await (await fetch("assets/texts.json")).json(); } catch (e) { console.warn("No texts.json", e); }
   const texts = {};
   const mergeTexts = obj => {
     for (const [k, v] of Object.entries(obj || {})) {
@@ -3220,9 +3113,8 @@ async function applyMods() {
     if (mod.texts) mergeTexts(mod.texts);
   }
   TEXTS = texts;
-  const url = {};
   for (const [path, blob] of Object.entries(files)) {
-    url["assets/" + path] = URL.createObjectURL(blob);
+    MOD_FILES[path] = URL.createObjectURL(blob);         // the game loads this instead of its own file
     if (FONT_FAMILY[path]) {
       try {
         const face = new FontFace(FONT_FAMILY[path], await blob.arrayBuffer());
@@ -3231,11 +3123,6 @@ async function applyMods() {
       } catch (e) { console.warn("Mod font did not load", path); }
     }
   }
-  // point every picture layer and sound at the mod's file instead
-  for (const group of Object.values(ART))
-    for (const p of Object.values(group.pics)) for (const L of p.layers) if (L.img && url[L.img]) L.img = url[L.img];
-  for (const group of Object.values(SOUNDS))
-    for (const s of Object.values(group)) if (url[s.src]) s.src = url[s.src];
   return mods.length;
 }
 
@@ -3676,13 +3563,11 @@ const barInner = document.getElementById("barInner");
 
 // Put mods in place first, then load every file the game needs (with the progress bar)
 applyMods().then(() => {
-  const soundUrls = new Set();
-  for (const group of Object.values(SOUNDS)) for (const s of Object.values(group)) soundUrls.add(s.src);
   return Promise.all([
     document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Pixel"'),
     document.fonts.load('10px "Press Start 2P"'), document.fonts.load('10px "Share Tech Mono"'),
     document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Serif"'),
-    Files.loadAll(allImageUrls(), [...soundUrls], p => { barInner.style.width = Math.round(p * 100) + "%"; })
+    Files.loadAll(allImagePaths(), Sound.allPaths(), p => { barInner.style.width = Math.round(p * 100) + "%"; })
   ]);
 }).then(() => {
   // Everything is loaded: go straight to the title screen

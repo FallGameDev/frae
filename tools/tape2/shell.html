@@ -261,12 +261,6 @@
 </div>
 
 <script>
-/* =====================================================================
-   GAME DATA: every picture (ART), sound (SOUNDS), the mod template file
-   list and the default words. Made by tools/build_game2.py.
-   ===================================================================== */
-/*DATA*/
-
 // Which game this is (settings, mods and saves are kept apart from Tape 1)
 const GAME_INFO = { key: "frae2", modName: "My Eddie's 2 Mod", gameId: "fried-rice-at-eddies-2",
   template: "eddies-2-mod-template.zip", debugKeys: "H next hour &middot; P full battery + music box &middot; G Golden" };
@@ -316,13 +310,11 @@ const barInner = document.getElementById("barInner");
 
 // Put mods in place first, then load every file the game needs (with the progress bar)
 applyMods().then(() => {
-  const soundUrls = new Set();
-  for (const group of Object.values(SOUNDS)) for (const s of Object.values(group)) soundUrls.add(s.src);
   return Promise.all([
     document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Pixel"'),
     document.fonts.load('10px "Press Start 2P"'), document.fonts.load('10px "Share Tech Mono"'),
     document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Serif"'),
-    Files.loadAll(allImageUrls(), [...soundUrls], p => { barInner.style.width = Math.round(p * 100) + "%"; })
+    Files.loadAll(allImagePaths(), Sound.allPaths(), p => { barInner.style.width = Math.round(p * 100) + "%"; })
   ]);
 }).then(() => {
   // Everything is loaded: go straight to the title screen

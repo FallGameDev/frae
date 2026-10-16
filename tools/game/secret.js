@@ -57,7 +57,7 @@ Object.assign(Game.prototype, {
 
     // ---------- 0 s: glitchy title screen ----------
     run(function* () { statik.show = true; statik.ghost = 100; yield* fadeBy(statik, -0.35, 100); });
-    run(function* () { let i = 0; for (;;) { statik.pic = ART[statik.group].list[i++ % 8]; yield; } });
+    run(function* () { let i = 0; for (;;) { statik.pic = PICTURE_NAMES[statik.group][i++ % 8]; yield; } });
     for (const line of [line1, line2]) {
       run(function* () { line.show = true; line.ghost = 100; yield 0.65; yield* fadeBy(line, -0.32, 100); });
       run(function* () { for (let i = 0; i < 100; i++) { line.y += 1.2; yield 0.04; yield; } });

@@ -5,93 +5,104 @@
    The game screen is 480 x 360 "game pixels" (it is scaled up to fit
    the window). (0, 0) is the TOP-LEFT corner, x goes right, y goes down.
 
-   Every picture lives in ART (made by tools/build_game1.py), looked up
-   by group and name, for example pic("office", "normal").
-   A picture has:
-     w, h     its size in game pixels at 100%
-     cx, cy   its "pin": the point that goes on the spot you draw it at
-     layers   what it is made of, back to front:
-                {img, x, y, w, h}            an image file
-                {img, m, iw, ih, tint?, ...} a character image placed with a matrix
-                {rect, fill, stroke, lw, hole?}  a box
-                {text, font, color, ...}     real text (mods can change it)
+   Every picture is a plain image file:
+       assets/img/<group>/<name>.webp
+   (names in lower case with dashes, see fileName). Each image is 2 image
+   pixels per game pixel, and its middle is its "pin": the point that goes
+   on the spot you draw it at. names.js lists which pictures exist.
+   Some pictures also have real words drawn on top (words.js), so mods can
+   change them in texts.json.
    ===================================================================== */
 "use strict";
 
 const VIEW_W = 480, VIEW_H = 360;
+const IMG_SCALE = 2;                  // image pixels per game pixel
+
+// "Show Stage" -> "show-stage" (how names become file names)
+function fileName(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "x";
+}
+const picturePath = (group, name) => `img/${fileName(group)}/${fileName(name)}.webp`;
+
+// Files a mod replaces: asset path -> its own file (see applyMods in ui.js)
+const MOD_FILES = {};
+const assetUrl = path => MOD_FILES[path] || "assets/" + path;
 
 /* ---------------------------------------------------------------------
    Loading files
    --------------------------------------------------------------------- */
 const Files = {
-  images: new Map(),   // url -> <img>
-  tints: new Map(),    // "url|color" -> canvas filled with one color (silhouettes, shading)
+  images: new Map(),   // asset path -> <img>
+  sizes: new Map(),    // asset path -> the game's own [width, height] (only for pictures a mod replaced)
 
-  image(url) { return this.images.get(url); },
-
-  // The same image, but every visible pixel painted one flat color
-  tinted(url, color) {
-    const key = url + "|" + color;
-    if (!this.tints.has(key)) {
-      const img = this.image(url);
-      const c = document.createElement("canvas");
-      c.width = Math.max(1, Math.ceil(img.naturalWidth * 2));
-      c.height = Math.max(1, Math.ceil(img.naturalHeight * 2));
-      const g = c.getContext("2d");
-      g.drawImage(img, 0, 0, c.width, c.height);
-      g.globalCompositeOperation = "source-in";
-      g.fillStyle = color;
-      g.fillRect(0, 0, c.width, c.height);
-      this.tints.set(key, c);
-    }
-    return this.tints.get(key);
-  },
+  image(path) { return this.images.get(path); },
 
   // Loads every picture and sound, reporting progress from 0 to 1
-  async loadAll(imageUrls, soundUrls, onProgress) {
-    const total = imageUrls.length + soundUrls.length;
+  async loadAll(imagePaths, soundPaths, onProgress) {
+    const total = imagePaths.length + soundPaths.length;
     let done = 0;
     const tick = () => onProgress(++done / total);
-    const loadImage = url => new Promise(res => {
+    const loadOne = url => new Promise(res => {
       const img = new Image();
-      img.onload = () => { this.images.set(url, img); tick(); res(); };
-      img.onerror = () => { console.warn("Missing image", url); this.images.set(url, img); tick(); res(); };
+      img.onload = () => res(img);
+      img.onerror = () => { console.warn("Missing image", url); res(null); };
       img.src = url;
     });
-    const loadSound = async url => {
-      try { await Sound.load(url); } catch (e) { console.warn("Missing sound", url, e); }
+    const loadImage = async path => {
+      const img = await loadOne(assetUrl(path));
+      if (img) this.images.set(path, img);
+      // a mod's picture may be any size: remember the game's own size so it fills the same spot
+      if (MOD_FILES[path]) {
+        const own = await loadOne("assets/" + path);
+        if (own) this.sizes.set(path, [own.naturalWidth, own.naturalHeight]);
+      }
+      tick();
+    };
+    const loadSound = async path => {
+      try { await Sound.load(path); } catch (e) { console.warn("Missing sound", path, e); }
       tick();
     };
     // a few files at a time so the browser stays responsive
-    const queue = [...imageUrls.map(u => () => loadImage(u)), ...soundUrls.map(u => () => loadSound(u))];
+    const queue = [...imagePaths.map(u => () => loadImage(u)), ...soundPaths.map(u => () => loadSound(u))];
     const workers = Array.from({ length: 8 }, async () => { while (queue.length) await queue.shift()(); });
     await Promise.all(workers);
   }
 };
 
-// Every image file any picture uses (for the loading bar)
-function allImageUrls() {
-  const urls = new Set();
-  for (const group of Object.values(ART))
-    for (const p of Object.values(group.pics))
-      for (const L of p.layers) if (L.img) urls.add(L.img);
-  return [...urls];
+// Every picture file (for the loading bar and the mod template)
+function allImagePaths() {
+  const out = [];
+  for (const [group, names] of Object.entries(PICTURE_NAMES)) for (const n of names) out.push(picturePath(group, n));
+  return out;
 }
 
 /* ---------------------------------------------------------------------
    Finding pictures
+   A picture: its image (img, iw x ih game pixels, pin in the middle) and
+   its box (w, h, pin cx, cy) that hit tests and words use.
    --------------------------------------------------------------------- */
+const pictureCache = new Map();
+function hasPic(group, name) { return !!(PICTURE_NAMES[group] && PICTURE_NAMES[group].includes(name)); }
 function pic(group, name) {
-  const g = ART[group];
-  const p = g && g.pics[name];
-  if (!p) console.warn("No picture", group, name);
+  const key = group + "/" + name;
+  if (pictureCache.has(key)) return pictureCache.get(key);
+  if (!hasPic(group, name)) { console.warn("No picture", group, name); return undefined; }
+  const path = picturePath(group, name), img = Files.image(path);
+  const [nw, nh] = Files.sizes.get(path) || (img ? [img.naturalWidth, img.naturalHeight] : [0, 0]);
+  const iw = nw / IMG_SCALE, ih = nh / IMG_SCALE;
+  const words = typeof PICTURE_WORDS !== "undefined" ? PICTURE_WORDS[key] : undefined;
+  const [w, h, cx, cy] = words ? words.box : [iw, ih, iw / 2, ih / 2];
+  const p = { img, iw, ih, w, h, cx, cy, words: words ? words.words : null,
+              pixel: group === "Pixel",                         // 8-bit pictures stay blocky
+              spin: group.toLowerCase() === "loading" };         // the spinning rice bowl
+  pictureCache.set(key, p);
   return p;
 }
 // The n-th picture of a group (1 = first), for random picks and number names
 function picAt(group, n) {
-  const list = ART[group].list;
+  const list = PICTURE_NAMES[group];
   const i = ((Math.round(n) - 1) % list.length + list.length) % list.length;
-  return ART[group].pics[list[i]];
+  return pic(group, list[i]);
 }
 
 /* ---------------------------------------------------------------------
@@ -159,51 +170,11 @@ function drawText(ctx, L) {
 }
 
 /* ---------------------------------------------------------------------
-   Drawing one picture's layers (in picture units, top-left = 0,0)
+   Painting one picture (in picture units, top-left of its box = 0,0)
    --------------------------------------------------------------------- */
-function drawLayers(ctx, p) {
-  ctx.save();
-  if (p.clip) { ctx.beginPath(); ctx.rect(0, 0, p.w, p.h); ctx.clip(); }     // nothing pokes out of the picture
-  for (const L of p.layers) {
-    if (L.img) {
-      const img = L.tint ? Files.tinted(L.img, L.tint) : Files.image(L.img);
-      if (!img || img.complete === false) continue;
-      ctx.save();
-      if (L.cut) { ctx.beginPath(); ctx.rect(...L.cut); ctx.clip(); }     // only part of the image
-      if (L.outline) {                                                     // only inside these shapes
-        if (!L._clip) {
-          L._clip = new Path2D();
-          for (const [d, m] of L.outline) L._clip.addPath(new Path2D(d), new DOMMatrix(m));
-        }
-        ctx.clip(L._clip);
-      }
-      if (L.m) { ctx.transform(...L.m); ctx.drawImage(img, 0, 0, L.iw, L.ih); }
-      else ctx.drawImage(img, L.x, L.y, L.w, L.h);
-      if (L.shade) {                                                       // darker (characters in dark rooms)
-        ctx.globalAlpha *= L.shade;
-        const dark = Files.tinted(L.img, "#000");
-        if (L.m) ctx.drawImage(dark, 0, 0, L.iw, L.ih); else ctx.drawImage(dark, L.x, L.y, L.w, L.h);
-      }
-      ctx.restore();
-    } else if (L.rect) {
-      const [x, y, w, h] = L.rect;
-      if (L.fill && L.hole) {
-        // a filled box with a see-through window
-        ctx.beginPath();
-        ctx.rect(x, y, w, h);
-        ctx.rect(...L.hole);
-        ctx.fillStyle = L.fill;
-        ctx.fill("evenodd");
-      } else if (L.fill) { ctx.fillStyle = L.fill; ctx.fillRect(x, y, w, h); }
-      if (L.stroke) {
-        ctx.strokeStyle = L.stroke; ctx.lineWidth = L.lw;
-        ctx.strokeRect(x + L.lw / 2, y + L.lw / 2, w - L.lw, h - L.lw);
-      }
-    } else if (L.text !== undefined) {
-      drawText(ctx, L);
-    }
-  }
-  ctx.restore();
+function paintPicture(ctx, p) {
+  if (p.img) ctx.drawImage(p.img, p.cx - p.iw / 2, p.cy - p.ih / 2, p.iw, p.ih);
+  if (p.words) for (const L of p.words) drawText(ctx, L);
 }
 
 /* ---------------------------------------------------------------------
@@ -226,10 +197,10 @@ function draw(ctx, p, x, y, o = {}) {
     ctx.scale(Math.cos(performance.now() / 2400 * Math.PI * 2), 1);
   }
   ctx.translate(-p.cx, -p.cy);
-  if (p.pixel) ctx.imageSmoothingEnabled = false;                 // 8-bit pictures stay blocky
+  if (p.pixel) ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha *= alpha;
   if (o.bright) ctx.filter = `brightness(${Math.max(0, 1 + o.bright / 100)})`;
-  drawLayers(ctx, p);
+  paintPicture(ctx, p);
   ctx.restore();
 }
 
@@ -243,7 +214,7 @@ function pictureMask(p) {
   const c = document.createElement("canvas");
   c.width = w; c.height = h;
   const g = c.getContext("2d");
-  drawLayers(g, p);
+  paintPicture(g, p);
   let data = null;
   try { data = g.getImageData(0, 0, w, h).data; } catch (e) { /* opened from a file: treat as solid */ }
   const alpha = new Uint8Array(w * h);
@@ -262,7 +233,7 @@ function hits(p, x, y, size, px, py) {
   return m.alpha[v * m.w + u] > 0;
 }
 
-// Was screen point (px, py) inside the picture's rectangle (good for words)?
+// Was screen point (px, py) inside the picture's box (good for words)?
 function inBox(p, x, y, size, px, py, pad = 0) {
   if (!p) return false;
   const k = (size || 100) / 100;

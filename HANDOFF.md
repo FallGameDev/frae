@@ -5,20 +5,21 @@ Repo: FallGameDev/frae (GitHub Pages: fallgamedev.github.io/frae)
 ## Layout
 - `index.html`: franchise menu (carousel of 4 games, VHS style). Save file picker (FILE 1-3, keys 1/2/3), remembered in localStorage `frae-file`. START opens `1/?file=N` or `2/?file=N`. Games 1 and 2 are unlocked (`GAMES` list).
 - `1/index.html`: game 1, built by the tools below (do not edit by hand).
-- `1/assets/`: img, snd, characters, fonts, loading-rice.webp.
+- `1/assets/`: `img/<group>/<name>.webp` (one finished picture each, pin in the middle, 2 px per game pixel), `snd/<group>/<name>.mp3`, fonts, `texts.json` (every word, for mods), loading-rice.webp. Same layout in `2/assets/`.
+- Each game page is ONE plain HTML file with the hand-written code in `<script>`; there is no data block from the Scratch project. `names.js` (next to each game's code) lists which pictures/sounds exist; Tape 1's `words.js` holds the real text drawn on some pictures (mods change it in texts.json).
 - `favicon.png/.ico` (rice bowl), `1/favicon.png/.ico` (Eddie), `2/favicon.png/.ico` (Eddie with a 2).
 - `img/game1.png`, `img/game2.png`: menu card pictures.
 
 ## Building game 1
 - Full build (re-renders all art from the Scratch project): `python3 tools/build_game1.py path/to/unzipped_sb3`
-- Code-only rebuild (after changing JS/HTML only): `python3 tools/build_game1.py --code` (needs `tools/data_cache.js`; if it is missing, copy everything from `const ART = ` up to the `THE GAME` comment out of `1/index.html` into it)
-- The build makes ART (pictures as layers), SOUNDS, ASSET_FILES and DEFAULT_TEXTS, then joins them with the hand-written code into `1/index.html`.
+- Code-only rebuild (after changing JS/HTML only): `python3 tools/build_game1.py --code`
+- The build describes every picture as layers (rooms, character files, words...), then `tools/flatten.py 1` paints each one into a single image file (headless browser, using `tools/legacy_layers.js`) and writes `tools/game/names.js` + `words.js` + `assets/texts.json`. `1/index.html` is just `game_shell.html` with the code files pasted into its `<script>`.
 - Art pipeline: `tools/mods.py` (text sprites to real text, unused costumes), `tools/cameras.py` (empty rooms + separate character art), `tools/custom_night.py`, `tools/fanmade.py` (fan-made cast replaces FNaF characters).
 - New phone calls and ringtone live in `tools/calls/` (night1-4.mp3, ringtone.mp3); the build copies them in.
 
 ## Hand-written game code (`tools/game/`)
-- `pictures.js`: drawing pictures/text, hit tests, Smooth (interpolation between 30 Hz updates).
-- `sound.js`: speakers with their own volumes, music/sound buses, fadeOut.
+- `pictures.js` (shared): loads `assets/img/<group>/<name>.webp` by name (`pic`, `picAt`, `hasPic`), draws them and their words, hit tests, mod file swaps (`MOD_FILES`), Smooth (interpolation between 30 Hz updates).
+- `sound.js` (shared): sounds by name from `assets/snd/`, speakers with their own volumes, music/sound buses (music = `MUSIC_NAMES`), fadeOut.
 - `game.js`: the Game class. Screens: title, night, custom, secret, black (+ overlays). Night logic: clock (90 s/hour), power, doors/lights, monitor + cameras, AI for Weddy/Cheddy/Endo/Eddie, phone + call banner, power out, jumpscares, 6 AM, endings, custom night (+ 1227 and 1987 codes). Save files: `frae1-save-fileN`.
 - `secret.js`: the Dine In music video timeline.
 - `achievements.js`: list of achievements, unlock(), Steam-style toast and list panel.
@@ -32,7 +33,7 @@ Repo: FallGameDev/frae (GitHub Pages: fallgamedev.github.io/frae)
 ## Tape 2 (`2/`)
 Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Full build: `python3 tools/build_game2.py path/to/unzipped_FNAF_2_sb3`
-- Code-only rebuild: `python3 tools/build_game2.py --code` (uses `tools/tape2/data_cache.js`, git-ignored)
+- Code-only rebuild: `python3 tools/build_game2.py --code`. The full build ends with `tools/flatten.py 2` (pictures become plain image files, `tools/tape2/names.js`).
 - Title song: `tools/tape2/title.mp3` (Beat Saber multiplayer lobby music). Ringtone shared from `tools/calls/`.
 - Phone calls: the original FNaF 2 calls (nights 1-6) for now, with the Tape 1 call banner.
 

@@ -95,6 +95,14 @@ const CAMS = {
   10: W("Cameras", "Game Area"), 11: W("Cameras", "Prize Corner"), 12: W("Cameras", "Kid's Cove"),
 };
 
+// The 12 buttons on the camera map: [left, top, width, height] from the map's middle
+// (map picture units; the map is drawn at 45%). Each "lit<N>" picture's pin is its top-left corner.
+const MAP_BUTTONS = {
+  1: [-166, 43, 36.5, 22.5], 2: [-46, 43, 36.5, 22.5], 3: [-166, -13, 36.5, 22.5], 4: [-43, -14, 36.5, 22.5],
+  5: [-165.5, 129.5, 36.5, 22.5], 6: [-41, 128, 36.5, 22.5], 7: [-5, -81, 36.5, 22.5], 8: [-159, -93, 36.5, 22.5],
+  9: [151, -125, 36.5, 22.5], 10: [71, -4, 36.5, 22.5], 11: [179, -39, 36.5, 22.5], 12: [166, 34, 36.5, 22.5],
+};
+
 /* ---------------------------------------------------------------------
    Where everyone walks. Numbers are cameras; the other spots are:
      hall   the dark hallway in front of the office (flashlight shows it)
@@ -1114,9 +1122,8 @@ class Game {
     const n = this.n;
     if (this.onPhone(x, y)) { this.phoneTap(); return; }
     if (n.camsUp) {
-      const mp = pic("Map", "map");
-      for (const [k, r] of Object.entries(mp.buttons)) {
-        const bx = SX(139) + (r[0] - mp.cx) * 0.45, by = SY(-73) + (r[1] - mp.cy) * 0.45;
+      for (const [k, r] of Object.entries(MAP_BUTTONS)) {
+        const bx = SX(139) + r[0] * 0.45, by = SY(-73) + r[1] * 0.45;
         if (x >= bx - 2 && x <= bx + r[2] * 0.45 + 2 && y >= by - 2 && y <= by + r[3] * 0.45 + 2) { this.switchCam(Number(k)); return; }
       }
       return;
@@ -1144,7 +1151,7 @@ class Game {
     if (who === "golden") return this.goldenCrash();
     if (settings.jumpscares !== "1") return this.dead();
     this.sp.scream.play("Sprite27", "Xscream2");
-    const frames = ART.Scare.list.filter(s => s.startsWith(who + "-"));
+    const frames = PICTURE_NAMES.Scare.filter(s => s.startsWith(who + "-"));
     n.jumpscare = { who, frames, i: 0 };
   }
   updateJumpscare() {
@@ -1526,7 +1533,7 @@ class Game {
     const flick = v && !n.maskUp ? (this.tick % 6 < 2 ? -85 : 0) : 0;
     draw(ctx, pic("Office", base), ox, oy, { size: 150, bright: n.hallFlicker ? -60 : flick });
     // who is in the hall / at a vent
-    const pose = name => { const p = ART.OfficePose.pics[name]; if (p) draw(ctx, p, ox, oy, { size: 150, bright: flick }); };
+    const pose = name => { if (hasPic("OfficePose", name)) draw(ctx, pic("OfficePose", name), ox, oy, { size: 150, bright: flick }); };
     if (n.flash) {
       for (const [who, at] of Object.entries(n.at)) if (at === "hall") pose("hall-" + who);
       if (n.golden === "hall") pose("hall-golden");
@@ -1541,7 +1548,7 @@ class Game {
     draw(ctx, pic("Sprite13", String(n.fanFrame)), SX(pan + 90), SY(-100), { size: 65 });
     for (const prize of this.progress.prizes) {
       const p = PRIZE_SPOT[prize];
-      if (p && ART.Plush && ART.Plush.pics[prize]) draw(ctx, pic("Plush", prize), SX(pan + p[0]), SY(p[1]), { size: 50 });
+      if (p && hasPic("Plush", prize)) draw(ctx, pic("Plush", prize), SX(pan + p[0]), SY(p[1]), { size: 50 });
     }
     // others in the office
     if (n.bbIn) draw(ctx, pic("OfficeExtra", "bb"), SX(pan - 90), SY(-20), { size: 65 });
@@ -1560,11 +1567,11 @@ class Game {
 
   drawCams(ctx, a) {
     const n = this.n, c = n.cam;
-    const group = ART["Cam" + c];
+    const group = "Cam" + c;
     const light = n.camFlash;
     const x = 240 + this.smooth.at("camPan", a);
-    draw(ctx, group.pics[light ? "light" : "dark"], x, 180, { size: 150 });
-    const pose = name => { const p = group.pics[name]; if (p) draw(ctx, p, x, 180, { size: 150 }); };
+    draw(ctx, pic(group, light ? "light" : "dark"), x, 180, { size: 150 });
+    const pose = name => { if (hasPic(group, name)) draw(ctx, pic(group, name), x, 180, { size: 150 }); };
     for (const [who, at] of Object.entries(n.at)) if (at === c) pose(who + (light ? "" : "-dark"));
     // the Puppet coming out of the box, and walking down the main hall
     if (c === 11 && n.puppet > 0) pose("puppet" + Math.min(3, n.puppet));
@@ -1575,11 +1582,10 @@ class Game {
     this.drawStatic(ctx, 0.12 + n.switchFx * 0.8);
     if (n.switchFx > 0.5) draw(ctx, picAt("Sprite10", rand(1, 4)), 240, 180, { alpha: n.switchFx - 0.5 });
     // the map and its buttons
-    const mp = pic("Map", "map");
-    draw(ctx, mp, SX(139), SY(-73), { size: 45 });
-    const r = mp.buttons[c];
+    draw(ctx, pic("Map", "map"), SX(139), SY(-73), { size: 45 });
+    const r = MAP_BUTTONS[c];
     if (Math.floor(this.tick / 15) % 2 === 0)
-      draw(ctx, pic("Map", "lit" + c), SX(139) + (r[0] - mp.cx) * 0.45, SY(-73) + (r[1] - mp.cy) * 0.45, { size: 45 });
+      draw(ctx, pic("Map", "lit" + c), SX(139) + r[0] * 0.45, SY(-73) + r[1] * 0.45, { size: 45 });
     this.text(ctx, CAMS[c], 292, 178, { size: 12, shadow: "#000" });
     // music box controls on camera 11
     if (c === 11) {
