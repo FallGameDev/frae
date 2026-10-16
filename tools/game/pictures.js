@@ -226,6 +226,7 @@ function draw(ctx, p, x, y, o = {}) {
     ctx.scale(Math.cos(performance.now() / 2400 * Math.PI * 2), 1);
   }
   ctx.translate(-p.cx, -p.cy);
+  if (p.pixel) ctx.imageSmoothingEnabled = false;                 // 8-bit pictures stay blocky
   ctx.globalAlpha *= alpha;
   if (o.bright) ctx.filter = `brightness(${Math.max(0, 1 + o.bright / 100)})`;
   drawLayers(ctx, p);

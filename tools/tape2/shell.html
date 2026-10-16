@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fried Rice at Eddie's 2</title>
+<!-- Tab icon -->
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="icon" href="favicon.ico" sizes="any">
+<style>
+  /* ===== Fonts used by the game's text (Scratch's own fonts + pixel fonts) ===== */
+  @font-face { font-family: "Sans Serif"; src: url("assets/fonts/NotoSans-Medium.ttf"); }
+  @font-face { font-family: "Pixel"; src: url("assets/fonts/Grand9K-Pixel.ttf"); }
+  @font-face { font-family: "Press Start 2P"; src: url("assets/fonts/PressStart2P.woff2"); }
+  @font-face { font-family: "Share Tech Mono"; src: url("assets/fonts/ShareTechMono.woff2"); }
+  @font-face { font-family: "Courier Prime"; src: url("assets/fonts/CourierPrime.woff2"); }
+  @font-face { font-family: "Serif"; src: url("assets/fonts/SourceSerifPro-Regular.otf"); }
+
+  /* ===== Page theme: black VHS look to match the game menu ===== */
+  :root {
+    --bg: #000;
+    --line: #fff;
+    --dim: #8a8a99;
+    --accent: #5b16ec;
+    --soul: #ff2a3c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: #fff; overflow: hidden; }
+  body {
+    font-family: "Press Start 2P", monospace;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none;
+  }
+
+  /* The game screen keeps its 4:3 shape and grows to fit the window */
+  #frame {
+    position: relative;
+    border: 4px solid var(--line);
+    box-shadow: 0 0 0 4px #000, 8px 8px 0 4px #1d1d2b;
+    background: #000;
+  }
+  #stage { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
+
+  /* ===== Loading screen: a flat picture spinning in 3D, with a bar under it ===== */
+  #cover {
+    position: absolute; inset: 0; z-index: 5;
+    background: #000; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 6%;
+    perspective: 900px;                       /* gives the spin its 3D depth */
+    transition: opacity .4s;
+  }
+  #cover.done { opacity: 0; pointer-events: none; }
+  #spinner {
+    width: 38%;
+    animation: spin 2.4s linear infinite;    /* one full turn every 2.4 seconds */
+  }
+  @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+  #barOuter { width: 46%; height: 16px; border: 3px solid #fff; padding: 2px; }
+  #barInner { height: 100%; width: 0; background: #fff; transition: width .15s; }
+
+
+  /* ===== Question box (left arrow: Golden Eddie's rate) ===== */
+  #ask {
+    position: absolute; left: 4%; right: 4%; bottom: 4%; z-index: 7;
+    background: #000; border: 3px solid #fff; padding: 10px; display: flex; flex-direction: column; gap: 8px;
+    font-family: "Share Tech Mono", monospace;
+  }
+  #ask[hidden] { display: none; }
+  #askText { font-size: calc(var(--u) * 12); }
+  #ask div { display: flex; gap: 8px; }
+  #askInput { flex: 1; font: inherit; font-size: calc(var(--u) * 12); padding: 6px; background: #111; color: #fff; border: 2px solid #fff; }
+  #ask button { font: inherit; font-size: calc(var(--u) * 11); background: #f7931e; color: #fff; border: 2px solid #fff; padding: 0 10px; cursor: pointer; }
+
+  /* ===== Settings + Mods panels (sizes use --u = 1 game pixel) ===== */
+  .panel {
+    position: absolute; inset: 0; z-index: 6; background: #000; color: #fff;
+    font-family: "Share Tech Mono", monospace; font-size: calc(var(--u) * 13);
+    display: flex; flex-direction: column; padding: calc(var(--u) * 14) calc(var(--u) * 18);
+    animation: fadeIn .35s;
+  }
+  .panel[hidden] { display: none; }
+  @keyframes fadeIn { from { opacity: 0; } }
+  .panel button, .panel input { font: inherit; color: #fff; }
+  .panel button { cursor: pointer; background: #000; border: calc(var(--u) * 2) solid #fff; padding: calc(var(--u) * 4) calc(var(--u) * 10); }
+  .panel button:hover { background: #222; }
+  .panel button:active { transform: translateY(calc(var(--u) * 1)); }
+  .panel button:disabled { opacity: .4; cursor: wait; }
+
+  /* debug mode box: see-through, clicks go right through it */
+  #debug { position: absolute; left: calc(var(--u) * 4); top: calc(var(--u) * 4); z-index: 5; pointer-events: none;
+    max-width: 46%; max-height: calc(100% - var(--u) * 8); overflow: hidden; padding: calc(var(--u) * 4) calc(var(--u) * 6);
+    background: rgba(0,0,0,.6); color: #ccc; border: 1px solid #f7931e; border-radius: calc(var(--u) * 3);
+    font: calc(var(--u) * 7) / 1.35 "Share Tech Mono", monospace; }
+  #debug .head { color: #f7931e; letter-spacing: .15em; }
+  #debug b { color: #fff; font-weight: normal; }
+  #debug .vars { margin-top: calc(var(--u) * 3); }
+  #debug .vars div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #debug .chg, #debug .chg b { color: #ffe14d; }
+  #debug .warn { margin-top: calc(var(--u) * 2); color: #ff6b6b; }
+  #debug .keys { margin-top: calc(var(--u) * 3); color: #888; }
+  /* settings */
+  #settingsPanel h2 { font-size: calc(var(--u) * 22); font-weight: normal; margin-bottom: calc(var(--u) * 16); }
+  #settingsPanel .row { display: flex; align-items: center; gap: calc(var(--u) * 12); margin: calc(var(--u) * 9) 0 calc(var(--u) * 9) calc(var(--u) * 40); }
+  #settingsPanel .label { width: calc(var(--u) * 110); font-size: calc(var(--u) * 15); }
+  #settingsPanel .pair { display: flex; gap: calc(var(--u) * 8); }
+  /* jumpscare buttons: orange when picked, gray when not (like the old pictures) */
+  #settingsPanel .pick { min-width: calc(var(--u) * 70); font-family: "Sans Serif", sans-serif; font-size: calc(var(--u) * 16);
+    background: #666; border-color: #666; padding: calc(var(--u) * 3) calc(var(--u) * 10); }
+  #settingsPanel .pick:hover { border-color: #fff; background: #777; }
+  #settingsPanel .pick.on { background: #f7931e; border-color: #f7931e; }
+  #settingsPanel .pick.on:hover { border-color: #fff; }
+  #settingsPanel input[type=range] { width: calc(var(--u) * 170); accent-color: #f7931e; }
+  #settingsPanel .val { width: calc(var(--u) * 40); color: #aaa; }
+  #settingsPanel .big { font-size: calc(var(--u) * 15); padding: calc(var(--u) * 4) calc(var(--u) * 22); }
+  #settingsPanel .confirm { margin: auto auto 0; font-family: "Sans Serif", sans-serif; font-size: calc(var(--u) * 18);
+    background: #666; border-color: #666; padding: calc(var(--u) * 4) calc(var(--u) * 26); }
+  #settingsPanel .confirm:hover { border-color: #fff; }
+
+  #settingsPanel .note { color: #888; font-size: calc(var(--u) * 9); }
+  #settingsPanel .fileNow { color: #aaa; min-width: calc(var(--u) * 150); }
+  #settingsPanel .small { font-size: calc(var(--u) * 12); padding: calc(var(--u) * 2) calc(var(--u) * 10); }
+
+  /* save file screen */
+  #filesPanel { align-items: center; justify-content: center; gap: calc(var(--u) * 14); }
+  #filesPanel h2 { font-size: calc(var(--u) * 22); font-weight: normal; }
+  #filesPanel .slots { display: flex; flex-direction: column; gap: calc(var(--u) * 10); width: 72%; }
+  #filesPanel .slotWrap { display: flex; gap: calc(var(--u) * 8); }
+  #filesPanel .slot { flex: 1; display: flex; justify-content: space-between; align-items: center;
+    padding: calc(var(--u) * 10) calc(var(--u) * 14); font-size: calc(var(--u) * 15); border-width: calc(var(--u) * 3); }
+  #filesPanel .slot:hover, #filesPanel .slot:focus { border-color: #f7931e; background: #1a1206; outline: none; }
+  #filesPanel .slot.empty .fileInfo { color: #666; }
+  #filesPanel .fileInfo { color: #f7931e; }
+  #filesPanel .erase { font-size: calc(var(--u) * 10); color: #888; border-color: #444; }
+  #filesPanel .erase:hover { color: #ff6b6b; border-color: #ff6b6b; background: #000; }
+  #filesPanel .hint { color: #777; font-size: calc(var(--u) * 11); }
+
+  /* ===== Achievements (Steam style) ===== */
+  #toasts { position: absolute; right: calc(var(--u) * 6); bottom: calc(var(--u) * 6); z-index: 8; pointer-events: none;
+    display: flex; flex-direction: column; gap: calc(var(--u) * 4); overflow: hidden; }
+  .toast { display: flex; align-items: center; gap: calc(var(--u) * 7); width: calc(var(--u) * 150); padding: calc(var(--u) * 6);
+    background: linear-gradient(to bottom, #2a3f5a, #1b2838); border: 1px solid #3d5a7a; box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 10) rgba(0,0,0,.6);
+    font-family: "Sans Serif", sans-serif; transform: translateY(130%); opacity: 0; transition: transform .45s ease, opacity .45s ease; }
+  .toast.in { transform: none; opacity: 1; }
+  .toastTitle { color: #fff; font-size: calc(var(--u) * 7.5); }
+  .toastName { color: #8f98a0; font-size: calc(var(--u) * 7); margin-top: calc(var(--u) * 1.5); }
+  .achIcon { flex: none; width: calc(var(--u) * 28); height: calc(var(--u) * 28); display: grid; place-items: center;
+    color: #fff; font: 600 calc(var(--u) * 13) "Sans Serif", sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
+  .achIcon.locked { filter: grayscale(1) brightness(.45); }
+  #achPanel { background: #1b2838; font-family: "Sans Serif", sans-serif; gap: calc(var(--u) * 6); }
+  .achTop { display: flex; align-items: center; gap: calc(var(--u) * 10); }
+  .achTop h2 { font-weight: normal; font-size: calc(var(--u) * 16); }
+  .achTop button { font-family: "Share Tech Mono", monospace; font-size: calc(var(--u) * 10); background: transparent; border-color: #3d5a7a; }
+  .achCount { margin-left: auto; color: #8f98a0; font-size: calc(var(--u) * 9); }
+  .achBar { height: calc(var(--u) * 4); background: #0e1621; }
+  .achFill { height: 100%; background: linear-gradient(to right, #5c7e10, #a4d007); }
+  .achList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 3); padding-right: calc(var(--u) * 3); }
+  .achRow { display: flex; align-items: center; gap: calc(var(--u) * 8); padding: calc(var(--u) * 5); background: #233246; }
+  .achRow.locked { background: #18222f; }
+  .achText { flex: 1; min-width: 0; }
+  .achName { font-size: calc(var(--u) * 9); color: #fff; }
+  .achRow.locked .achName { color: #8f98a0; }
+  .achDesc { font-size: calc(var(--u) * 7.5); color: #8f98a0; margin-top: calc(var(--u) * 1); }
+  .achDate { font-size: calc(var(--u) * 7); color: #8f98a0; white-space: nowrap; }
+
+  /* mods */
+  #modsPanel { gap: calc(var(--u) * 7); }
+  .modsTop { display: flex; align-items: center; gap: calc(var(--u) * 10); }
+  .modsTop h2 { font-size: calc(var(--u) * 20); font-weight: normal; }
+  .tabs { display: flex; gap: calc(var(--u) * 6); margin-left: auto; }
+  .tabs button.on { background: #fff; color: #000; }
+  .pane { border: calc(var(--u) * 2) solid #444; padding: calc(var(--u) * 6) calc(var(--u) * 8); display: flex; flex-wrap: wrap; gap: calc(var(--u) * 6); align-items: center; }
+  .pane[hidden] { display: none; }
+  .pane .hint { color: #999; font-size: calc(var(--u) * 11); width: 100%; }
+  #ghInput { flex: 1; min-width: 0; background: #111; border: calc(var(--u) * 2) solid #fff; padding: calc(var(--u) * 4) calc(var(--u) * 6); }
+  #modStatus { min-height: calc(var(--u) * 15); font-size: calc(var(--u) * 11); color: #9f9; }
+  #modStatus.bad { color: #ff6b6b; }
+  .lists { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 10); min-height: 0; }
+  .col { display: flex; flex-direction: column; min-height: 0; }
+  .col h3 { font-weight: normal; font-size: calc(var(--u) * 13); margin-bottom: calc(var(--u) * 4); }
+  .col h3 small { color: #999; font-size: calc(var(--u) * 10); }
+  .list { flex: 1; overflow-y: auto; border: calc(var(--u) * 2) solid #fff; padding: calc(var(--u) * 5); }
+  #modsInUse { border-color: #f7931e; }
+  .mod { position: relative; border: calc(var(--u) * 2) solid #666; padding: calc(var(--u) * 4) calc(var(--u) * 22) calc(var(--u) * 4) calc(var(--u) * 6);
+    margin-bottom: calc(var(--u) * 5); background: #111; cursor: grab; touch-action: none; user-select: none; }
+  .mod:hover { border-color: #fff; }
+  .modName { font-size: calc(var(--u) * 13); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .modInfo { font-size: calc(var(--u) * 10); color: #999; }
+  .mod .del { position: absolute; right: calc(var(--u) * 3); top: calc(var(--u) * 3); border: none; padding: 0 calc(var(--u) * 4); font-size: calc(var(--u) * 14); color: #999; background: none; }
+  .mod .del:hover { color: #ff6b6b; background: none; }
+  .mod.dragging { opacity: .3; }
+  .mod.ghost { position: fixed; z-index: 99; pointer-events: none; opacity: .9; border-color: #fff; font-family: "Share Tech Mono", monospace; color: #fff; }
+  .dropMark { height: calc(var(--u) * 3); background: #f7931e; margin-bottom: calc(var(--u) * 5); }
+  .empty { color: #666; font-size: calc(var(--u) * 11); text-align: center; padding: calc(var(--u) * 14) 0; }
+  #reloadNote { position: absolute; inset: 0; z-index: 7; background: #000; display: flex; align-items: center; justify-content: center; }
+  #reloadNote[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<div id="frame">
+  <canvas id="stage" tabindex="0"></canvas>
+
+  <!-- Loading screen: spinning rice bowl + loading bar -->
+  <div id="cover">
+    <img id="spinner" src="assets/loading-rice.webp" alt="">
+    <div id="barOuter"><div id="barInner"></div></div>
+  </div>
+
+
+  <!-- Debug mode box (turn it on in Settings) -->
+  <div id="debug" hidden></div>
+
+  <!-- Achievement pop-ups (bottom right) and the achievements list -->
+  <div id="toasts"></div>
+  <div id="achPanel" class="panel" hidden></div>
+
+  <!-- Save file screen (when the address has no ?file=1, 2 or 3) -->
+  <div id="filesPanel" class="panel" hidden></div>
+
+  <!-- Settings screen (opens when the Settings button is clicked) -->
+  <div id="settingsPanel" class="panel" hidden></div>
+
+  <!-- Mods screen -->
+  <div id="modsPanel" class="panel" hidden>
+    <div class="modsTop">
+      <button id="modsBack">&lt; BACK</button>
+      <h2>MODS</h2>
+      <div class="tabs">
+        <button id="tabUnpacked">LOAD UNPACKED</button>
+        <button id="tabPacked">LOAD PACKED</button>
+      </div>
+    </div>
+    <div class="pane" id="paneUnpacked">
+      <button id="pickFolder">PICK MOD FOLDER</button>
+      <button id="pickZip">PICK .ZIP</button>
+      <button id="tplBtn" style="margin-left:auto">DOWNLOAD TEMPLATE</button>
+      <div class="hint">Pick a mod folder from your computer. New to modding? Download the template, change some files, then pick that folder.</div>
+      <input type="file" id="folderInput" webkitdirectory directory multiple hidden>
+      <input type="file" id="zipInput" accept=".zip" hidden>
+    </div>
+    <div class="pane" id="panePacked" hidden>
+      <input id="ghInput" placeholder="github.com/user/repo" autocomplete="off" spellcheck="false">
+      <button id="ghLoad">LOAD</button>
+      <div class="hint">Loads a mod straight from a public GitHub repo (it needs a manifest.json).</div>
+    </div>
+    <div id="modStatus"></div>
+    <div class="lists">
+      <div class="col"><h3>DOWNLOADED <small>(not in use)</small></h3><div class="list" id="modsDownloaded"></div></div>
+      <div class="col"><h3>IN USE <small>(top one wins)</small></h3><div class="list" id="modsInUse"></div></div>
+    </div>
+  </div>
+  <div id="reloadNote" hidden></div>
+
+  <!-- Question box (left arrow on the title: how rare Golden Eddie is) -->
+  <form id="ask" hidden>
+    <div id="askText"></div>
+    <div><input id="askInput" autocomplete="off" inputmode="numeric"><button type="submit">OK</button></div>
+  </form>
+
+</div>
+
+<script>
+/* =====================================================================
+   GAME DATA: every picture (ART), sound (SOUNDS), the mod template file
+   list and the default words. Made by tools/build_game2.py.
+   ===================================================================== */
+/*DATA*/
+
+// Which game this is (settings, mods and saves are kept apart from Tape 1)
+const GAME_INFO = { key: "frae2", modName: "My Eddie's 2 Mod", gameId: "fried-rice-at-eddies-2",
+  template: "eddies-2-mod-template.zip", debugKeys: "H next hour &middot; P full battery + music box &middot; G Golden" };
+
+/* =====================================================================
+   THE GAME (tools/tape2/*.js)
+   ===================================================================== */
+/*GAME*/
+
+/* =====================================================================
+   SETTINGS, MODS AND DEBUG MODE (tools/ui.js)
+   ===================================================================== */
+/*UI*/
+
+/* =====================================================================
+   START UP
+   ===================================================================== */
+const canvas = document.getElementById("stage");
+const frame = document.getElementById("frame");
+const game = new Game(canvas);
+
+// Fit the 4:3 screen inside the window (and keep it sharp on hi-res screens)
+function fit() {
+  const full = document.fullscreenElement === frame;
+  const maxW = window.innerWidth - (full ? 0 : 40);
+  const maxH = window.innerHeight - (full ? 0 : 40);
+  const w = Math.max(240, Math.min(maxW, maxH * 4 / 3));
+  const h = w * 3 / 4;
+  frame.style.width = (full ? window.innerWidth : w + 8) + "px";
+  frame.style.height = (full ? window.innerHeight : h + 8) + "px";
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  frame.style.setProperty("--u", (w / VIEW_W) + "px");     // 1 game pixel, used by the panels
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+}
+window.addEventListener("resize", fit);
+document.addEventListener("fullscreenchange", fit);
+fit();
+
+setupModsUI();
+applyVolumes();
+applyDebug();
+
+const barInner = document.getElementById("barInner");
+
+// Put mods in place first, then load every file the game needs (with the progress bar)
+applyMods().then(() => {
+  const soundUrls = new Set();
+  for (const group of Object.values(SOUNDS)) for (const s of Object.values(group)) soundUrls.add(s.src);
+  return Promise.all([
+    document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Pixel"'),
+    document.fonts.load('10px "Press Start 2P"'), document.fonts.load('10px "Share Tech Mono"'),
+    document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Serif"'),
+    Files.loadAll(allImageUrls(), [...soundUrls], p => { barInner.style.width = Math.round(p * 100) + "%"; })
+  ]);
+}).then(() => {
+  // Everything is loaded: go straight to the title screen
+  const cover = document.getElementById("cover");
+  cover.classList.add("done");
+  setTimeout(() => cover.remove(), 450);
+  canvas.focus();
+  Sound.ctx.resume();
+  // ?file=1, 2 or 3 picks the save file; anything else asks first
+  const file = fileFromUrl();
+  if (file) { game.useFile(file); game.boot(); }
+  else showFiles();
+  last = performance.now();
+  requestAnimationFrame(loop);
+});
+
+// Browsers only allow sound after the player clicks or presses a key,
+// so the sound turns on at the first click/key if it could not start by itself
+function unlockSound() { if (Sound.ctx.state !== "running") Sound.ctx.resume(); }
+window.addEventListener("pointerdown", unlockSound);
+window.addEventListener("keydown", unlockSound);
+
+/* =====================================================================
+   MAIN LOOP: update 30 times a second, draw every screen refresh
+   (drawing blends between updates so movement stays smooth)
+   ===================================================================== */
+let last = performance.now(), acc = 0;
+function loop(now) {
+  acc += now - last;
+  last = now;
+  if (acc > 250) acc = 250;                     // tab was hidden: don't try to catch up forever
+  while (acc >= TICK_MS) {
+    game.update();
+    acc -= TICK_MS;
+  }
+  game.render(Math.min(1, acc / TICK_MS));
+  requestAnimationFrame(loop);
+}
+
+/* =====================================================================
+   INPUT: mouse, touch and keyboard
+   ===================================================================== */
+function toGame(e) {
+  const r = canvas.getBoundingClientRect();
+  return [(e.clientX - r.left) / r.width * VIEW_W, (e.clientY - r.top) / r.height * VIEW_H];
+}
+canvas.addEventListener("pointerdown", e => { canvas.focus(); game.pointer(...toGame(e), true); });
+window.addEventListener("pointermove", e => game.pointer(...toGame(e)));
+window.addEventListener("pointerup", e => game.pointer(...toGame(e), false));
+// Keys that do something once (pressed)
+const KEY_NAMES = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "enter",
+                    q: "mask", Q: "mask", e: "cams", E: "cams", Tab: "cams" };
+// Keys you hold down: flashlight and the two vent lights
+// (left / right also drive the vent lights; all four move you in the 8-bit games)
+const HOLD_KEYS = { " ": "flash", f: "flash", F: "flash", Control: "flash", a: "left", A: "left", d: "right", D: "right",
+                    w: "up", W: "up", s: "down", S: "down", ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    // Esc closes the open panel, or goes back to the game menu
+    if (!$("#ask").hidden) { $("#ask").hidden = true; game.paused = false; canvas.focus(); }
+    else if (!$("#achPanel").hidden) closeAchievements();
+    else if (!$("#modsPanel").hidden) closeMods();
+    else if (!$("#settingsPanel").hidden) closeSettings();
+    else location.href = "../index.html";
+    return;
+  }
+  if (e.target.tagName === "INPUT") return;     // typing in a box is not game input
+  if (e.key === "ArrowLeft" && game.screen === "title" && $("#ask").hidden && $("#settingsPanel").hidden) { e.preventDefault(); askGoldenRate(); return; }
+  if (HOLD_KEYS[e.key]) { e.preventDefault(); game.hold(HOLD_KEYS[e.key], true); }
+  const k = KEY_NAMES[e.key] || (e.key === " " ? "enter" : null);
+  if (!k) return;
+  if (k !== "enter") e.preventDefault();
+  if (!e.repeat) game.key(k);
+});
+document.addEventListener("keyup", e => { if (HOLD_KEYS[e.key]) game.hold(HOLD_KEYS[e.key], false); });
+window.addEventListener("blur", () => game.held.clear());     // let go of everything when the tab loses focus
+</script>
+</body>
+</html>

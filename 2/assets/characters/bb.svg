@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 170" width="100" height="170">
+<path d="M50 4 L58 14 L42 14 Z" fill="#ffd23f"/><rect x="47" y="12" width="6" height="8" fill="#555"/>
+<ellipse cx="50" cy="20" rx="26" ry="9" fill="#e23b3b"/><ellipse cx="50" cy="20" rx="26" ry="9" fill="none" stroke="#2a5bd7" stroke-width="3" stroke-dasharray="6 6"/>
+<circle cx="50" cy="48" r="28" fill="#f2c9a0"/><circle cx="40" cy="44" r="6" fill="#fff"/><circle cx="60" cy="44" r="6" fill="#fff"/>
+<circle cx="40" cy="45" r="3" fill="#2a5bd7"/><circle cx="60" cy="45" r="3" fill="#2a5bd7"/><circle cx="32" cy="58" r="5" fill="#f08080"/><circle cx="68" cy="58" r="5" fill="#f08080"/>
+<path d="M38 62 Q50 72 62 62" stroke="#802020" stroke-width="3" fill="none"/>
+<rect x="28" y="76" width="44" height="58" rx="10" fill="#2a5bd7"/><rect x="28" y="86" width="44" height="8" fill="#e23b3b"/><rect x="28" y="104" width="44" height="8" fill="#e23b3b"/><rect x="28" y="122" width="44" height="8" fill="#e23b3b"/>
+<rect x="14" y="80" width="12" height="36" rx="6" fill="#2a5bd7"/><rect x="74" y="80" width="12" height="36" rx="6" fill="#2a5bd7"/>
+<rect x="33" y="134" width="13" height="28" rx="5" fill="#7a4a2a"/><rect x="54" y="134" width="13" height="28" rx="5" fill="#7a4a2a"/>
+<text x="50" y="112" font-size="30" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="bold">?</text></svg>

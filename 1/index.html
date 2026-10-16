@@ -706,6 +706,7 @@ function draw(ctx, p, x, y, o = {}) {
     ctx.scale(Math.cos(performance.now() / 2400 * Math.PI * 2), 1);
   }
   ctx.translate(-p.cx, -p.cy);
+  if (p.pixel) ctx.imageSmoothingEnabled = false;                 // 8-bit pictures stay blocky
   ctx.globalAlpha *= alpha;
   if (o.bright) ctx.filter = `brightness(${Math.max(0, 1 + o.bright / 100)})`;
   drawLayers(ctx, p);
@@ -2844,7 +2845,11 @@ function closeAchievements() {
 /* ---------------------------------------------------------------------
    Player settings (saved in this browser)
    --------------------------------------------------------------------- */
-const SETTINGS_KEY = "frae1-settings";
+// Which game this is (each shell sets GAME_INFO; Tape 1 needs nothing)
+const GI = Object.assign({ key: "frae1", modName: "My Eddie's Mod", gameId: "fried-rice-at-eddies-1",
+  template: "eddies-1-mod-template.zip", debugKeys: "H next hour &middot; P +10% power &middot; G Golden" },
+  typeof GAME_INFO !== "undefined" ? GAME_INFO : {});
+const SETTINGS_KEY = GI.key + "-settings";
 const settings = { music: 100, sound: 100, jumpscares: "0", debug: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")); } catch (e) {}
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
@@ -2926,7 +2931,7 @@ function sizeText(bytes) {
 // so pictures and sounds are stored as data: URLs), "frae1-mods-state" holds
 // which mods are downloaded and which are in use (top first).
 // Browsers give a site about 5 MB of localStorage, so mods must stay small.
-const MODS_KEY = "frae1-mods", MODS_STATE_KEY = "frae1-mods-state";
+const MODS_KEY = GI.key + "-mods", MODS_STATE_KEY = GI.key + "-mods-state";
 const blobToDataUrl = blob => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(r.result);
@@ -2965,8 +2970,8 @@ const ModDB = {
   async moveOldMods() {
     if (localStorage.getItem(MODS_KEY) !== null || !window.indexedDB || !indexedDB.databases) return;
     const dbs = await indexedDB.databases();
-    if (!dbs.some(d => d.name === "frae1-mods")) return;
-    const db = await new Promise((res, rej) => { const r = indexedDB.open("frae1-mods"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    if (!dbs.some(d => d.name === MODS_KEY)) return;
+    const db = await new Promise((res, rej) => { const r = indexedDB.open(MODS_KEY); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
     const get = (store, fn) => new Promise(res => {
       try { const req = fn(db.transaction(store).objectStore(store)); req.onsuccess = () => res(req.result); req.onerror = () => res(null); }
       catch (e) { res(null); }
@@ -2978,7 +2983,7 @@ const ModDB = {
     for (const m of mods) { try { await this.putMod(m); } catch (e) { console.warn("Old mod too big to move", m.name); } }
     const kept = new Set(this.read().map(m => m.id));
     await this.putState({ downloaded: state.downloaded.filter(id => kept.has(id)), inUse: state.inUse.filter(id => kept.has(id)) });
-    indexedDB.deleteDatabase("frae1-mods");
+    indexedDB.deleteDatabase(MODS_KEY);
   }
 };
 
@@ -3116,11 +3121,11 @@ function download(blob, name) {
 async function buildTemplate(onProgress) {
   const enc = new TextEncoder(), entries = [];
   const manifest = {
-    name: "My Eddie's Mod",
+    name: GI.modName,
     author: "",
     version: "1.0.0",
     description: "Describe your mod here",
-    game: "fried-rice-at-eddies-1",
+    game: GI.gameId,
     howTo: "Replace any file in img, snd, characters or fonts with your own using the SAME file name. Pictures can be PNG, JPG, WEBP or SVG at any size (they are stretched to fit the same spot). Sounds can be MP3, WAV or OGG. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods."
   };
   entries.push({ path: "manifest.json", bytes: enc.encode(JSON.stringify(manifest, null, 2)) });
@@ -3278,7 +3283,7 @@ function applyDebug() {
       `<div class="head">DEBUG</div>` +
       `<div>FPS <b>${fps}</b> &nbsp; mouse <b>${Math.round(game.mouse.x)}, ${Math.round(game.mouse.y)}</b>${game.mouse.down ? " (down)" : ""}</div>` +
       `<div class="vars">${rows}</div>` +
-      `<div class="keys">H next hour &middot; P +10% power &middot; G Golden</div>` +
+      `<div class="keys">${GI.debugKeys}</div>` +
       `<div class="warn">${T("Saving and achievements are off")}</div>`;
   }, 200);
 }
@@ -3606,7 +3611,7 @@ async function downloadTemplate() {
   btn.disabled = true;
   try {
     const zip = await buildTemplate(p => modStatus("Packing template... " + Math.round(p * 100) + "%"));
-    download(zip, "eddies-1-mod-template.zip");
+    download(zip, GI.template);
     modStatus("Template downloaded. Unzip it, change files, then load the folder.");
   } catch (e) {
     modStatus("Could not make the template: " + (e.message || e), true);

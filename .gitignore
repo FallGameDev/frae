@@ -4,3 +4,5 @@ _val.html
 scratch
 tools/art_debug.json
 tools/data_cache.js
+tools/tape2/art_debug.json
+tools/tape2/data_cache.js
