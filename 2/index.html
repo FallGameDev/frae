@@ -41,20 +41,21 @@
   }
   #stage { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
 
-  /* ===== Loading screen: a flat picture spinning in 3D, with a bar under it ===== */
+  /* ===== Loading screen: Toy Eddy (the 3D model) turning around, with a bar under it ===== */
   #cover {
     position: absolute; inset: 0; z-index: 5;
     background: #000; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 6%;
-    perspective: 900px;                       /* gives the spin its 3D depth */
+    align-items: center; justify-content: center; gap: 4%;
     transition: opacity .4s;
   }
   #cover.done { opacity: 0; pointer-events: none; }
+  /* turntable.png is 16 frames side by side (200 x 260 each); steps() shows one at a time */
   #spinner {
-    width: 38%;
-    animation: spin 2.4s linear infinite;    /* one full turn every 2.4 seconds */
+    height: 46%; aspect-ratio: 200 / 260;
+    background: url("assets/turntable.png") 0 0 / 1600% 100% no-repeat;
+    animation: turn 1.6s steps(16) infinite;   /* one full turn every 1.6 seconds */
   }
-  @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+  @keyframes turn { from { background-position-x: 0%; } to { background-position-x: 106.6667%; } }
   #barOuter { width: 46%; height: 16px; border: 3px solid #fff; padding: 2px; }
   #barInner { height: 100%; width: 0; background: #fff; transition: width .15s; }
 
@@ -203,7 +204,7 @@
 
   <!-- Loading screen: spinning rice bowl + loading bar -->
   <div id="cover">
-    <img id="spinner" src="assets/loading-rice.webp" alt="">
+    <div id="spinner"></div>
     <div id="barOuter"><div id="barInner"></div></div>
   </div>
 
@@ -321,6 +322,7 @@ const PICTURE_NAMES = {
   "OfficeExtra": ["bb", "mangle", "golden", "shadow", "tbonnie", "bbEyes"],
   "Plush": ["Sprite58", "Sprite59", "Sprite60", "Sprite62", "Sprite63", "Sprite64", "Sprite66", "Sprite61", "Sprite65"],
   "Title": ["face1", "face2", "face3", "face4"],
+  "Turntable": ["frame01", "frame02", "frame03", "frame04", "frame05", "frame06", "frame07", "frame08", "frame09", "frame10", "frame11", "frame12", "frame13", "frame14", "frame15", "frame16"],
   "Loading": ["icon"],
   "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy"],
   "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],
@@ -1220,7 +1222,8 @@ class Game {
       yield 2.2;
       yield* this.fade(card, 0, 30);
       this.removeOverlay(card);
-      const spin = this.overlay("Loading", "icon", { x: 450, y: 320, size: 60 });
+      // Toy Eddy turning around in the corner while the night loads
+      const spin = this.overlay(null, null, { paint: () => draw(this.ctx, picAt("Turntable", 1 + Math.floor(performance.now() / 100) % 16), 440, 300, { size: 70 }) });
       yield randFloat(1.5, 3);
       this.removeOverlay(spin);
       this.startNight();

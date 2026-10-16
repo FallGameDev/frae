@@ -471,7 +471,8 @@ class Game {
       yield 2.2;
       yield* this.fade(card, 0, 30);
       this.removeOverlay(card);
-      const spin = this.overlay("Loading", "icon", { x: 450, y: 320, size: 60 });
+      // Toy Eddy turning around in the corner while the night loads
+      const spin = this.overlay(null, null, { paint: () => draw(this.ctx, picAt("Turntable", 1 + Math.floor(performance.now() / 100) % 16), 440, 300, { size: 70 }) });
       yield randFloat(1.5, 3);
       this.removeOverlay(spin);
       this.startNight();

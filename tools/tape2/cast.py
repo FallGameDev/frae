@@ -34,7 +34,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHAR_DIR = os.path.join(HERE, 'characters')
-TAPE1_CHARS = os.path.join(os.path.dirname(os.path.dirname(HERE)), '1', 'assets', 'characters')
+TAPE1_CHARS = os.path.join(os.path.dirname(HERE), 'characters')        # the Tape 1 drawings (stand-ins)
 
 # ---------------------------------------------------------------------------
 # Who is who. Until Aidan's files arrive, these stand in.
@@ -109,9 +109,9 @@ CAM_POSES = [
     (8, 'foxy', 'Parts/Service', 'LightFoxy', 'body', [400, 20, 570, 450], {}),
     (8, 'wfreddy', 'Parts/Service', 'LightOldFreddy', 'head', [550, 170, 650, 300], {}),
     (8, 'shadow', 'Parts/Service', 'shadow freddy', 'body', [230, 30, 520, 330], {'light': True}),
-    (9, 'tbonnie', 'Showstage', 'S2', 'head', [165, -60, 370, 300], {}),
-    (9, 'tfreddy', 'Showstage', 'S2', 'head', [370, 20, 620, 310], {}),
-    (9, 'tchica', 'Showstage', 'S2', 'head', [620, 10, 850, 290], {}),
+    (9, 'tbonnie', 'Showstage', 'S2', 'body', [170, 40, 370, 470], {}),
+    (9, 'tfreddy', 'Showstage', 'S2', 'body', [380, 10, 620, 480], {}),
+    (9, 'tchica', 'Showstage', 'S2', 'body', [630, 40, 840, 470], {}),
     (10, 'bb', 'Game Area', 'LightBB', 'body', [90, 170, 280, 450], {}),
     (10, 'tfreddy', 'Game Area', 'LightToyFreddy', 'body', [290, 130, 390, 345], {}),
     (11, 'puppet1', 'Prizecorner', 'LightPuppet1', 'body', [605, 150, 685, 330], {'role': 'puppet', 'light': True, 'cut': [0, 0, 960, 258]}),
@@ -195,28 +195,41 @@ class Char:
     """One character file: its size and where its head is."""
     def __init__(self, b, role):
         self.role = role
+        png = os.path.join(CHAR_DIR, role + '.png')       # a picture rendered from the 3D model (tools/render_toys.py)
         own = os.path.join(CHAR_DIR, role + '.svg')
-        rel = f'assets/characters/{role}.svg'
-        dst = os.path.join(b.out_root, rel)
-        if os.path.exists(own):
-            shutil.copy(own, dst)
+        if os.path.exists(png):
+            rel = f'assets/characters/{role}.png'
+            shutil.copy(png, os.path.join(b.out_root, rel))
             self.stand_in = False
-        elif STAND_IN[role]:
-            shutil.copy(os.path.join(TAPE1_CHARS, STAND_IN[role]), dst)
-            self.stand_in = True
+            self.src = rel
+            im = Image.open(png)
+            self.w, self.h = float(im.width), float(im.height)
+            a = np.array(im.convert('RGBA'))[:, :, 3] > 40
+            k = 1.0
+            head_part = 0.36                                # 3D toys: head + ears are the top third
         else:
-            open(dst, 'w', encoding='utf-8').write(PLACEHOLDER[role])
-            self.stand_in = True
-        self.src = rel
-        text = open(dst, encoding='utf-8').read()
-        _, _, self.w, self.h = b.svg_size(text)
-        # draw it once to find the drawing's outline and its head
-        k = 600 / max(self.w, self.h)
-        a = np.array(Image.open(io.BytesIO(b.renderer.svg_to_png(text, self.w, self.h, k))))[:, :, 3] > 40
+            rel = f'assets/characters/{role}.svg'
+            dst = os.path.join(b.out_root, rel)
+            if os.path.exists(own):
+                shutil.copy(own, dst)
+                self.stand_in = False
+            elif STAND_IN.get(role):
+                shutil.copy(os.path.join(TAPE1_CHARS, STAND_IN[role]), dst)
+                self.stand_in = True
+            else:
+                open(dst, 'w', encoding='utf-8').write(PLACEHOLDER[role])
+                self.stand_in = True
+            self.src = rel
+            text = open(dst, encoding='utf-8').read()
+            _, _, self.w, self.h = b.svg_size(text)
+            # draw it once to find the drawing's outline and its head
+            k = 600 / max(self.w, self.h)
+            a = np.array(Image.open(io.BytesIO(b.renderer.svg_to_png(text, self.w, self.h, k))))[:, :, 3] > 40
+            head_part = 0.40
         ys, xs = np.where(a)
         x0, x1, y0, y1 = xs.min() / k, (xs.max() + 1) / k, ys.min() / k, (ys.max() + 1) / k
         self.body = (x0, y0, x1, y1)
-        band = int(ys.min() + (ys.max() - ys.min()) * 0.40)
+        band = int(ys.min() + (ys.max() - ys.min()) * head_part)
         hx = np.where(a[ys.min():band].any(axis=0))[0]
         self.head = (hx.min() / k, y0, (hx.max() + 1) / k, band / k)
 
@@ -307,6 +320,8 @@ def cover_layers(chars, sprite, costume, w_px, h_px, dim=False):
 # ---------------------------------------------------------------------------
 def apply(b):
     chars = {r: Char(b, r) for r in ROLES}
+    # "reaching for you" pictures (from the 3D toys) for the office and jumpscares, when there is one
+    lunge = {r: (Char(b, r + '-lunge') if os.path.exists(os.path.join(CHAR_DIR, r + '-lunge.png')) else chars[r]) for r in ROLES}
     stand_ins = [r for r in ROLES if chars[r].stand_in]
     if stand_ins:
         b.notes.append('stand-in drawings used for: ' + ', '.join(stand_ins))
@@ -328,8 +343,9 @@ def apply(b):
         shade = measured_shade(orig, bim, box)
         if role == 'golden':
             shade = max(shade, 0.35)
-        L = chars[role].layer([v / 2 for v in box], mode, shade=shade)
         spot = name.split('-')[0]
+        who = lunge[role] if spot == 'in' else chars[role]
+        L = who.layer([v / 2 for v in box], mode, shade=shade)
         cut = None
         if spot in VENT_HOLE:
             x0, y0, x1, y1 = [v / 2 for v in VENT_HOLE[spot]]
@@ -401,7 +417,7 @@ def apply(b):
             jit = math.sin(i * 2.7) * 6 * u
             hh = 120 + 260 * u if r != 'golden' else 330
             hy = 190 - 20 * u if r != 'puppet' else 300 - 120 * u
-            L = chars[r].layer([240 + jit - hh / 2, hy - hh / 2, 240 + jit + hh / 2, hy + hh / 2], 'head',
+            L = lunge[r].layer([240 + jit - hh / 2, hy - hh / 2, 240 + jit + hh / 2, hy + hh / 2], 'head',
                                rot=math.sin(i * 1.9) * 7 * u, shade=0.18)
             dark = dict(rect=[0, 0, 480, 360], fill=f'rgba(0,0,0,{0.35 + 0.25 * u:.2f})')
             art['Scare'][f'{r}-{i + 1}'] = dict(w=480, h=360, cx=240, cy=180, clip=True, layers=bg + [dark, L])
@@ -410,10 +426,10 @@ def apply(b):
     ex = {}
     ex['bb'] = dict(w=295, h=345, cx=141, cy=180, layers=[chars['bb'].layer([40, 20, 250, 345], 'body', shade=0.35)])
     ex['mangle'] = dict(w=359, h=207, cx=205, cy=108,
-                        layers=[chars['mangle'].layer([60, -120, 300, 200], 'body', rot=168, shade=0.45)])
+                        layers=[lunge['mangle'].layer([60, -120, 300, 200], 'body', rot=168, shade=0.45)])
     ex['golden'] = dict(w=360, h=360, cx=180, cy=180, layers=[chars['golden'].layer([40, 40, 320, 340], 'body', rot=-12, shade=0.5)])
     ex['shadow'] = dict(w=168, h=360, cx=84, cy=180, layers=[chars['shadow'].layer([10, 20, 158, 360], 'body', tint='#040404')])
-    ex['tbonnie'] = dict(w=150, h=208, cx=75, cy=104, layers=[chars['tbonnie'].layer([-20, 10, 170, 150], 'head', rot=-8, shade=0.4)])
+    ex['tbonnie'] = dict(w=150, h=208, cx=75, cy=104, layers=[lunge['tbonnie'].layer([-20, 10, 170, 150], 'head', rot=-8, shade=0.4)])
     ex['bbEyes'] = dict(w=166, h=139, cx=83, cy=69, layers=[chars['bb'].layer([10, 10, 156, 130], 'head', shade=0.7)])
     art['OfficeExtra'] = ex
 
@@ -437,6 +453,15 @@ def apply(b):
                                      layers=[dict(rect=[0, 0, 480, 360], fill='#000000'),
                                              chars[r].layer(box, 'head', rot=-6 if i else -3, shade=sh)])
     art['Title'] = title
+    # the 3D Toy Eddy turning around (night loading corner), 16 frames from turntable.png
+    turn = os.path.join(HERE, 'turntable.png')
+    if os.path.exists(turn):
+        strip = Image.open(turn).convert('RGBA')
+        art['Turntable'] = {}
+        for i in range(16):
+            rel = save_img(b, strip.crop((i * 200, 0, i * 200 + 200, 260)), f'turntable-{i + 1:02d}')
+            art['Turntable'][f'frame{i + 1:02d}'] = dict(w=100, h=130, cx=50, cy=65, layers=[dict(img=rel, x=0, y=0, w=100, h=130)])
+        shutil.copy(turn, os.path.join(b.out_root, 'assets', 'turntable.png'))
     art['Loading'] = {'icon': dict(w=40, h=40, cx=20, cy=20, spin=True,
                                    layers=[dict(img='assets/loading-rice.webp', x=-3, y=4.85, w=46, h=34.85)])}
 
@@ -444,11 +469,16 @@ def apply(b):
     pix = {}
     for r, tall in (('wfreddy', 46), ('foxy', 46), ('puppet', 60), ('wbonnie', 46), ('wchica', 46), ('tfreddy', 46)):
         ch = chars[r]
-        text = open(os.path.join(b.out_root, ch.src), encoding='utf-8').read()
+        path = os.path.join(b.out_root, ch.src)
         for kind in ('body', 'head'):
             x0, y0, x1, y1 = ch.body if kind == 'body' else ch.head
             k = (tall if kind == 'body' else 20) / (y1 - y0)
-            im = Image.open(io.BytesIO(b.renderer.svg_to_png(text, ch.w, ch.h, k))).convert('RGBA')
+            if path.endswith('.png'):
+                im = Image.open(path).convert('RGBA')
+                im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
+            else:
+                text = open(path, encoding='utf-8').read()
+                im = Image.open(io.BytesIO(b.renderer.svg_to_png(text, ch.w, ch.h, k))).convert('RGBA')
             im = im.crop((int(x0 * k), int(y0 * k), int(math.ceil(x1 * k)), int(math.ceil(y1 * k))))
             a = np.array(im)
             a[:, :, 3] = np.where(a[:, :, 3] > 110, 255, 0)

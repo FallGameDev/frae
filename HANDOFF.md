@@ -39,7 +39,7 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 
 ### Art (`tools/tape2/`)
 - `cast.py`: every room is an EMPTY picture (dark + flashlight-lit) and every character is a separate "pose" picture on top, measured by hand from where the FNaF character stood (`CAM_POSES`, `OFFICE_POSES`, boxes in costume pixels; `body` = whole character in the box, `head` = head fills the box). Also covers FNaF posters/plushies in rooms (`COVERS`), jumpscare frames, the cast standing (`Chars`), heads (`Heads`, custom night), office extras, prizes, title faces, 8-bit cast (`Pixel`).
-- Character files: `tools/tape2/characters/<role>.svg` (see the README there). Missing ones use stand-ins (Tape 1 drawings, or a "?" figure for BB and the Puppet). Add the file and run the full build.
+- Character files: `tools/tape2/characters/<role>.svg` or `.png` (see the README there). The toys (Toy Eddy/Weddy/Cheddy, and Mangled Endo = broken Toy Endo) are PNG renders of the 3D models from `tools/render_toys.py`, with `-lunge` versions for the office and jumpscares; the loading screens show the turning 3D Toy Eddy (`turntable.png`). Missing ones use stand-ins (Tape 1 drawings, or a "?" figure for BB and the Puppet). Add the file and run the full build.
 - `extras.py`: the camera map with no lit button + each lit button.
 
 ### Game code (`tools/tape2/`, shares `tools/game/pictures.js` + `sound.js` + `tools/ui.js`)

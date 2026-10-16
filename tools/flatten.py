@@ -189,7 +189,9 @@ def main():
 
     # ---- fonts, the loading picture, the words for mods ----
     shutil.copytree(os.path.join(old_assets, 'fonts'), os.path.join(new_assets, 'fonts'))
-    shutil.copy(os.path.join(old_assets, 'loading-rice.webp'), os.path.join(new_assets, 'loading-rice.webp'))
+    for keep in ('loading-rice.webp', 'turntable.png'):           # loading screen pictures (used before the game loads)
+        if os.path.exists(os.path.join(old_assets, keep)):
+            shutil.copy(os.path.join(old_assets, keep), os.path.join(new_assets, keep))
     json.dump(texts, open(os.path.join(new_assets, 'texts.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     shutil.rmtree(old_assets)
     os.rename(new_assets, old_assets)

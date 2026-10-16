@@ -51,6 +51,7 @@ const PICTURE_NAMES = {
   "OfficeExtra": ["bb", "mangle", "golden", "shadow", "tbonnie", "bbEyes"],
   "Plush": ["Sprite58", "Sprite59", "Sprite60", "Sprite62", "Sprite63", "Sprite64", "Sprite66", "Sprite61", "Sprite65"],
   "Title": ["face1", "face2", "face3", "face4"],
+  "Turntable": ["frame01", "frame02", "frame03", "frame04", "frame05", "frame06", "frame07", "frame08", "frame09", "frame10", "frame11", "frame12", "frame13", "frame14", "frame15", "frame16"],
   "Loading": ["icon"],
   "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy"],
   "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],
