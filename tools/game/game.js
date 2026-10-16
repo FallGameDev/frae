@@ -280,8 +280,9 @@ class Game {
       { id: "dine",     group: "dine in",      name: "text",   x: 88.23, y: 188.98, show: true },
       { id: "new",      group: "new game",     name: "text",   x: 105,   y: 210,    show: true },
       { id: "continue", group: "continue",     name: "text",   x: 105,   y: 235,    show: true },
+      // Spooky (the 6th night) unlocks after beating nights 1-5; the custom night is always open
       { id: "night6",   group: "6th Night",    name: "string", x: 110,   y: 265,    show: this.progress.beat5 },
-      { id: "custom",   group: "Custom Night", name: "string", x: 125,   y: 290,    show: this.progress.beat6 },
+      { id: "custom",   group: "Custom Night", name: "string", x: 125,   y: 290,    show: true },
     ];
     return items.filter(i => i.show);
   }
