@@ -949,7 +949,8 @@ const PICTURE_WORDS = {
 const VIEW_W = 480, VIEW_H = 360;
 const IMG_SCALE = 2;                  // image pixels per game pixel
 // groups saved at half size to save memory (long animations): 1 image pixel per game pixel (names.js)
-const imgScale = group => (typeof HALF_SIZE_GROUPS !== "undefined" && HALF_SIZE_GROUPS.has(group) ? 1 : IMG_SCALE);
+const imgScale = group => (typeof HALF_SIZE_GROUPS !== "undefined" && HALF_SIZE_GROUPS.has(group) ? 1
+  : typeof BIG_SIZE_GROUPS !== "undefined" && BIG_SIZE_GROUPS.has(group) ? 3 : IMG_SCALE);
 
 // "Show Stage" -> "show-stage" (how names become file names)
 function fileName(s) {

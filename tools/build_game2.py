@@ -40,7 +40,7 @@ base.OUT, base.ASSETS = OUT, ASSETS
 # ---------------------------------------------------------------------------
 PICTURES = {
     # (pictures with characters in them are rebuilt by tape2/cast.py instead)
-    'Light Left': None, 'Right Right': None, 'Sprite13': None,                       # vent light buttons, desk
+    'Light Left': None, 'Right Right': None,                                          # vent light buttons
     'Sprite1': None, 'Sprite2': None, 'Sprite3': None, 'Sprite4': None, 'Sprite5': None,   # bars, mask, monitor
     'Sprite12': None, 'Wind up': None, 'Sprite7': None, 'Sprite29': None, 'Sprite67': None,
     'Sprite28': ['costume1', 'costume2', 'costume3', 'costume4'],     # static (title, death)

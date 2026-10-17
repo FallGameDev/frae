@@ -19,7 +19,6 @@ const PICTURE_NAMES = {
   "Wind up": ["Wind up0", "Wind up1"],
   "Sprite7": ["REDALERT!", "Normal alert"],
   "Sprite12": ["1", "2", "3", "4", "0"],
-  "Sprite13": ["1", "2"],
   "Sprite28": ["costume1", "costume2", "costume3", "costume4"],
   "Sprite29": ["Gold_Star"],
   "Sprite45": ["give cake", "foxy GET READY", "foxy GO! GO! GO!", "foxy blank", "foxy stage", "foxy stage2"],
@@ -84,3 +83,5 @@ const MUSIC_NAMES = new Set(["Chimes", "During mini game.mp3", "FNAF 2 - Win Mus
 
 // pictures saved at half size (1 image pixel per game pixel) to save memory: long animations
 const HALF_SIZE_GROUPS = new Set(["Sprite4", "Sprite5", "Sprite10", "Sprite28", "Sprite45"]);
+// pictures saved at 3 image pixels per game pixel (big and sharp: the office)
+const BIG_SIZE_GROUPS = new Set(["Office"]);

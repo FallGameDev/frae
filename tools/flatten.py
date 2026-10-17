@@ -34,7 +34,7 @@ TAPES = {
     '1': dict(cache=os.path.join(HERE, 'data_cache.js'), code=os.path.join(HERE, 'game'),
               half=["dance", "Foxy", "Chica", "Bonnie", "Eddie", "West Hall", "moniter", "Secret??//Fnaf Static",
                     "Secret??//Glitch lines song", "Secret??//Static Line", "Secret??//Static Line2"]),
-    '2': dict(cache=os.path.join(HERE, 'tape2', 'data_cache.js'), code=os.path.join(HERE, 'tape2'), half=["Sprite4", "Sprite5", "Sprite10", "Sprite28", "Sprite45"]),
+    '2': dict(cache=os.path.join(HERE, 'tape2', 'data_cache.js'), code=os.path.join(HERE, 'tape2'), half=["Sprite4", "Sprite5", "Sprite10", "Sprite28", "Sprite45"], big=["Office"]),
 }
 # (half: groups saved at 1 image pixel per game pixel instead of 2, to save memory: long animations)
 SCALE = 2          # image pixels per game pixel
@@ -161,7 +161,7 @@ def main():
             for g, gr in art.items():
                 pictures[g] = []
                 for n in gr['list']:
-                    r = pg.evaluate('([g, n, s]) => renderPic(g, n, s)', [g, n, 1 if g in cfg['half'] else SCALE])
+                    r = pg.evaluate('([g, n, s]) => renderPic(g, n, s)', [g, n, 1 if g in cfg['half'] else 3 if g in cfg.get('big', []) else SCALE])
                     pictures[g].append(n)
                     if r['words']:
                         words[f'{g}/{n}'] = dict(box=[round(v, 3) for v in r['box']], words=r['words'])
@@ -219,7 +219,9 @@ def main():
     out += ['};', '', '// sounds that follow the Music slider (all others follow the Sound slider)',
             f'const MUSIC_NAMES = new Set({js_list(sorted(set(music)))});', '',
             '// pictures saved at half size (1 image pixel per game pixel) to save memory: long animations',
-            f'const HALF_SIZE_GROUPS = new Set({js_list(cfg["half"])});', '']
+            f'const HALF_SIZE_GROUPS = new Set({js_list(cfg["half"])});',
+            '// pictures saved at 3 image pixels per game pixel (big and sharp: the office)',
+            f'const BIG_SIZE_GROUPS = new Set({js_list(cfg.get("big", []))});', '']
     open(os.path.join(cfg['code'], 'names.js'), 'w', encoding='utf-8').write('\n'.join(out))
 
     # ---- words.js: the words drawn on top of pictures (Tape 1) ----

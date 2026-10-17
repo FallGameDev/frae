@@ -1562,8 +1562,8 @@ class Game {
     }
     if (n.ventR) for (const [who, at] of Object.entries(n.at)) if (at === "ventR") pose("ventR-" + who);
     if (v && v.who !== "tbonnie") pose("in-" + v.who);
-    // desk with the spinning fan, and the prizes from the custom night
-    draw(ctx, pic("Sprite13", String(n.fanFrame)), SX(pan + 90), SY(-100), { size: 65 });
+    // (the desk and fan are part of Aidan's office picture now)
+    // the prizes from the custom night, on the desk
     for (const prize of this.progress.prizes) {
       const p = PRIZE_SPOT[prize];
       if (!p) continue;

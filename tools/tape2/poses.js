@@ -89,20 +89,20 @@ const CAM_POSES = {
 
 // the office: hall-<who> (hall light), ventL- / ventR-<who> (vent lights), in-<who> (in the office)
 const OFFICE_POSES = {
-  "hall-wfreddy": {box: [214.5, 75, 261.5, 228.5], mode: "body", shade: 0.27},
-  "hall-foxy": {box: [215, 75, 265, 210], mode: "body", shade: 0.27},
-  "hall-tfreddy": {box: [230, 70, 280, 225], mode: "body", shade: 0.28},
-  "hall-tchica": {box: [225, 80, 265, 167.5], mode: "body", shade: 0.02},
-  "hall-wbonnie": {box: [230, 75, 270, 225], mode: "body", shade: 0.31},
-  "hall-mangle": {box: [235, 70, 280, 165], mode: "body", shade: 0.02},
-  "hall-golden": {box: [210, 75, 280, 145], mode: "head", shade: 0.35},
-  "ventL-tchica": {box: [17.5, 140, 57.5, 185], mode: "head", shade: 0.62, cut: [10, 140, 57.5, 90]},
-  "ventL-bb": {box: [15, 147.5, 52.5, 192.5], mode: "head", shade: 0.7, cut: [10, 140, 57.5, 90]},
-  "ventL-wbonnie": {box: [15, 135, 57.5, 187.5], mode: "head", shade: 0.64, cut: [10, 140, 57.5, 90]},
-  "ventL-endo": {box: [12.5, 150, 57.5, 195], mode: "head", shade: 0.74, cut: [10, 140, 57.5, 90]},
-  "ventR-tbonnie": {box: [420, 140, 465, 190], mode: "head", shade: 0.73, cut: [412.5, 135, 57.5, 95]},
-  "ventR-mangle": {box: [422.5, 142.5, 465, 200], mode: "head", shade: 0.7, cut: [412.5, 135, 57.5, 95]},
-  "ventR-wchica": {box: [417.5, 137.5, 467.5, 192.5], mode: "head", shade: 0.75, cut: [412.5, 135, 57.5, 95]},
+  "hall-wfreddy": {box: [227.65, 83.34, 243.16, 134], mode: "body", shade: 0.27},
+  "hall-foxy": {box: [227.75, 89.45, 244.25, 134], mode: "body", shade: 0.27},
+  "hall-tfreddy": {box: [232.25, 82.85, 248.75, 134], mode: "body", shade: 0.28},
+  "hall-tchica": {box: [230.9, 101.12, 244.1, 130], mode: "body", shade: 0.02},
+  "hall-wbonnie": {box: [232.4, 84.5, 245.6, 134], mode: "body", shade: 0.31},
+  "hall-mangle": {box: [233.82, 98.65, 248.68, 130], mode: "body", shade: 0.02},
+  "hall-golden": {box: [225.95, 106.9, 249.05, 130], mode: "head", shade: 0.35},
+  "ventL-tchica": {box: [68.74, 111, 99.35, 138.25], mode: "head", shade: 0.62, cut: [63, 111, 44, 54.5]},
+  "ventL-bb": {box: [66.83, 115.54, 95.52, 142.79], mode: "head", shade: 0.7, cut: [63, 111, 44, 54.5]},
+  "ventL-wbonnie": {box: [66.83, 107.97, 99.35, 139.76], mode: "head", shade: 0.64, cut: [63, 111, 44, 54.5]},
+  "ventL-endo": {box: [64.91, 117.06, 99.35, 144.31], mode: "head", shade: 0.74, cut: [63, 111, 44, 54.5]},
+  "ventR-tbonnie": {box: [372.04, 113.87, 405.3, 142.55], mode: "head", shade: 0.73, cut: [366.5, 111, 42.5, 54.5]},
+  "ventR-mangle": {box: [373.89, 115.3, 405.3, 148.29], mode: "head", shade: 0.7, cut: [366.5, 111, 42.5, 54.5]},
+  "ventR-wchica": {box: [370.2, 112.43, 407.15, 143.99], mode: "head", shade: 0.75, cut: [366.5, 111, 42.5, 54.5]},
   "in-wchica": {box: [180, 0, 300, 235], mode: "body", shade: 0.53, kind: "lunge"},
   "in-wbonnie": {box: [190, -15, 280, 230], mode: "body", shade: 0.66, kind: "lunge"},
   "in-tfreddy": {box: [250, 0, 390, 235], mode: "body", shade: 0.58, kind: "lunge"},
@@ -114,9 +114,6 @@ const OFFICE_POSES = {
 // posters, paper plates and plushies in the rooms ("office" or the camera number);
 // in a dark room the game makes them darker
 const ROOM_COVERS = {
-  "office": [
-    {role: "tfreddy", box: [14.56, 44.85, 62.44, 81.15], mode: "head", shade: 0.35, cut: [7, 30, 63, 82.5]},
-  ],
   "1": [
     {role: "tbonnie", box: [76.6, 85.3, 118.4, 122.7], mode: "head", shade: 0.35, cut: [70, 70, 165, 85]},
     {role: "tfreddy", box: [131.6, 85.3, 173.4, 122.7], mode: "head", shade: 0.35, cut: [70, 70, 165, 85]},

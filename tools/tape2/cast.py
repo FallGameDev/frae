@@ -21,7 +21,7 @@ Until a file is there, a stand-in is used (the Tape 1 characters, or a
 simple placeholder drawing).
 
 Made here (picture groups the game uses):
-  Office      the office: 000 (dark), 010 (hall light), 100 / 001 (vent lights)
+  Office      Aidan's office (tools/tape2/office): 000 (dark), 010 (hall light), 100 / 001 (vent lights)
   Cam1..Cam12 dark, light (empty rooms)
   Chars       every character's 2D drawing, standing (pin at the feet)
   Plush       the two custom night prizes that are not characters
@@ -149,12 +149,36 @@ OFFICE_POSES = [
     ('in-tbonnie', 'OldBonnie', '000', 'body', [380, -10, 580, 470]),
 ]
 # the vent openings are drawn only inside these holes (so characters peek out of them)
-VENT_HOLE = {'ventL': [20, 280, 135, 460], 'ventR': [825, 270, 940, 460]}
+VENT_HOLE = {'ventL': [20, 280, 135, 460], 'ventR': [825, 270, 940, 460]}     # (in the FNaF office)
+
+# Aidan's own office (tools/tape2/office/000.png dark, 010 hall light, 100 left vent, 001 right vent).
+# Same shape as the FNaF office (960 x 460 costume pixels), but the hall door and the
+# vents are in other places, so every spot measured in the FNaF office is moved over:
+OFFICE_DIR = os.path.join(HERE, 'office')
+NEW_VENT_HOLE = {'ventL': [126, 222, 214, 331], 'ventR': [733, 222, 818, 331]}
+NEW_HALL = dict(cx=475, floor=268, k=0.33)      # the hall door: middle, the floor in it, how much smaller
+
+
+def office_spot(name, box):
+    """A spot measured in the FNaF office -> the same spot in Aidan's office."""
+    spot = name.split('-')[0]
+    x0, y0, x1, y1 = box
+    if spot in NEW_VENT_HOLE:
+        a, b = VENT_HOLE[spot], NEW_VENT_HOLE[spot]
+        sx, sy = (b[2] - b[0]) / (a[2] - a[0]), (b[3] - b[1]) / (a[3] - a[1])
+        return [b[0] + (x0 - a[0]) * sx, b[1] + (y0 - a[1]) * sy, b[0] + (x1 - a[0]) * sx, b[1] + (y1 - a[1]) * sy]
+    if spot == 'hall':
+        # standing in the doorway: smaller, feet on the hall floor (the short ones stand further back)
+        k, cx = NEW_HALL['k'], NEW_HALL['cx'] + ((x0 + x1) / 2 - 490) * 0.3
+        h = (y1 - y0) * k
+        floor = NEW_HALL['floor'] - (8 if (y1 - y0) < 200 else 0)
+        w = (x1 - x0) * k
+        return [cx - w / 2, floor - h, cx + w / 2, floor]
+    return box                                    # in the office: right in front of you, same as before
 
 # Posters and toys in the rooms that show FNaF characters: covered with the new cast
 # (sprite, costume or None for all of that sprite, box, role, kind)
 COVERS = [
-    ('The office', None, [14, 60, 140, 225], 'tfreddy', 'poster'),
     ('Main Hall', None, [0, 100, 140, 460], 'tbonnie', 'poster'),
     ('Main Hall', None, [150, 70, 218, 400], 'tchica', 'poster'),
     ('Main Hall', None, [842, 120, 960, 380], 'tfreddy', 'poster'),
@@ -384,11 +408,11 @@ def write_poses(b, rooms_light):
         shade = measured_shade(costume_image(b, 'The office', cos), costume_image(b, 'The office', base), box)
         if role == 'golden':
             shade = max(shade, 0.35)
-        e = dict(box=[v / 2 for v in box], mode=mode, shade=shade)
+        e = dict(box=[v / 2 for v in office_spot(name, box)], mode=mode, shade=shade)
         if spot == 'in':
             e['kind'] = 'lunge'
-        if spot in VENT_HOLE:
-            x0, y0, x1, y1 = [v / 2 for v in VENT_HOLE[spot]]
+        if spot in NEW_VENT_HOLE:
+            x0, y0, x1, y1 = [v / 2 for v in NEW_VENT_HOLE[spot]]
             e['cut'] = [x0, y0, x1 - x0, y1 - y0]
         L.append(f'  {json.dumps(name)}: {js_obj(e)},')
     L += ['};', '', '// posters, paper plates and plushies in the rooms ("office" or the camera number);',
@@ -416,9 +440,10 @@ def apply(b):
     # ---- the office (empty) ----
     office = {}
     for name in ('000', '010', '100', '001'):
-        im = costume_image(b, 'The office', name)
+        # Aidan's office (saved 3 pixels per game unit so it stays sharp; see "big" in flatten.py)
+        im = Image.open(os.path.join(OFFICE_DIR, name + '.png')).convert('RGB').resize((1440, 690), Image.LANCZOS)
         rel = save_img(b, im, f'office-{name}')
-        office[name] = room_pic(rel, im.width / 2, im.height / 2, cover_layers('The office', name, dim=name != '010'))
+        office[name] = room_pic(rel, 480, 230)
     art['Office'] = office
 
     # ---- the cameras (empty rooms) ----
