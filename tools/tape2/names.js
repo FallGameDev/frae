@@ -18,7 +18,6 @@ const PICTURE_NAMES = {
   "Sprite5": ["114", "97", "116", "99", "103", "104", "105", "106", "110", "112", "113", "none"],
   "Wind up": ["Wind up0", "Wind up1"],
   "Sprite7": ["REDALERT!", "Normal alert"],
-  "Sprite10": ["66", "67", "68", "70"],
   "Sprite12": ["1", "2", "3", "4", "0"],
   "Sprite13": ["1", "2"],
   "Sprite28": ["costume1", "costume2", "costume3", "costume4"],

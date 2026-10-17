@@ -43,7 +43,7 @@ PICTURES = {
     'Light Left': None, 'Right Right': None, 'Sprite13': None,                       # vent light buttons, desk
     'Sprite1': None, 'Sprite2': None, 'Sprite3': None, 'Sprite4': None, 'Sprite5': None,   # bars, mask, monitor
     'Sprite12': None, 'Wind up': None, 'Sprite7': None, 'Sprite29': None, 'Sprite67': None,
-    'Sprite28': ['costume1', 'costume2', 'costume3', 'costume4'], 'Sprite10': None,     # static
+    'Sprite28': ['costume1', 'costume2', 'costume3', 'costume4'],     # static (title, death)
     # death minigames: rooms, children, the purple car and man (the 8-bit cast comes from cast.py)
     'Sprite45': ['give cake', 'foxy GET READY', 'foxy GO! GO! GO!', 'foxy blank', 'foxy stage', 'foxy stage2'],
     'Sprite47': None, 'Sprite53': None, 'Sprite54': None, 'Sprite69': ['GiveThemLifeEndo', 'GiveThemLifeEndo2'],

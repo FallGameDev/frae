@@ -60,7 +60,7 @@ const ACTOR_RENDER_H = 760;          // how tall (in pixels) each 3D character p
 // One finished character picture: the image, its black copy (for darkening),
 // and where its body and head are inside it (pixels: [left, top, right, bottom])
 function makeSprite(canvas, headPart) {
-  const w = canvas.width, h = canvas.height;
+  const w = canvas.naturalWidth || canvas.width, h = canvas.naturalHeight || canvas.height;
   const k = Math.min(1, 220 / Math.max(w, h));         // measure on a small copy (fast)
   const sw = Math.max(1, Math.round(w * k)), sh = Math.max(1, Math.round(h * k));
   const m = document.createElement("canvas");
@@ -106,10 +106,7 @@ const Actors = {
     if (!hasPic("Chars", role)) return null;
     const p = pic("Chars", role);
     if (!p.img) return null;
-    const c = document.createElement("canvas");
-    c.width = p.img.naturalWidth || p.img.width; c.height = p.img.naturalHeight || p.img.height;
-    c.getContext("2d").drawImage(p.img, 0, 0);
-    const s = makeSprite(c, 0.4);
+    const s = makeSprite(p.img, 0.4);       // measured straight from the picture (no slow copy)
     this.sprites.set(key, s);
     return s;
   },
@@ -117,6 +114,8 @@ const Actors = {
   // Look for each character's model and render it. Never fails: anything
   // that goes wrong just leaves that character as its 2D drawing.
   async load(onProgress) {
+    // measure every 2D drawing now, while loading (measuring during the night made the game stutter)
+    for (const role of Object.keys(ACTOR_FILES)) this.flat(role);
     const found = {};
     await Promise.all(Object.entries(ACTOR_FILES).map(async ([role, list]) => {
       for (const choice of list) {
@@ -228,7 +227,7 @@ const Actors = {
       // copy it into a normal picture, cut down to the character
       const c = document.createElement("canvas");
       c.width = W; c.height = H;
-      c.getContext("2d").drawImage(R.domElement, 0, 0);
+      c.getContext("2d", { willReadFrequently: true }).drawImage(R.domElement, 0, 0);
       return trim(c);
     }
 

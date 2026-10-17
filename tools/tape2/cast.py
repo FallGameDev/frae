@@ -162,6 +162,7 @@ COVERS = [
     ('Prizecorner', None, [72, 70, 165, 170], 'tchica', 'plush'),
     ('Prizecorner', None, [262, 228, 335, 300], 'tfreddy', 'plush'),
     ('Party 01', None, [140, 140, 470, 310], 'wfreddy', 'posters'),
+    ('Party 03', None, [500, 88, 668, 205], 'tbonnie', 'posters'),
     ('Party 04', None, [555, 140, 655, 262], 'tbonnie', 'plate'),
     ('Party 04', None, [680, 180, 785, 300], 'tfreddy', 'plate'),
 ]

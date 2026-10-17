@@ -319,7 +319,13 @@ class Game {
     ctx.textAlign = o.align || "left";
     ctx.textBaseline = o.base || "alphabetic";
     if (o.alpha !== undefined) ctx.globalAlpha *= o.alpha;
-    if (o.shadow) { ctx.shadowColor = o.shadow; ctx.shadowBlur = 3; }
+    if (o.shadow) {
+      // a dark copy just behind the words (much cheaper than a blurred shadow)
+      const c = ctx.fillStyle;
+      ctx.fillStyle = o.shadow;
+      ctx.fillText(s, x + 1, y + 1, o.max);
+      ctx.fillStyle = c;
+    }
     ctx.fillText(s, x, y, o.max);
     ctx.restore();
   }
@@ -1604,9 +1610,7 @@ class Game {
     if (c === 7 && n.puppet >= 3) pose("puppetwalk" + (1 + Math.floor(this.tick / 20) % 3));
     if (c === 8 && n.shadow && light) pose("shadow");
     if (c === 11 && n.endo && light && n.puppet === 0) pose("endo");
-    // static: always a little, a lot when switching
-    this.drawStatic(ctx, 0.12 + n.switchFx * 0.8);
-    if (n.switchFx > 0.5) draw(ctx, picAt("Sprite10", rand(1, 4)), 240, 180, { alpha: n.switchFx - 0.5 });
+    // (no TV static on the cameras: a clean picture keeps the game smooth)
     // the map and its buttons
     draw(ctx, pic("Map", "map"), SX(139), SY(-73), { size: 45 });
     const r = MAP_BUTTONS[c];
