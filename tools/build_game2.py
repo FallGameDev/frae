@@ -151,7 +151,7 @@ def main():
     b.custom = {}
     b.notes = []
     shutil.copy(os.path.join(HERE, 'loading-rice.webp'), os.path.join(ASSETS, 'loading-rice.webp'))
-    for f in ('favicon.png', 'favicon.ico'):                  # tab icon: Eddy with a 2
+    for f in ('favicon.png',):                                # tab icon: the rainbow guy
         shutil.copy(os.path.join(TAPE, f), os.path.join(OUT, f))
 
     all_targets = list(b.project['targets'])
