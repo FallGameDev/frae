@@ -212,7 +212,7 @@ function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); } c
 class Game {
   constructor(canvas) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext("2d");
+    this.ctx = canvas.getContext("2d", { alpha: false });   // no see-through canvas: cheaper to show
     this.scripts = new Scripts();
     this.smooth = new Smooth();
     this.file = 1;
@@ -330,10 +330,10 @@ class Game {
     ctx.restore();
   }
 
-  // TV static on top of a picture (strength 0-1)
+  // (TV static removed: the game stays smooth. Full strength = plain black screen.)
   drawStatic(ctx, strength) {
-    if (strength <= 0) return;
-    draw(ctx, picAt("Sprite28", rand(1, 4)), 240, 180, { size: 100, alpha: strength });
+    if (strength < 1) return;
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
   }
 
   /* =================================================================
@@ -422,13 +422,12 @@ class Game {
     const f = this.smooth.at("titleFade", a);
     ctx.save();
     ctx.globalAlpha = f;
-    // faces on the right, a little static, then the words
+    // faces on the right, then the words
     const face = TITLE_FACES[(this.face - 1) % TITLE_FACES.length];
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
     drawActor(ctx, face.role, face.box, { mode: "head", rot: face.rot, shade: face.shade });
     ctx.restore();
-    this.drawStatic(ctx, 0.12 + this.titleFlash * 0.4);
     const title = [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
     title.forEach((s, i) => this.text(ctx, s, 22, 46 + i * 27, { size: 27 }));
     // stars (nights 5 and 6 beaten, and the 20/20/20/20 night)

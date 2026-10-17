@@ -150,7 +150,7 @@ function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); } c
 class Game {
   constructor(canvas) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext("2d");
+    this.ctx = canvas.getContext("2d", { alpha: false });   // no see-through canvas: cheaper to show
     this.scripts = new Scripts();
     this.smooth = new Smooth();
     this.file = 1;                  // which save file (picked on the file screen or by ?file=)

@@ -292,7 +292,6 @@ const PICTURE_NAMES = {
   "Wind up": ["Wind up0", "Wind up1"],
   "Sprite7": ["REDALERT!", "Normal alert"],
   "Sprite12": ["1", "2", "3", "4", "0"],
-  "Sprite28": ["costume1", "costume2", "costume3", "costume4"],
   "Sprite29": ["Gold_Star"],
   "Sprite45": ["give cake", "foxy GET READY", "foxy GO! GO! GO!", "foxy blank", "foxy stage", "foxy stage2"],
   "Sprite47": ["CakeChildSprite-0", "CakeChildSprite-1", "CakeChildSprite-2", "CakeChildSprite-3", "CakeChildIrritatedSprite-0", "CakeChildIrritatedSprite-1", "CakeChildIrritatedSprite-2", "CakeChildIrritatedSprite-3", "CakeChildIrritatedSprite-4", "CakeChildIrritatedSprite-5"],
@@ -1487,7 +1486,7 @@ function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); } c
 class Game {
   constructor(canvas) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext("2d");
+    this.ctx = canvas.getContext("2d", { alpha: false });   // no see-through canvas: cheaper to show
     this.scripts = new Scripts();
     this.smooth = new Smooth();
     this.file = 1;
@@ -1605,10 +1604,10 @@ class Game {
     ctx.restore();
   }
 
-  // TV static on top of a picture (strength 0-1)
+  // (TV static removed: the game stays smooth. Full strength = plain black screen.)
   drawStatic(ctx, strength) {
-    if (strength <= 0) return;
-    draw(ctx, picAt("Sprite28", rand(1, 4)), 240, 180, { size: 100, alpha: strength });
+    if (strength < 1) return;
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
   }
 
   /* =================================================================
@@ -1697,13 +1696,12 @@ class Game {
     const f = this.smooth.at("titleFade", a);
     ctx.save();
     ctx.globalAlpha = f;
-    // faces on the right, a little static, then the words
+    // faces on the right, then the words
     const face = TITLE_FACES[(this.face - 1) % TITLE_FACES.length];
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
     drawActor(ctx, face.role, face.box, { mode: "head", rot: face.rot, shade: face.shade });
     ctx.restore();
-    this.drawStatic(ctx, 0.12 + this.titleFlash * 0.4);
     const title = [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
     title.forEach((s, i) => this.text(ctx, s, 22, 46 + i * 27, { size: 27 }));
     // stars (nights 5 and 6 beaten, and the 20/20/20/20 night)
@@ -4105,7 +4103,7 @@ function fit() {
   canvas.style.height = h + "px";
   frame.style.setProperty("--u", (w / VIEW_W) + "px");     // 1 game pixel, used by the panels
   // sharp on hi-res screens, but never bigger than 1440 pixels wide (the pictures are 960 wide; more only costs speed)
-  const dpr = Math.min(2, window.devicePixelRatio || 1, 1280 / w);
+  const dpr = Math.min(2, window.devicePixelRatio || 1, 960 / w);   // at most 960 pixels wide: 2 per game pixel, sharp and light
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
 }
@@ -4161,7 +4159,7 @@ window.addEventListener("keydown", unlockSound);
    MAIN LOOP: update 30 times a second, draw every screen refresh
    (drawing blends between updates so movement stays smooth)
    ===================================================================== */
-let last = performance.now(), acc = 0;
+let last = performance.now(), acc = 0, lastDraw = 0;
 function loop(now) {
   acc += now - last;
   last = now;
@@ -4170,7 +4168,11 @@ function loop(now) {
     game.update();
     acc -= TICK_MS;
   }
-  game.render(Math.min(1, acc / TICK_MS));
+  // draw at most 60 times a second (fast 120/144 Hz screens don't need to draw twice as much)
+  if (now - lastDraw >= 15) {
+    lastDraw = now;
+    game.render(Math.min(1, acc / TICK_MS));
+  }
   requestAnimationFrame(loop);
 }
 

@@ -19,7 +19,6 @@ const PICTURE_NAMES = {
   "Wind up": ["Wind up0", "Wind up1"],
   "Sprite7": ["REDALERT!", "Normal alert"],
   "Sprite12": ["1", "2", "3", "4", "0"],
-  "Sprite28": ["costume1", "costume2", "costume3", "costume4"],
   "Sprite29": ["Gold_Star"],
   "Sprite45": ["give cake", "foxy GET READY", "foxy GO! GO! GO!", "foxy blank", "foxy stage", "foxy stage2"],
   "Sprite47": ["CakeChildSprite-0", "CakeChildSprite-1", "CakeChildSprite-2", "CakeChildSprite-3", "CakeChildIrritatedSprite-0", "CakeChildIrritatedSprite-1", "CakeChildIrritatedSprite-2", "CakeChildIrritatedSprite-3", "CakeChildIrritatedSprite-4", "CakeChildIrritatedSprite-5"],
