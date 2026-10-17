@@ -117,6 +117,7 @@ Object.assign(Game.prototype, {
     this.scripts.stop("mini");
     Sound.stopAll();
     this.sp.stat.play("Sprite28", "After Death");
+    if (m.which === "run") this.riceria = true;          // the title after this one is "Eddies Riceria"
     const st = this.overlay(null, null, { paint: ctx => this.drawStatic(ctx, 1) });
     this.scripts.run("dead", function* () { yield 2.5; this.removeOverlay(st); this.showTitle(); }.call(this));
   },

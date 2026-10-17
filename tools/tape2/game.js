@@ -372,6 +372,9 @@ class Game {
     this.hovered = null;
     this.face = 1;
     this.titleFlash = 0;
+    // right after the GET READY run: the title is "Eddies Riceria" (just this once)
+    this.titleRiceria = !!this.riceria;
+    this.riceria = false;
     this.smooth.jump("titleFade", 0);
     this.scripts.run("title", function* () {
       for (let i = 1; i <= 30; i++) { this.smooth.set("titleFade", i / 30); yield; }
@@ -433,9 +436,11 @@ class Game {
     const face = TITLE_FACES[(this.face - 1) % TITLE_FACES.length];
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
-    drawActor(ctx, face.role, face.box, { mode: "head", kind: "creep", rot: face.rot, shade: face.shade });
+    if (this.titleRiceria) draw(ctx, pic("Riceria", "crying"), 360, 185);      // the rainbow guy, crying
+    else drawActor(ctx, face.role, face.box, { mode: "head", kind: "creep", rot: face.rot, shade: face.shade });
     ctx.restore();
-    const title = [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
+    const title = this.titleRiceria ? [W("Title menu", "Eddies"), W("Title menu", "Riceria")]
+      : [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
     title.forEach((s, i) => this.text(ctx, s, 22, 46 + i * 27, { size: 27 }));
     // stars (nights 5 and 6 beaten, and the 20/20/20/20 night)
     const stars = [this.progress.beat5, this.progress.beat6, this.progress.beat420].filter(Boolean).length;

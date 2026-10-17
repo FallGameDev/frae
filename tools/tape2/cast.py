@@ -485,6 +485,12 @@ def apply(b):
     sw, sh = 48.0, 48.0 * star.height / star.width
     art['Custom'] = {'star': dict(w=sw, h=sh, cx=sw / 2, cy=sh / 2,
                                   layers=[dict(img=save_img(b, star, 'custom-star'), x=0, y=0, w=sw, h=sh)])}
+    # the title screen after the GET READY run: "Eddies Riceria", with the rainbow guy crying
+    cry = Image.open(os.path.join(HERE, 'riceria_crying.png')).convert('RGBA')
+    ch_ = 330.0
+    cw_ = ch_ * cry.width / cry.height
+    art['Riceria'] = {'crying': dict(w=cw_, h=ch_, cx=cw_ / 2, cy=ch_ / 2,
+                                     layers=[dict(img=save_img(b, cry, 'riceria-crying'), x=0, y=0, w=cw_, h=ch_)])}
     art['Loading'] = {'icon': dict(w=40, h=40, cx=20, cy=20, spin=True,
                                    layers=[dict(img='assets/loading-rice.webp', x=-3, y=4.85, w=46, h=34.85)])}
 

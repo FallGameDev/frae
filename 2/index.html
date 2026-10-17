@@ -316,6 +316,7 @@ const PICTURE_NAMES = {
   "Chars": ["tfreddy", "tbonnie", "tchica", "wfreddy", "wbonnie", "wchica", "foxy", "mangle", "golden", "endo", "shadow", "bb", "puppet"],
   "Plush": ["Sprite61", "Sprite65"],
   "Custom": ["star"],
+  "Riceria": ["crying"],
   "Loading": ["icon"],
   "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy", "runner"],
   "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],
@@ -1888,6 +1889,9 @@ class Game {
     this.hovered = null;
     this.face = 1;
     this.titleFlash = 0;
+    // right after the GET READY run: the title is "Eddies Riceria" (just this once)
+    this.titleRiceria = !!this.riceria;
+    this.riceria = false;
     this.smooth.jump("titleFade", 0);
     this.scripts.run("title", function* () {
       for (let i = 1; i <= 30; i++) { this.smooth.set("titleFade", i / 30); yield; }
@@ -1949,9 +1953,11 @@ class Game {
     const face = TITLE_FACES[(this.face - 1) % TITLE_FACES.length];
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
-    drawActor(ctx, face.role, face.box, { mode: "head", kind: "creep", rot: face.rot, shade: face.shade });
+    if (this.titleRiceria) draw(ctx, pic("Riceria", "crying"), 360, 185);      // the rainbow guy, crying
+    else drawActor(ctx, face.role, face.box, { mode: "head", kind: "creep", rot: face.rot, shade: face.shade });
     ctx.restore();
-    const title = [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
+    const title = this.titleRiceria ? [W("Title menu", "Eddies"), W("Title menu", "Riceria")]
+      : [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
     title.forEach((s, i) => this.text(ctx, s, 22, 46 + i * 27, { size: 27 }));
     // stars (nights 5 and 6 beaten, and the 20/20/20/20 night)
     const stars = [this.progress.beat5, this.progress.beat6, this.progress.beat420].filter(Boolean).length;
@@ -3327,6 +3333,7 @@ Object.assign(Game.prototype, {
     this.scripts.stop("mini");
     Sound.stopAll();
     this.sp.stat.play("Sprite28", "After Death");
+    if (m.which === "run") this.riceria = true;          // the title after this one is "Eddies Riceria"
     const st = this.overlay(null, null, { paint: ctx => this.drawStatic(ctx, 1) });
     this.scripts.run("dead", function* () { yield 2.5; this.removeOverlay(st); this.showTitle(); }.call(this));
   },
