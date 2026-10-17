@@ -1605,6 +1605,9 @@ const EYE_SPOT = {
   wfreddy: [47, 47, 42], wbonnie: [47, 47.5, 42], wchica: [47, 47, 42], foxy: [46.5, 52, 40], bb: [49, 43, 36],
   tfreddy: [47, 29, 42], tbonnie: [47, 28, 42], tchica: [47, 29, 42], mangle: [53, 41, 40], golden: [56, 54, 40],
 };
+// Which death minigame each character sends you to (anyone else: a random one)
+//   run   GET READY! (the rainbow guy)     cake   Give Cake to the Children     gifts   Give Gifts, Give Life
+const MINIGAME_FOR = { foxy: "run", mangle: "run", wfreddy: "cake", tfreddy: "cake", puppet: "gifts" };
 const CUSTOM_ORDER = ["wfreddy", "wbonnie", "wchica", "foxy", "bb", "tfreddy", "tbonnie", "tchica", "mangle", "golden"];
 
 /* ---------------------------------------------------------------------
@@ -2711,7 +2714,8 @@ class Game {
     this.scripts.run("dead", function* () {
       yield settings.jumpscares === "1" ? 4 : 5;
       this.sp.stat.stopAll();
-      if (settings.jumpscares === "1" && chance(3)) return this.startMinigame();
+      // 1 in 3 deaths go to a minigame, picked by who caught you
+      if (chance(3)) return this.startMinigame(MINIGAME_FOR[this.killer]);
       this.removeOverlay(st);
       const over = this.overlay(null, null, { fade: 0, paint: ctx => this.text(ctx, W("Game over", "GAME OVER"), 470, 350,
         { size: 20, align: "right", font: "Press Start 2P" }) });
