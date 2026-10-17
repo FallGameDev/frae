@@ -31,6 +31,7 @@ Made here (picture groups the game uses):
 import base64, io, json, math, os, re, shutil
 import numpy as np
 from PIL import Image
+from withered import WITHERED
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CHAR_DIR = os.path.join(HERE, 'characters')
@@ -237,7 +238,15 @@ class Char:
         _, _, self.w, self.h = b.svg_size(text)
         # draw it once to find the drawing's outline and its head
         k = 600 / max(self.w, self.h)
-        a = np.array(Image.open(io.BytesIO(b.renderer.svg_to_png(text, self.w, self.h, k))))[:, :, 3] > 40
+        drawn = Image.open(io.BytesIO(b.renderer.svg_to_png(text, self.w, self.h, k))).convert('RGBA')
+        if role in WITHERED:
+            # the withered ones: torn up and misconfigured (withered.py), saved as a picture
+            from withered import wither
+            drawn = wither(drawn, role)
+            self.src = f'assets/characters/{role}.png'
+            drawn.save(os.path.join(b.out_root, self.src))
+            self.w, self.h = drawn.width / k, drawn.height / k
+        a = np.array(drawn)[:, :, 3] > 40
         head_part = 0.40
         ys, xs = np.where(a)
         x0, x1, y0, y1 = xs.min() / k, (xs.max() + 1) / k, ys.min() / k, (ys.max() + 1) / k
@@ -502,8 +511,12 @@ def apply(b):
         for kind in ('body', 'head'):
             x0, y0, x1, y1 = ch.body if kind == 'body' else ch.head
             k = (tall if kind == 'body' else 20) / (y1 - y0)
-            text = open(path, encoding='utf-8').read()
-            im = Image.open(io.BytesIO(b.renderer.svg_to_png(text, ch.w, ch.h, k))).convert('RGBA')
+            if path.endswith('.png'):
+                im = Image.open(path).convert('RGBA')
+                im = im.resize((max(1, round(ch.w * k)), max(1, round(ch.h * k))), Image.LANCZOS)
+            else:
+                text = open(path, encoding='utf-8').read()
+                im = Image.open(io.BytesIO(b.renderer.svg_to_png(text, ch.w, ch.h, k))).convert('RGBA')
             im = im.crop((int(x0 * k), int(y0 * k), int(math.ceil(x1 * k)), int(math.ceil(y1 * k))))
             a = np.array(im)
             a[:, :, 3] = np.where(a[:, :, 3] > 110, 255, 0)

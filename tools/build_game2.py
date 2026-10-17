@@ -50,6 +50,8 @@ PICTURES = {
 }
 # FNaF's purple man becomes a grey stranger (same pixels, colors moved away from purple)
 RECOLOR = {('Sprite54', 'Purple_Car')}
+# FNaF's Freddy mask becomes an Eddy mask: the brown turns Eddy yellow, the grey fur cream
+MASK_SPRITES = {'Sprite3', 'Sprite4'}
 
 # ---------------------------------------------------------------------------
 # Sounds: sprite -> sound names (None = every sound). Music follows the Music slider.
@@ -81,17 +83,39 @@ def picture_groups(project):
     return keep
 
 
+def eddy_mask(a):
+    """The mask's colors: brown/red -> Eddy yellow (brighter), grey fur -> cream. a: float RGBA array."""
+    import numpy as np
+    rgb = a[:, :, :3] / 255
+    mx, mn = rgb.max(axis=2), rgb.min(axis=2)
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+    val = mx
+    yellow = np.array([1.0, 0.82, 0.12])
+    cream = np.array([0.93, 0.89, 0.72])
+    lit = np.clip(val * 1.7, 0, 1)[:, :, None]
+    colored = (sat > 0.22)[:, :, None] & (val > 0.06)[:, :, None]
+    furry = (sat <= 0.22)[:, :, None] & (val > 0.12)[:, :, None]
+    out = np.where(colored, yellow * lit, rgb)
+    out = np.where(furry, cream * np.clip(val * 1.25, 0, 1)[:, :, None], out)
+    a[:, :, :3] = out * 255
+    return a
+
+
 def recolor(b, pictures):
-    """Turns the purple man (and his car) grey-blue, as new costume pictures."""
+    """Turns the purple man (and his car) grey-blue, and the Freddy mask into an Eddy mask, as new costume pictures."""
     import numpy as np
     from PIL import Image
     for t in pictures:
         for c in t['costumes']:
-            if (t['name'], c['name']) not in RECOLOR:
+            mask = t['name'] in MASK_SPRITES
+            if (t['name'], c['name']) not in RECOLOR and not mask:
                 continue
             a = np.array(Image.open(os.path.join(b.src, c['md5ext'])).convert('RGBA')).astype(float)
-            gray = a[:, :, :3].mean(axis=2, keepdims=True)
-            a[:, :, :3] = gray * np.array([0.78, 0.85, 1.0])            # cold grey-blue
+            if mask:
+                a = eddy_mask(a)
+            else:
+                gray = a[:, :, :3].mean(axis=2, keepdims=True)
+                a[:, :, :3] = gray * np.array([0.78, 0.85, 1.0])            # cold grey-blue
             rel = b.out_name('img', base.slug(t['name'] + '-' + c['name']), 'webp')
             b.save_webp(Image.fromarray(a.clip(0, 255).astype(np.uint8)), rel)
             res = c.get('bitmapResolution', 1)
