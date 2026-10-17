@@ -83,6 +83,12 @@ const CAST = {
   golden:  { name: W("Characters", "Golden Eddie") },
 };
 // the 10 you can set on the custom night (top row, then bottom row, like FNaF 2)
+// Custom night: where each portrait's right eye is (as you look at it), in the 80 x 70 portrait,
+// and how big the star over it is (percent of the 48-wide star picture)
+const EYE_SPOT = {
+  wfreddy: [47, 47, 42], wbonnie: [47, 47.5, 42], wchica: [47, 47, 42], foxy: [46.5, 52, 40], bb: [49, 43, 36],
+  tfreddy: [47, 29, 42], tbonnie: [47, 28, 42], tchica: [47, 29, 42], mangle: [53, 41, 40], golden: [56, 54, 40],
+};
 const CUSTOM_ORDER = ["wfreddy", "wbonnie", "wchica", "foxy", "bb", "tfreddy", "tbonnie", "tchica", "mangle", "golden"];
 
 /* ---------------------------------------------------------------------
@@ -1475,6 +1481,10 @@ class Game {
       ctx.save();
       ctx.beginPath(); ctx.rect(c.x + 3, c.y + 3, c.w - 6, 70); ctx.clip();
       drawSpot(ctx, { ...HEAD_SPOT, role: who }, c.x + c.w / 2, c.y + 40, 100);
+      // the red star over their right eye (as you look at them): invisible at 0, solid from 13 up
+      const level = this.customPick[i], eye = EYE_SPOT[who];
+      if (level > 0 && eye) draw(ctx, pic("Custom", "star"), c.x + c.w / 2 - 40 + eye[0], c.y + 40 - 35 + eye[1],
+        { size: eye[2], alpha: Math.min(1, level / 13) });
       ctx.restore();
       this.text(ctx, CAST[who].name, c.x + c.w / 2, c.y + 86, { size: 8, align: "center", max: c.w - 6 });
       const y = c.y + c.h - 14;

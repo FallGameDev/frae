@@ -43,6 +43,7 @@ const PICTURE_NAMES = {
   "Cam12": ["dark", "light"],
   "Chars": ["tfreddy", "tbonnie", "tchica", "wfreddy", "wbonnie", "wchica", "foxy", "mangle", "golden", "endo", "shadow", "bb", "puppet"],
   "Plush": ["Sprite61", "Sprite65"],
+  "Custom": ["star"],
   "Loading": ["icon"],
   "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy"],
   "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],

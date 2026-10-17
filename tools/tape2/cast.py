@@ -480,6 +480,11 @@ def apply(b):
         c = next(c for c in t['costumes'] if c['name'] == cos)
         plush[spr] = {k: v for k, v in b.costume(t, c).items() if k != 'name'}
     art['Plush'] = plush
+    # custom night: the red star over each character's right eye (stronger the harder they are)
+    star = Image.open(os.path.join(HERE, 'eye_star.png')).convert('RGBA')
+    sw, sh = 48.0, 48.0 * star.height / star.width
+    art['Custom'] = {'star': dict(w=sw, h=sh, cx=sw / 2, cy=sh / 2,
+                                  layers=[dict(img=save_img(b, star, 'custom-star'), x=0, y=0, w=sw, h=sh)])}
     art['Loading'] = {'icon': dict(w=40, h=40, cx=20, cy=20, spin=True,
                                    layers=[dict(img='assets/loading-rice.webp', x=-3, y=4.85, w=46, h=34.85)])}
 
