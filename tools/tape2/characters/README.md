@@ -9,7 +9,7 @@ Drop a character drawing here, named after the role it plays, then rebuild:
 | tfreddy.svg   | Toy Freddy                 | Toy Eddy          |
 | tbonnie.svg   | Toy Bonnie                 | Toy Weddy         |
 | tchica.svg    | Toy Chica                  | Toy Cheddy        |
-| mangle.svg    | Mangle                     | Mangled Endo      |
+| mangle.svg    | Mangle                     | Meyg              |
 | bb.svg        | Balloon Boy                | Balloon Kid       |
 | puppet.svg    | The Puppet                 | The Puppet        |
 | wfreddy.svg   | Withered Freddy            | Withered Eddy     |

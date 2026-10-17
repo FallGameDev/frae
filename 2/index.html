@@ -947,6 +947,9 @@ const ROOM_COVERS = {
    Animations: if a model has a looping animation (the one named idle or
    loop, otherwise its first one), it plays whenever the character is
    standing (rendered while loading into up to 30 frames).
+   Faces: the toys have three (models/faces): calm when standing ("stand":
+   the stage, newspapers...), creepy when wandering ("creep": cameras, hall,
+   vents, title) and scary when reaching for you ("lunge").
 
    MODS can bring their own characters (Settings > Mods):
      models/<name>.glb (or .gltf .fbx .obj)    a 3D model
@@ -961,12 +964,12 @@ const MODEL_DIR = "../models/";
 const MODEL_TYPES = ["glb", "gltf", "fbx", "obj"];
 
 // role -> model file names to look for (without the ending), first one found wins.
-// pose: "broken" = bent and wrecked (Toy Endo's model standing in for Mangled Endo)
+// pose: "broken" = bent and wrecked (Toy Endo's model standing in for Meyg)
 const ACTOR_FILES = {
   tfreddy: [{ file: "toy_eddy" }],
   tbonnie: [{ file: "toy_weddy" }],
   tchica:  [{ file: "toy_cheddy" }],
-  mangle:  [{ file: "mangled_endo" }, { file: "toy_endo", pose: "broken" }],
+  mangle:  [{ file: "meyg" }, { file: "mangled_endo" }, { file: "toy_endo", pose: "broken" }],
   bb:      [{ file: "balloon_kid" }],
   puppet:  [{ file: "the_puppet" }, { file: "puppet" }],
   wfreddy: [{ file: "withered_eddy" }],
@@ -987,9 +990,9 @@ const MODEL_POSES = {
   lunge: { "UpperArm.L": [-12, 0, -88], "UpperArm.R": [-12, 0, 88], "Chest": [-14, 0, 0], "Head": [-12, -10, 0],
            "Ear.L": [0, -20, 0], "Ear.R": [0, 20, 0], "Leg.L": [18, 0, 0], "Leg.R": [-12, 0, 0] },
   // wrecked: twisted head, one arm wrenched up, one hanging, legs splayed
-  broken: { "UpperArm.L": [40, 0, 30], "UpperArm.R": [-88, 0, 0], "Head": [25, 35, 18], "Chest": [8, 10, 6],
+  broken: { "UpperArm.L": [40, 0, 30], "UpperArm.R": [-88, 0, 0], "Head": [12, 14, 12], "Chest": [8, 10, 6],
             "Ear.L": [0, -55, 0], "Ear.R": [0, 70, 30], "Leg.L": [0, 25, 0], "Leg.R": [30, -15, 0], "Hand.L": [60, 0, 0] },
-  brokenlunge: { "UpperArm.L": [-10, 0, -75], "UpperArm.R": [-30, 0, 85], "Chest": [-18, 6, 0], "Head": [-15, 30, 25],
+  brokenlunge: { "UpperArm.L": [-10, 0, -75], "UpperArm.R": [-30, 0, 85], "Chest": [-18, 6, 0], "Head": [-10, 12, 14],
                  "Ear.L": [0, -55, 0], "Ear.R": [0, 70, 30], "Leg.L": [20, 20, 0] },
 };
 const ACTOR_RENDER_H = 760;            // how tall (in pixels) each 3D character picture is made
@@ -1149,10 +1152,21 @@ const Actors = {
         if (!cache.has(f.url)) cache.set(f.url, await three.loadModel(f.url, f.type));
         const model = cache.get(f.url);
         const poses = f.pose === "broken" ? ["broken", "brokenlunge"] : ["stand", "lunge"];
-        // standing: its own looping animation if it has one, otherwise the standing pose
+        // the toys' other faces (models/faces/<file>_head2.png creepy, _head3.png scary), when there are some
+        const faces = await three.loadFaces(f.file);
+        // standing: its own looping animation if it has one, otherwise the standing pose (calm face)
+        three.setFace(model, null);
         if (model.mixer) this.sprites.set(role + "/stand", three.renderAnimation(model, 8, poses[0]));
         else this.sprites.set(role + "/stand", makeSprite(three.render(model, poses[0], 8), 0.36));
+        // creeping around (cameras, hall, vents): standing, creepy face
+        if (faces[2]) {
+          three.setFace(model, faces[2]);
+          this.sprites.set(role + "/creep", model.mixer ? three.renderAnimation(model, 8, poses[0]) : makeSprite(three.render(model, poses[0], 8), 0.36));
+        }
+        // reaching for you (in the office, jumpscares): scary face
+        three.setFace(model, faces[3] || faces[2] || null);
         this.sprites.set(role + "/lunge", makeSprite(three.render(model, poses[1], 0), 0.36));
+        three.setFace(model, null);
         this.models[role] = f.url;
       } catch (e) { console.warn("Could not use the 3D model", f.url, e); }
       if (onProgress) onProgress(++done / roles.length);
@@ -1319,7 +1333,37 @@ const Actors = {
     }
 
     function dispose() { R.dispose(); R.forceContextLoss && R.forceContextLoss(); }
-    return { loadModel, render, renderAnimation, dispose };
+    // A toy's other faces: head textures painted by tools/face_toys.py (a mod can bring its own)
+    const texLoader = new THREE.TextureLoader();
+    async function loadFaces(file) {
+      const out = {};
+      for (const n of [2, 3]) {
+        const rel = "models/faces/" + file + "_head" + n + ".png";
+        const url = (typeof MOD_FILES !== "undefined" && MOD_FILES[rel]) || "../" + rel;
+        try {
+          const t = await texLoader.loadAsync(url);
+          t.flipY = false;                               // (the way glTF models read pictures)
+          t.colorSpace = THREE.SRGBColorSpace;
+          out[n] = t;
+        } catch (e) { /* this model has no such face */ }
+      }
+      return out;
+    }
+    // Put a face texture on the head (null = the model's own)
+    function setFace(model, tex) {
+      model.root.traverse(o => {
+        if (!o.isMesh) return;
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+          if (!m || !/head/i.test(m.name || "")) continue;
+          if (m.userData.ownMap === undefined) m.userData.ownMap = m.map || null;
+          const map = tex || m.userData.ownMap;
+          m.map = map;
+          m.needsUpdate = true;
+        }
+      });
+    }
+
+    return { loadModel, render, renderAnimation, loadFaces, setFace, dispose };
   },
 };
 
@@ -1545,7 +1589,7 @@ const CAST = {
   tfreddy: { name: W("Characters", "Toy Eddy") },
   tbonnie: { name: W("Characters", "Toy Weddy") },
   tchica:  { name: W("Characters", "Toy Cheddy") },
-  mangle:  { name: W("Characters", "Mangled Endo") },
+  mangle:  { name: W("Characters", "Meyg") },
   bb:      { name: W("Characters", "Balloon Kid") },
   puppet:  { name: W("Characters", "The Puppet") },
   wfreddy: { name: W("Characters", "Withered Eddy") },
@@ -1898,7 +1942,7 @@ class Game {
     const face = TITLE_FACES[(this.face - 1) % TITLE_FACES.length];
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
-    drawActor(ctx, face.role, face.box, { mode: "head", rot: face.rot, shade: face.shade });
+    drawActor(ctx, face.role, face.box, { mode: "head", kind: "creep", rot: face.rot, shade: face.shade });
     ctx.restore();
     const title = [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
     title.forEach((s, i) => this.text(ctx, s, 22, 46 + i * 27, { size: 27 }));
@@ -2261,7 +2305,7 @@ class Game {
     this.sp.bb.setVolume(100);
     this.sp.bb.play("BB in the office", "echo4b");
   }
-  // Mangled Endo gets in: hangs from the ceiling, radio crackling, and may drop on you
+  // Meyg gets in: hangs from the ceiling, radio crackling, and may drop on you
   mangleEnters() {
     const n = this.n;
     n.at.mangle = "office";
@@ -2471,7 +2515,7 @@ class Game {
     const n = this.n;
     // Golden Eddie might be sitting there now
     if (!n.visit && chance(3)) this.rollGolden();
-    // Mangled Endo might drop down
+    // Meyg might drop down
     if (n.mangleIn && n.mangleAttack <= 0 && chance(3)) this.jumpscare("mangle");
   }
 
@@ -2595,7 +2639,7 @@ class Game {
     sp.vent.setVolume(n.ventL || n.ventR ? 30 : 0);
     sp.camHum.setVolume(n.camsUp ? 25 : 0);
     sp.breath.setVolume(n.maskUp ? 70 : 0);
-    // radio static when Mangled Endo is close
+    // radio static when Meyg is close
     const m = n.at.mangle;
     sp.radio.setVolume(n.mangleIn ? 45 : m === "hall" || m === "ventR" ? 30 : m === 6 ? 15 : (n.camsUp && n.cam === m) ? 10 : 0);
   }
@@ -3021,7 +3065,7 @@ class Game {
     // who is in the hall / at a vent (drawn by the game: see actors.js and poses.js)
     const pose = name => {
       const s = OFFICE_POSES[name];
-      if (s) inPicture(ctx, room, ox, oy, 150, () => drawActor(ctx, name.split("-")[1], s.box, { ...s, shade: addShade(s.shade, flick) }));
+      if (s) inPicture(ctx, room, ox, oy, 150, () => drawActor(ctx, name.split("-")[1], s.box, { kind: "creep", ...s, shade: addShade(s.shade, flick) }));
     };
     if (n.flash) {
       for (const [who, at] of Object.entries(n.at)) if (at === "hall") pose("hall-" + who);
@@ -3070,7 +3114,8 @@ class Game {
       const s = spots[name];
       if (!s) return;
       const shade = light || s.same ? s.shade : Math.max(0.86, s.shade);
-      inPicture(ctx, room, x, 180, 150, () => drawActor(ctx, s.role || name, s.box, { ...s, shade }));
+      // calm on the stage, creepy everywhere else
+      inPicture(ctx, room, x, 180, 150, () => drawActor(ctx, s.role || name, s.box, { kind: c === 9 ? "stand" : "creep", ...s, shade }));
     };
     inPicture(ctx, room, x, 180, 150, () => {
       for (const s of ROOM_COVERS[c] || []) drawActor(ctx, s.role, s.box, { ...s, shade: Math.min(0.95, s.shade + (light ? 0 : 0.5)) });
@@ -3950,7 +3995,8 @@ async function addActorTemplate(entries, enc) {
       } catch (e) { console.warn("No drawing for", role, e); }
     }
   }
-  lines.push("toy_endo           Mangled Endo (bent and broken, until there is a mangled_endo)");
+  lines.push("toy_endo           Meyg (Toy Endo, bent and broken, until there is a meyg model)");
+  lines.push("Faces: models/faces/<name>_head2.png (creepy) and _head3.png (scary) swap the head texture.");
   lines.push("", "3D: .glb works best (one file with colors and skeleton). .gltf must be one file (no .bin).",
              ".fbx and .obj work too. Models built on the base skeleton (UpperArm.L, Head...) get posed",
              "by the game (standing, and reaching for you). Browsers can't open .blend: export .glb.",

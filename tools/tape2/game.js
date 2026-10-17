@@ -73,7 +73,7 @@ const CAST = {
   tfreddy: { name: W("Characters", "Toy Eddy") },
   tbonnie: { name: W("Characters", "Toy Weddy") },
   tchica:  { name: W("Characters", "Toy Cheddy") },
-  mangle:  { name: W("Characters", "Mangled Endo") },
+  mangle:  { name: W("Characters", "Meyg") },
   bb:      { name: W("Characters", "Balloon Kid") },
   puppet:  { name: W("Characters", "The Puppet") },
   wfreddy: { name: W("Characters", "Withered Eddy") },
@@ -426,7 +426,7 @@ class Game {
     const face = TITLE_FACES[(this.face - 1) % TITLE_FACES.length];
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
-    drawActor(ctx, face.role, face.box, { mode: "head", rot: face.rot, shade: face.shade });
+    drawActor(ctx, face.role, face.box, { mode: "head", kind: "creep", rot: face.rot, shade: face.shade });
     ctx.restore();
     const title = [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
     title.forEach((s, i) => this.text(ctx, s, 22, 46 + i * 27, { size: 27 }));
@@ -789,7 +789,7 @@ class Game {
     this.sp.bb.setVolume(100);
     this.sp.bb.play("BB in the office", "echo4b");
   }
-  // Mangled Endo gets in: hangs from the ceiling, radio crackling, and may drop on you
+  // Meyg gets in: hangs from the ceiling, radio crackling, and may drop on you
   mangleEnters() {
     const n = this.n;
     n.at.mangle = "office";
@@ -999,7 +999,7 @@ class Game {
     const n = this.n;
     // Golden Eddie might be sitting there now
     if (!n.visit && chance(3)) this.rollGolden();
-    // Mangled Endo might drop down
+    // Meyg might drop down
     if (n.mangleIn && n.mangleAttack <= 0 && chance(3)) this.jumpscare("mangle");
   }
 
@@ -1123,7 +1123,7 @@ class Game {
     sp.vent.setVolume(n.ventL || n.ventR ? 30 : 0);
     sp.camHum.setVolume(n.camsUp ? 25 : 0);
     sp.breath.setVolume(n.maskUp ? 70 : 0);
-    // radio static when Mangled Endo is close
+    // radio static when Meyg is close
     const m = n.at.mangle;
     sp.radio.setVolume(n.mangleIn ? 45 : m === "hall" || m === "ventR" ? 30 : m === 6 ? 15 : (n.camsUp && n.cam === m) ? 10 : 0);
   }
@@ -1549,7 +1549,7 @@ class Game {
     // who is in the hall / at a vent (drawn by the game: see actors.js and poses.js)
     const pose = name => {
       const s = OFFICE_POSES[name];
-      if (s) inPicture(ctx, room, ox, oy, 150, () => drawActor(ctx, name.split("-")[1], s.box, { ...s, shade: addShade(s.shade, flick) }));
+      if (s) inPicture(ctx, room, ox, oy, 150, () => drawActor(ctx, name.split("-")[1], s.box, { kind: "creep", ...s, shade: addShade(s.shade, flick) }));
     };
     if (n.flash) {
       for (const [who, at] of Object.entries(n.at)) if (at === "hall") pose("hall-" + who);
@@ -1598,7 +1598,8 @@ class Game {
       const s = spots[name];
       if (!s) return;
       const shade = light || s.same ? s.shade : Math.max(0.86, s.shade);
-      inPicture(ctx, room, x, 180, 150, () => drawActor(ctx, s.role || name, s.box, { ...s, shade }));
+      // calm on the stage, creepy everywhere else
+      inPicture(ctx, room, x, 180, 150, () => drawActor(ctx, s.role || name, s.box, { kind: c === 9 ? "stand" : "creep", ...s, shade }));
     };
     inPicture(ctx, room, x, 180, 150, () => {
       for (const s of ROOM_COVERS[c] || []) drawActor(ctx, s.role, s.box, { ...s, shade: Math.min(0.95, s.shade + (light ? 0 : 0.5)) });

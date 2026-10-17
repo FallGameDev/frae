@@ -475,7 +475,8 @@ async function addActorTemplate(entries, enc) {
       } catch (e) { console.warn("No drawing for", role, e); }
     }
   }
-  lines.push("toy_endo           Mangled Endo (bent and broken, until there is a mangled_endo)");
+  lines.push("toy_endo           Meyg (Toy Endo, bent and broken, until there is a meyg model)");
+  lines.push("Faces: models/faces/<name>_head2.png (creepy) and _head3.png (scary) swap the head texture.");
   lines.push("", "3D: .glb works best (one file with colors and skeleton). .gltf must be one file (no .bin).",
              ".fbx and .obj work too. Models built on the base skeleton (UpperArm.L, Head...) get posed",
              "by the game (standing, and reaching for you). Browsers can't open .blend: export .glb.",

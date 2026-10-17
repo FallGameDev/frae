@@ -12,7 +12,7 @@ Name the file after the character (any of `.glb`, `.gltf`, `.fbx`, `.obj`):
 | `toy_eddy`        | Toy Eddy         |
 | `toy_weddy`       | Toy Weddy        |
 | `toy_cheddy`      | Toy Cheddy       |
-| `mangled_endo`    | Mangled Endo (until there is one: `toy_endo` in a broken pose) |
+| `meyg`            | Meyg (until there is one: `toy_endo` in a broken pose) |
 | `balloon_kid`     | Balloon Kid      |
 | `the_puppet`      | The Puppet       |
 | `withered_eddy`   | Withered Eddy    |
@@ -53,6 +53,10 @@ loop, otherwise its first one), it plays whenever the character stands.
   (Toy Eddy, Toy Weddy, Toy Cheddy, Toy Endo), each in its own collection.
 - `toy_*.glb` (games, Godot, web) and `toy_*.fbx` (Roblox, GameMaker): one toy per file, rig + colors.
 - `toys_preview.png`: the four toys posed to test the skeleton.
+- `faces/`: Aidan's face drawings (`<toy>_face1..3.png`: calm, creepy, scary) and the
+  head textures made from them (`<toy>_head1..3.png`). The models carry the calm face;
+  the game swaps in head2 (cameras, hall, vents, title) and head3 (office, jumpscares).
+  After changing a face drawing: `python3 tools/face_toys.py` (needs `pip install bpy`).
 
 Skeleton: Root > Hips > Chest > Head > Ear.L / Ear.R, Chest > UpperArm > Hand,
 Hips > Leg > Foot (.L / .R). Every body part follows one bone (no stretching);
