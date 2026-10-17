@@ -27,7 +27,6 @@ const PICTURE_NAMES = {
   "Sprite67": ["costume1"],
   "Sprite69": ["GiveThemLifeEndo", "GiveThemLifeEndo2"],
   "Sprite75": ["ConfettiBurst-0", "ConfettiBurst-1", "ConfettiBurst-2", "ConfettiBurst-3", "ConfettiBurst-4", "ConfettiBurst-5", "ConfettiBurst-6", "ConfettiBurst-7"],
-  "Sprite76": ["Purple_man"],
   "Office": ["000", "010", "100", "001"],
   "Cam1": ["dark", "light"],
   "Cam2": ["dark", "light"],
@@ -45,7 +44,7 @@ const PICTURE_NAMES = {
   "Plush": ["Sprite61", "Sprite65"],
   "Custom": ["star"],
   "Loading": ["icon"],
-  "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy"],
+  "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy", "runner"],
   "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],
 };
 

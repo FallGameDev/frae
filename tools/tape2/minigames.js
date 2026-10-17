@@ -121,6 +121,34 @@ Object.assign(Game.prototype, {
     this.scripts.run("dead", function* () { yield 2.5; this.removeOverlay(st); this.showTitle(); }.call(this));
   },
 
+  // A big blocky 8-bit fire: columns of flame that flicker (left x, floor y, width, tallest height)
+  drawPixelFire(ctx, x, floor, w, tall, t) {
+    const cell = 8, cols = Math.ceil(w / cell), step = Math.floor(t * 12);
+    const noise = (i, k) => { const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); };
+    const colors = ["#a80c08", "#e8300c", "#ff7a00", "#ffc400", "#fff1a0"];      // outside -> inside
+    ctx.save();
+    for (let i = 0; i < cols; i++) {
+      // taller in the middle, every column jumps a little each step
+      const mid = 1 - Math.abs((i + 0.5) / cols * 2 - 1);
+      const h = tall * (0.35 + 0.65 * Math.pow(mid, 0.7)) * (0.75 + 0.35 * noise(i, step));
+      const rows = Math.max(1, Math.round(h / cell));
+      for (let r = 0; r < rows; r++) {
+        // the higher up, the more it is the outer (red) color; sparks break off at the top
+        const up = r / rows;
+        const layer = Math.max(0, Math.min(colors.length - 1, Math.floor((1 - up) * colors.length * (0.55 + 0.45 * mid) - noise(i + r, step) * 1.2)));
+        if (up > 0.85 && noise(i * 7 + r, step) < 0.35) continue;
+        ctx.fillStyle = colors[layer];
+        ctx.fillRect(x + i * cell, floor - (r + 1) * cell, cell, cell);
+      }
+      // a spark or two above the flames
+      if (noise(i, step + 99) < 0.12) {
+        ctx.fillStyle = colors[3];
+        ctx.fillRect(x + i * cell, floor - (rows + 2 + Math.floor(noise(i, step + 7) * 5)) * cell, cell / 2, cell / 2);
+      }
+    }
+    ctx.restore();
+  },
+
   // An 8-bit character (flipped to face left if needed)
   drawPixel(ctx, name, x, y, size, flip) {
     const p = pic("Pixel", name);
@@ -171,8 +199,13 @@ Object.assign(Game.prototype, {
                  m.state === "ready" ? "foxy GET READY" : (m.t % 1 < 0.5 ? "foxy GO! GO! GO!" : "foxy blank");
       draw(ctx, pic("Sprite45", bg), 240, 180);
       if (m.state === "party") draw(ctx, picAt("Sprite75", 1 + Math.floor(m.t * 8) % 8), 380, 200, { size: 60 });
-      if (m.state === "late") draw(ctx, pic("Sprite76", "Purple_man"), 330, 250, { size: 40 });
-      this.drawPixel(ctx, "foxy", m.x, m.y + 40, 65, false);
+      if (m.state === "late") {
+        // the last run: no man, no children... just a huge fire
+        ctx.fillStyle = "#000"; ctx.fillRect(213, 112, 250, 223);     // (the grey children in the picture are covered)
+        this.drawPixelFire(ctx, 205, 336, 262, 300, m.t);
+      }
+      // Aidan's Endo running (8-bit)
+      this.drawPixel(ctx, "runner", m.x, m.y + 40, 65, false);
     }
   },
 });

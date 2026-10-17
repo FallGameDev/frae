@@ -508,6 +508,19 @@ def apply(b):
             W, H = out.shape[1] * u, out.shape[0] * u
             pix[(r if kind == 'body' else 'head-' + r)] = dict(w=W, h=H, cx=W / 2, cy=H / 2 if kind == 'head' else H,
                                                                 pixel=True, layers=[dict(img=rel, x=0, y=0, w=W, h=H)])
+    # Aidan's own Endo for the GET READY run (minigame_endo.png), made 8-bit like the others:
+    # 64 pixels tall, shown as tall as the other runners
+    im = Image.open(os.path.join(HERE, 'minigame_endo.png')).convert('RGBA')
+    k = 64 / im.height
+    im = im.resize((max(1, round(im.width * k)), 64), Image.LANCZOS)
+    a = np.array(im)
+    a[:, :, 3] = np.where(a[:, :, 3] > 110, 255, 0)
+    rgb = Image.fromarray(a[:, :, :3]).quantize(16).convert('RGB')
+    out = np.dstack([np.array(rgb), a[:, :, 3]]).astype(np.uint8)
+    rel = save_img(b, Image.fromarray(out), 'pixel-body-runner')
+    u = 3 * 46 / 64
+    W, H = out.shape[1] * u, out.shape[0] * u
+    pix['runner'] = dict(w=W, h=H, cx=W / 2, cy=H, pixel=True, layers=[dict(img=rel, x=0, y=0, w=W, h=H)])
     art['Pixel'] = pix
     b.notes.append(f"cast: {sum(len(v) for v in art.values())} pictures (the characters are drawn by the game)")
     return art

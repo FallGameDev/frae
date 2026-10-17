@@ -46,10 +46,10 @@ PICTURES = {
     # death minigames: rooms, children, the purple car and man (the 8-bit cast comes from cast.py)
     'Sprite45': ['give cake', 'foxy GET READY', 'foxy GO! GO! GO!', 'foxy blank', 'foxy stage', 'foxy stage2'],
     'Sprite47': None, 'Sprite53': None, 'Sprite54': None, 'Sprite69': ['GiveThemLifeEndo', 'GiveThemLifeEndo2'],
-    'Sprite75': None, 'Sprite76': None,
+    'Sprite75': None,
 }
 # FNaF's purple man becomes a grey stranger (same pixels, colors moved away from purple)
-RECOLOR = {('Sprite76', 'Purple_man'), ('Sprite54', 'Purple_Car')}
+RECOLOR = {('Sprite54', 'Purple_Car')}
 
 # ---------------------------------------------------------------------------
 # Sounds: sprite -> sound names (None = every sound). Music follows the Music slider.
