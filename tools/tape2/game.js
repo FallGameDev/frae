@@ -163,6 +163,7 @@ const PRESETS = [
   { name: W("Custom night", "Cupcake Challenge"), ai: [5, 5, 5, 5, 5, 5, 5, 5, 5, 5], prize: "Sprite61" },
   { name: W("Custom night", "Eddie Fever"), ai: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10], prize: "Sprite65" },
   { name: W("Custom night", "Golden Eddie"), ai: [1, 9, 8, 7, 1, 9, 8, 7, 1, 9], prize: "Sprite64" },
+  { name: W("Custom night", "F*CK NO!"), ai: [20, 20, 20, 20, 20, 20, 20, 20, 20, 20] },        // everyone on 20
 ];
 // where each prize plush sits (Scratch spot, next to the desk)
 const PRIZE_SPOT = {
