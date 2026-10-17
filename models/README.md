@@ -25,6 +25,9 @@ Name the file after the character (any of `.glb`, `.gltf`, `.fbx`, `.obj`):
 (The list lives in `ACTOR_FILES` in `tools/tape2/actors.js`.) A character
 with no model yet is drawn as its 2D drawing.
 
+Mods can do the same without touching the repo: a mod's `models/` folder
+(3D) and `characters/` folder (2D drawings, same names) win over these.
+
 **.blend files:** browsers can't open them, so turn them into .glb first:
 
     pip install bpy

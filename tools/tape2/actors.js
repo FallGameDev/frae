@@ -17,6 +17,13 @@
 
    Which file is which character: ACTOR_FILES below. The first file name
    that exists wins.
+
+   MODS can bring their own characters (Settings > Mods):
+     models/<name>.glb (or .gltf .fbx .obj)    a 3D model
+     characters/<name>.png (or .webp .jpg .svg)  a 2D drawing (full body)
+   <name> is the same as the model names below (toy_eddy, withered_weddy...)
+   or the role (tfreddy, wbonnie...). What wins, best first:
+     mod model > mod drawing > the game's model (models/) > the game's drawing
    ===================================================================== */
 "use strict";
 
@@ -55,7 +62,21 @@ const MODEL_POSES = {
   brokenlunge: { "UpperArm.L": [-10, 0, -75], "UpperArm.R": [-30, 0, 85], "Chest": [-18, 6, 0], "Head": [-15, 30, 25],
                  "Ear.L": [0, -55, 0], "Ear.R": [0, 70, 30], "Leg.L": [20, 20, 0] },
 };
-const ACTOR_RENDER_H = 760;          // how tall (in pixels) each 3D character picture is made
+const ACTOR_RENDER_H = 760;
+
+// The names a character can have in a mod's models/ and characters/ folders
+const actorNames = role => [...ACTOR_FILES[role].map(c => c.file), role];
+// The first mod file for a character in a folder (MOD_FILES is filled by the Mods code)
+function modActorFile(folder, role, types) {
+  if (typeof MOD_FILES === "undefined") return null;
+  for (const name of actorNames(role)) for (const type of types) {
+    const url = MOD_FILES[folder + "/" + name + "." + type];
+    if (url) return { url, type, file: name, pose: (ACTOR_FILES[role].find(c => c.file === name) || {}).pose };
+  }
+  return null;
+}
+const DRAWING_TYPES = ["png", "webp", "jpg", "jpeg", "gif", "svg"];
+const loadImage = url => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });          // how tall (in pixels) each 3D character picture is made
 
 // One finished character picture: the image, its black copy (for darkening),
 // and where its body and head are inside it (pixels: [left, top, right, bottom])
@@ -118,6 +139,22 @@ const Actors = {
     for (const role of Object.keys(ACTOR_FILES)) this.flat(role);
     const found = {};
     await Promise.all(Object.entries(ACTOR_FILES).map(async ([role, list]) => {
+      // 1. a mod's 3D model
+      const modModel = modActorFile("models", role, MODEL_TYPES);
+      if (modModel) { found[role] = modModel; return; }
+      // 2. a mod's 2D drawing (wins over the game's own model)
+      const modDrawing = modActorFile("characters", role, DRAWING_TYPES);
+      if (modDrawing) {
+        try {
+          const img = await loadImage(modDrawing.url);
+          if (img.decode) await img.decode().catch(() => {});
+          this.sprites.set(role + "/stand", makeSprite(img, 0.4));
+          this.sprites.delete(role + "/lunge");
+          this.models[role] = "mod drawing";
+          return;
+        } catch (e) { console.warn("Mod drawing did not load", modDrawing.file, e); }
+      }
+      // 3. the game's own model in the models folder
       for (const choice of list) {
         for (const type of MODEL_TYPES) {
           const url = MODEL_DIR + choice.file + "." + type;

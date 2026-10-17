@@ -44,8 +44,21 @@ function el(tag, attrs = {}, ...kids) {
 const MIME = {
   png: "image/png", webp: "image/webp", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
   svg: "image/svg+xml", mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4",
-  ttf: "font/ttf", otf: "font/otf", woff: "font/woff", woff2: "font/woff2", json: "application/json", txt: "text/plain"
+  ttf: "font/ttf", otf: "font/otf", woff: "font/woff", woff2: "font/woff2", json: "application/json", txt: "text/plain",
+  glb: "model/gltf-binary", gltf: "model/gltf+json", obj: "text/plain", fbx: "application/octet-stream"
 };
+// Games with characters drawn by the game (Tape 2) also take models/ and characters/ in a mod
+const HAS_ACTORS = typeof ACTOR_FILES !== "undefined";
+// "MyMod/models/Toy_Eddy.GLB" -> "models/toy_eddy.glb" (or null when it is not a character file)
+function actorModFile(rel) {
+  if (!HAS_ACTORS) return null;
+  const m = rel.match(/^(models|characters)\/([^/]+)\.([a-z0-9]+)$/i);
+  if (!m) return null;
+  const folder = m[1].toLowerCase(), name = m[2].toLowerCase().replace(/[\s-]+/g, "_"), ext = m[3].toLowerCase();
+  const ok = folder === "models" ? ["glb", "gltf", "fbx", "obj"] : ["png", "webp", "jpg", "jpeg", "gif", "svg"];
+  const known = Object.entries(ACTOR_FILES).some(([role, list]) => role === name || list.some(c => c.file === name));
+  return ok.includes(ext) && known ? folder + "/" + name + "." + ext : null;
+}
 // Blobs need the right type or the browser will not show SVGs
 function typed(blob, path) {
   const type = MIME[path.split(".").pop().toLowerCase()] || "application/octet-stream";
@@ -194,14 +207,15 @@ async function makeMod(files, fallbackName, source) {
       continue;
     }
     // only keep files the game actually has (a mod replaces files, it cannot add new ones).
-    // Same name, any picture/sound/font type: img/x.png replaces img/x.webp
-    const target = gameFile(rel);
+    // Same name, any picture/sound/font type: img/x.png replaces img/x.webp.
+    // Characters: models/<name>.glb and characters/<name>.png (see actors.js)
+    const target = actorModFile(rel) || gameFile(rel);
     if (!target) continue;
     mod.files[target] = typed(f.blob, rel);
     mod.size += f.blob.size;
   }
   if (!Object.keys(mod.files).length && !mod.texts) {
-    throw new Error("No game files found. A mod needs files like img/..., snd/... or a texts.json (download the template to see).");
+    throw new Error("No game files found. A mod needs files like img/..., snd/..." + (HAS_ACTORS ? ", models/..., characters/..." : "") + " or a texts.json (download the template to see).");
   }
   return mod;
 }
@@ -296,10 +310,12 @@ async function buildTemplate(onProgress) {
     game: GI.gameId,
     howTo: "Replace any file in img, snd or fonts with your own using the SAME file name. Pictures can be PNG, JPG, WEBP or SVG at any size (they are stretched to fit the same spot). Sounds can be MP3, WAV or OGG. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods."
   };
+  if (HAS_ACTORS) manifest.characters = "Characters: put a 3D model in models (toy_eddy.glb, withered_weddy.fbx... any of .glb .gltf .fbx .obj; .glb works best) or a full-body 2D drawing in characters (withered_eddy.png...). A model wins over a drawing, and both win over the game's own. File names: the ones already in those folders, or see models/README.txt.";
   entries.push({ path: "manifest.json", bytes: enc.encode(JSON.stringify(manifest, null, 2)) });
   entries.push({ path: "texts.json", bytes: enc.encode(JSON.stringify(DEFAULT_TEXTS, null, 2)) });
   let done = 0;
-  const files = assetFiles();
+  // (the characters' drawings go in characters/ instead of img/chars)
+  const files = assetFiles().filter(f => !(HAS_ACTORS && f.startsWith("img/chars/")));
   const queue = [...files];
   const workers = Array.from({ length: 6 }, async () => {
     while (queue.length) {
@@ -316,8 +332,50 @@ async function buildTemplate(onProgress) {
     }
   });
   await Promise.all(workers);
+  if (HAS_ACTORS) await addActorTemplate(entries, enc);
   entries.sort((a, b) => a.path.localeCompare(b.path));
   return makeZip(entries);
+}
+
+// Tape 2 templates: models/ (the game's 3D models) and characters/ (every 2D drawing, as PNG)
+async function addActorTemplate(entries, enc) {
+  const lines = ["Characters in this game: put ONE file per character in models (3D) or characters (2D).",
+                 "A mod's model wins over its drawing, and both win over the game's own.", "",
+                 "File name          Character"];
+  const have = new Set(entries.map(e => e.path));
+  for (const [role, list] of Object.entries(ACTOR_FILES)) {
+    const name = list[0].file;
+    lines.push(name.padEnd(19) + (CAST[role] ? CAST[role].name : role));
+    // the game's own model, if it has one (so you can see how it is made)
+    let model = false;
+    for (const choice of list) {
+      for (const type of MODEL_TYPES) {
+        const path = "models/" + choice.file + "." + type;
+        try {
+          if (have.has(path)) { model = true; break; }
+          const r = await fetch(MODEL_DIR + choice.file + "." + type);
+          if (r.ok) { entries.push({ path, bytes: new Uint8Array(await r.arrayBuffer()) }); have.add(path); model = true; break; }
+        } catch (e) { /* none */ }
+      }
+      if (model) break;
+    }
+    // the 2D drawing (only for characters without a model: a drawing in a mod wins over the game's model)
+    if (!model && hasPic("Chars", role)) {
+      try {
+        const f = picturePath("Chars", role);
+        const png = await toPng(await (await fetch("assets/" + f)).blob(), f);
+        entries.push({ path: "characters/" + name + ".png", bytes: new Uint8Array(await png.arrayBuffer()) });
+      } catch (e) { console.warn("No drawing for", role, e); }
+    }
+  }
+  lines.push("toy_endo           Mangled Endo (bent and broken, until there is a mangled_endo)");
+  lines.push("", "3D: .glb works best (one file with colors and skeleton). .gltf must be one file (no .bin).",
+             ".fbx and .obj work too. Models built on the base skeleton (UpperArm.L, Head...) get posed",
+             "by the game (standing, and reaching for you). Browsers can't open .blend: export .glb.",
+             "2D: a full-body drawing, see-through background, any size. The head is the top 40%.");
+  const text = enc.encode(lines.join("\n"));
+  entries.push({ path: "models/README.txt", bytes: text });
+  entries.push({ path: "characters/README.txt", bytes: text });
 }
 
 /* ---------------------------------------------------------------------
@@ -339,7 +397,7 @@ async function loadFromGitHub(input, onStatus) {
   const folder = (folderIn || "").replace(/\/$/, "");
   const blobs = tree.tree.filter(t => t.type === "blob" && (!folder || t.path.startsWith(folder + "/")));
   const wanted = blobs.filter(t => /(^|\/)(manifest\.json|texts\.json)$/i.test(t.path) ||
-                                   gameFile(t.path));
+                                   gameFile(t.path) || /(^|\/)(models|characters)\/[^/]+$/i.test(t.path));
   if (!wanted.length) throw new Error("No mod files in that repo");
   const files = [];
   let done = 0;
