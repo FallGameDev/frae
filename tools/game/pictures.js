@@ -17,6 +17,8 @@
 
 const VIEW_W = 480, VIEW_H = 360;
 const IMG_SCALE = 2;                  // image pixels per game pixel
+// groups saved at half size to save memory (long animations): 1 image pixel per game pixel (names.js)
+const imgScale = group => (typeof HALF_SIZE_GROUPS !== "undefined" && HALF_SIZE_GROUPS.has(group) ? 1 : IMG_SCALE);
 
 // "Show Stage" -> "show-stage" (how names become file names)
 function fileName(s) {
@@ -37,6 +39,21 @@ const Files = {
 
   image(path) { return this.images.get(path); },
 
+  // The same picture with every visible pixel black (for darkening), made once
+  blacks: new Map(),
+  black(img) {
+    if (!this.blacks.has(img)) {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
+      const g = c.getContext("2d");
+      g.drawImage(img, 0, 0);
+      g.globalCompositeOperation = "source-in";
+      g.fillStyle = "#000"; g.fillRect(0, 0, c.width, c.height);
+      this.blacks.set(img, c);
+    }
+    return this.blacks.get(img);
+  },
+
   // Loads every picture and sound, reporting progress from 0 to 1
   async loadAll(imagePaths, soundPaths, onProgress) {
     const total = imagePaths.length + soundPaths.length;
@@ -44,7 +61,7 @@ const Files = {
     const tick = () => onProgress(++done / total);
     const loadOne = url => new Promise(res => {
       const img = new Image();
-      img.onload = () => res(img);
+      img.onload = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => res(img));
       img.onerror = () => { console.warn("Missing image", url); res(null); };
       img.src = url;
     });
@@ -89,7 +106,8 @@ function pic(group, name) {
   if (!hasPic(group, name)) { console.warn("No picture", group, name); return undefined; }
   const path = picturePath(group, name), img = Files.image(path);
   const [nw, nh] = Files.sizes.get(path) || (img ? [img.naturalWidth, img.naturalHeight] : [0, 0]);
-  const iw = nw / IMG_SCALE, ih = nh / IMG_SCALE;
+  const k = imgScale(group);
+  const iw = nw / k, ih = nh / k;
   const words = typeof PICTURE_WORDS !== "undefined" ? PICTURE_WORDS[key] : undefined;
   const [w, h, cx, cy] = words ? words.box : [iw, ih, iw / 2, ih / 2];
   const p = { img, iw, ih, w, h, cx, cy, words: words ? words.words : null,
@@ -199,8 +217,14 @@ function draw(ctx, p, x, y, o = {}) {
   ctx.translate(-p.cx, -p.cy);
   if (p.pixel) ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha *= alpha;
-  if (o.bright) ctx.filter = `brightness(${Math.max(0, 1 + o.bright / 100)})`;
   paintPicture(ctx, p);
+  // darker / lighter: the picture's own shape painted black (or added again) on top.
+  // (much faster than ctx.filter, which makes the browser redo the whole picture every frame)
+  if (o.bright && p.img) {
+    ctx.globalAlpha = alpha * Math.min(1, Math.abs(o.bright) / 100);
+    if (o.bright > 0) ctx.globalCompositeOperation = "lighter";
+    ctx.drawImage(o.bright < 0 ? Files.black(p.img) : p.img, p.cx - p.iw / 2, p.cy - p.ih / 2, p.iw, p.ih);
+  }
   ctx.restore();
 }
 

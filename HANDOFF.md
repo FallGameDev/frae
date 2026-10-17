@@ -35,11 +35,11 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Full build: `python3 tools/build_game2.py path/to/unzipped_FNAF_2_sb3`
 - Code-only rebuild: `python3 tools/build_game2.py --code`. The full build ends with `tools/flatten.py 2` (pictures become plain image files, `tools/tape2/names.js`).
 - Title song: `tools/tape2/title.mp3` (Beat Saber multiplayer lobby music). Ringtone shared from `tools/calls/`.
-- Phone calls: the original FNaF 2 calls (nights 1-6) for now, with the Tape 1 call banner.
+- Phone calls: the original FNaF 2 calls (nights 1-6) for now. The caller is "Fred" (purple circle, `drawPhone` in game.js).
 
 ### Art (`tools/tape2/`)
 - `cast.py`: every room is an EMPTY picture (dark + flashlight-lit) and every character is a separate "pose" picture on top, measured by hand from where the FNaF character stood (`CAM_POSES`, `OFFICE_POSES`, boxes in costume pixels; `body` = whole character in the box, `head` = head fills the box). Also covers FNaF posters/plushies in rooms (`COVERS`), jumpscare frames, the cast standing (`Chars`), heads (`Heads`, custom night), office extras, prizes, title faces, 8-bit cast (`Pixel`).
-- Character files: `tools/tape2/characters/<role>.svg` or `.png` (see the README there). The toys (Toy Eddy/Weddy/Cheddy, and Mangled Endo = broken Toy Endo) are PNG renders of the 3D models from `tools/render_toys.py`, with `-lunge` versions for the office and jumpscares; the loading screens show the turning 3D Toy Eddy (`turntable.png`). Missing ones use stand-ins (Tape 1 drawings, or a "?" figure for BB and the Puppet). Add the file and run the full build.
+- Characters are drawn by the game at runtime (`tools/tape2/actors.js`), never baked into pictures. Rooms/office are empty pictures; `tools/tape2/poses.js` (written by `cast.py` from its hand-measured tables) says where each character stands, how big (body/head mode) and how dark. Each character is its 3D model from `models/` (names in `ACTOR_FILES`; three.js in `2/lib/three`, loaded with an importmap only if a model exists; rendered once at load, standing + lunge, then drawn as flat pictures) or else its 2D drawing (`Chars` group from `tools/tape2/characters/<role>.svg`, or stand-ins). Mangled Endo = Toy Endo in a broken pose until `mangled_endo` exists. Loading screens: the spinning rice bowl.
 - `extras.py`: the camera map with no lit button + each lit button.
 
 ### Game code (`tools/tape2/`, shares `tools/game/pictures.js` + `sound.js` + `tools/ui.js`)
@@ -53,4 +53,5 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - `/2/?file=3`, then `game.level = N; game.startNight()`; `game.n.at.<role> = "hall"` etc. to place characters; `game.startMinigame("cake")`.
 
 ## 3D models (`models/`)
-- `models/basemodel.blend` (original) and `models/toys/` (rigged, four toy colors, .blend/.glb/.fbx). Rebuild with `python3 tools/rig_toys.py models/basemodel.blend models/toys` (needs `pip install bpy`). See `models/README.md`.
+- Every character model goes straight in `models/` (glb/gltf/fbx/obj, named like `withered_eddy.glb`); the game picks it up with no build. `.blend` -> `.glb`: `python3 tools/convert_models.py`. Toys: `models/toys_rigged.blend` + `toy_*.glb/.fbx`, rebuilt with `python3 tools/rig_toys.py models/basemodel.blend models`. See `models/README.md`.
+- Lag fixes: pictures are decoded while loading (not on first draw); darkening uses a cached black copy instead of `ctx.filter`; the canvas is capped at 1440 device px wide; long animations are saved at half size (`half` lists in `tools/flatten.py`, `HALF_SIZE_GROUPS`). Decoded pictures: Tape 1 about 330 MB (was 550), Tape 2 about 140 MB (was 550).

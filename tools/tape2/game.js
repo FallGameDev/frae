@@ -417,7 +417,11 @@ class Game {
     ctx.save();
     ctx.globalAlpha = f;
     // faces on the right, a little static, then the words
-    draw(ctx, picAt("Title", this.face), 240, 180);
+    const face = TITLE_FACES[(this.face - 1) % TITLE_FACES.length];
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
+    drawActor(ctx, face.role, face.box, { mode: "head", rot: face.rot, shade: face.shade });
+    ctx.restore();
     this.drawStatic(ctx, 0.12 + this.titleFlash * 0.4);
     const title = [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
     title.forEach((s, i) => this.text(ctx, s, 22, 46 + i * 27, { size: 27 }));
@@ -471,8 +475,8 @@ class Game {
       yield 2.2;
       yield* this.fade(card, 0, 30);
       this.removeOverlay(card);
-      // Toy Eddy turning around in the corner while the night loads
-      const spin = this.overlay(null, null, { paint: () => draw(this.ctx, picAt("Turntable", 1 + Math.floor(performance.now() / 100) % 16), 440, 300, { size: 70 }) });
+      // the spinning rice bowl in the corner while the night loads
+      const spin = this.overlay("Loading", "icon", { x: 450, y: 320, size: 60 });
       yield randFloat(1.5, 3);
       this.removeOverlay(spin);
       this.startNight();
@@ -635,15 +639,15 @@ class Game {
     ctx.strokeStyle = "rgba(255, 255, 255, 0.12)"; ctx.lineWidth = 0.75; ctx.stroke();
     const cx = x + 21, cy = y + h / 2, r = 14;
     const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
-    g.addColorStop(0, "#7ee08a"); g.addColorStop(1, "#1f9e4a");
+    g.addColorStop(0, "#c39bff"); g.addColorStop(1, "#6a2bd1");   // Fred's purple circle
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.font = '600 11px "Sans Serif"';
-    ctx.fillText(W("Phone", "AM"), cx, cy + 0.5);
+    ctx.fillText(W("Phone", "F"), cx, cy + 0.5);
     ctx.textAlign = "left";
     ctx.font = '600 10px "Sans Serif"';
-    ctx.fillText(W("Phone", "Aidan") + " (" + W("Phone", "Manager") + ")", x + 41, y + 15, w - 80);
+    ctx.fillText(W("Phone", "Fred"), x + 41, y + 15, w - 80);
     ctx.font = '8px "Sans Serif"';
     ctx.fillStyle = "rgba(235, 235, 245, 0.6)";
     if (n.phone === "ringing") ctx.fillText(W("Phone", "incoming call..."), x + 41, y + 28);
@@ -1152,13 +1156,12 @@ class Game {
     if (who === "golden") return this.goldenCrash();
     if (settings.jumpscares !== "1") return this.dead();
     this.sp.scream.play("Sprite27", "Xscream2");
-    const frames = PICTURE_NAMES.Scare.filter(s => s.startsWith(who + "-"));
-    n.jumpscare = { who, frames, i: 0 };
+    n.jumpscare = { who, frames: SCARE_FRAMES(who), i: 0 };
   }
   updateJumpscare() {
     const j = this.n.jumpscare;
     if (this.tick % 2 === 0) j.i++;
-    if (j.i >= j.frames.length + 4) { this.n.jumpscare = null; this.dead(); }
+    if (j.i >= j.frames + 4) { this.n.jumpscare = null; this.dead(); }
   }
 
   // Static, then (sometimes) a strange little 8-bit game, then the title
@@ -1190,7 +1193,7 @@ class Game {
     this.go("black");
     Sound.stopAll();
     this.sp.scream.play("Sprite27", "Xscream2");
-    if (settings.jumpscares === "1") this.overlay("Scare", "golden-1", { size: 100 });
+    if (settings.jumpscares === "1") this.overlay(null, null, { paint: ctx => drawScare(ctx, "golden", 0) });
     this.scripts.run("crash", function* () { yield 1.2; Sound.stopAll(); this.layers = []; yield 2; this.showTitle(); }.call(this));
   }
 
@@ -1264,7 +1267,7 @@ class Game {
      ================================================================= */
   // A character standing with its feet at (x, y), `h` game pixels tall
   drawChar(ctx, who, x, y, h, o = {}) {
-    draw(ctx, pic("Chars", who), x, y, { size: h / 3, alpha: o.alpha, bright: o.bright, turn: o.turn });
+    drawActor(ctx, who, [x - h, y - h, x + h, y], { mode: "body", alpha: o.alpha, shade: addShade(0, o.bright), rot: o.turn });
   }
   // Old newspaper paper with fake columns of text
   drawPaper(ctx, x, y, w, h, tilt) {
@@ -1466,7 +1469,7 @@ class Game {
       // the portrait (clipped to the card)
       ctx.save();
       ctx.beginPath(); ctx.rect(c.x + 3, c.y + 3, c.w - 6, 70); ctx.clip();
-      draw(ctx, pic("Heads", who), c.x + c.w / 2, c.y + 40, { size: 100 });
+      drawSpot(ctx, { ...HEAD_SPOT, role: who }, c.x + c.w / 2, c.y + 40, 100);
       ctx.restore();
       this.text(ctx, CAST[who].name, c.x + c.w / 2, c.y + 86, { size: 8, align: "center", max: c.w - 6 });
       const y = c.y + c.h - 14;
@@ -1500,7 +1503,7 @@ class Game {
     const n = this.n;
     if (n.jumpscare) {
       const j = n.jumpscare;
-      draw(ctx, pic("Scare", j.frames[Math.min(j.i, j.frames.length - 1)]), 240, 180);
+      drawScare(ctx, j.who, Math.min(j.i, j.frames - 1));
       return;
     }
     const pan = this.smooth.at("pan", a);
@@ -1516,7 +1519,7 @@ class Game {
     }
     this.drawHud(ctx, a);
     if (n.halluc && !n.camsUp) {
-      if (n.halluc === "bbEyes") draw(ctx, pic("OfficeExtra", "bbEyes"), SX(pan + 100), SY(-150), { size: 50 });
+      if (n.halluc === "bbEyes") drawSpot(ctx, EXTRA_SPOTS.bbEyes, SX(pan + 100), SY(-150), 50);
       else draw(ctx, pic("Sprite67", "costume1"), 240, 180);
     }
   }
@@ -1532,9 +1535,17 @@ class Game {
     const v = n.visit && n.visit.started ? n.visit : null;
     // someone in the office: the lights flicker
     const flick = v && !n.maskUp ? (this.tick % 6 < 2 ? -85 : 0) : 0;
-    draw(ctx, pic("Office", base), ox, oy, { size: 150, bright: n.hallFlicker ? -60 : flick });
-    // who is in the hall / at a vent
-    const pose = name => { if (hasPic("OfficePose", name)) draw(ctx, pic("OfficePose", name), ox, oy, { size: 150, bright: flick }); };
+    const room = pic("Office", base), dim = n.hallFlicker ? -60 : flick;
+    draw(ctx, room, ox, oy, { size: 150, bright: dim });
+    // the new cast on the posters (darker when the hall light is off)
+    inPicture(ctx, room, ox, oy, 150, () => {
+      for (const s of ROOM_COVERS.office || []) drawActor(ctx, s.role, s.box, { ...s, shade: addShade(s.shade + (base === "010" ? 0 : 0.5), dim) });
+    });
+    // who is in the hall / at a vent (drawn by the game: see actors.js and poses.js)
+    const pose = name => {
+      const s = OFFICE_POSES[name];
+      if (s) inPicture(ctx, room, ox, oy, 150, () => drawActor(ctx, name.split("-")[1], s.box, { ...s, shade: addShade(s.shade, flick) }));
+    };
     if (n.flash) {
       for (const [who, at] of Object.entries(n.at)) if (at === "hall") pose("hall-" + who);
       if (n.golden === "hall") pose("hall-golden");
@@ -1549,17 +1560,19 @@ class Game {
     draw(ctx, pic("Sprite13", String(n.fanFrame)), SX(pan + 90), SY(-100), { size: 65 });
     for (const prize of this.progress.prizes) {
       const p = PRIZE_SPOT[prize];
-      if (p && hasPic("Plush", prize)) draw(ctx, pic("Plush", prize), SX(pan + p[0]), SY(p[1]), { size: 50 });
+      if (!p) continue;
+      if (PLUSH_ROLE[prize]) drawSpot(ctx, { ...PLUSH_SPOT, role: PLUSH_ROLE[prize] }, SX(pan + p[0]), SY(p[1]), 50);
+      else if (hasPic("Plush", prize)) draw(ctx, pic("Plush", prize), SX(pan + p[0]), SY(p[1]), { size: 50 });
     }
     // others in the office
-    if (n.bbIn) draw(ctx, pic("OfficeExtra", "bb"), SX(pan - 90), SY(-20), { size: 65 });
-    if (n.mangleIn) draw(ctx, pic("OfficeExtra", "mangle"), SX(pan + 100), SY(120), { size: 65 });
-    if (n.golden === "office") draw(ctx, pic("OfficeExtra", "golden"), SX(pan - 20), SY(-42), { size: 75 });
-    if (n.shadow && !n.flash) draw(ctx, pic("OfficeExtra", "shadow"), SX(pan - 170), SY(0), { size: 100, alpha: 0.85 });
+    if (n.bbIn) drawSpot(ctx, EXTRA_SPOTS.bb, SX(pan - 90), SY(-20), 65);
+    if (n.mangleIn) drawSpot(ctx, EXTRA_SPOTS.mangle, SX(pan + 100), SY(120), 65);
+    if (n.golden === "office") drawSpot(ctx, EXTRA_SPOTS.golden, SX(pan - 20), SY(-42), 75);
+    if (n.shadow && !n.flash) drawSpot(ctx, EXTRA_SPOTS.shadow, SX(pan - 170), SY(0), 100, { alpha: 0.85 });
     if (v && v.who === "tbonnie") {
       // Toy Weddy right in front of you; with the mask on he runs off across the room
       if (!n.maskUp) pose("in-tbonnie");
-      else draw(ctx, pic("OfficeExtra", "tbonnie"), 620 - n.slide * 820, SY(25), { size: 160, bright: flick });
+      else drawSpot(ctx, EXTRA_SPOTS.tbonnie, 620 - n.slide * 820, SY(25), 160, { shade: addShade(EXTRA_SPOTS.tbonnie.shade, flick) });
     }
     // vent light buttons
     draw(ctx, pic("Light Left", n.ventL ? "1" : "0"), SX(pan - 300), SY(-15), { size: 65 });
@@ -1571,9 +1584,21 @@ class Game {
     const group = "Cam" + c;
     const light = n.camFlash;
     const x = 240 + this.smooth.at("camPan", a);
-    draw(ctx, pic(group, light ? "light" : "dark"), x, 180, { size: 150 });
-    const pose = name => { if (hasPic(group, name)) draw(ctx, pic(group, name), x, 180, { size: 150 }); };
-    for (const [who, at] of Object.entries(n.at)) if (at === c) pose(who + (light ? "" : "-dark"));
+    const room = pic(group, light ? "light" : "dark");
+    draw(ctx, room, x, 180, { size: 150 });
+    // the characters in the room (drawn by the game: see actors.js and poses.js).
+    // Without the flashlight they are barely there.
+    const spots = CAM_POSES[c] || {};
+    const pose = name => {
+      const s = spots[name];
+      if (!s) return;
+      const shade = light || s.same ? s.shade : Math.max(0.86, s.shade);
+      inPicture(ctx, room, x, 180, 150, () => drawActor(ctx, s.role || name, s.box, { ...s, shade }));
+    };
+    inPicture(ctx, room, x, 180, 150, () => {
+      for (const s of ROOM_COVERS[c] || []) drawActor(ctx, s.role, s.box, { ...s, shade: Math.min(0.95, s.shade + (light ? 0 : 0.5)) });
+    });
+    for (const [who, at] of Object.entries(n.at)) if (at === c) pose(who);
     // the Puppet coming out of the box, and walking down the main hall
     if (c === 11 && n.puppet > 0) pose("puppet" + Math.min(3, n.puppet));
     if (c === 7 && n.puppet >= 3) pose("puppetwalk" + (1 + Math.floor(this.tick / 20) % 3));
@@ -1644,6 +1669,7 @@ class Game {
       if (n.visit) out["in office"] = CAST[n.visit.who].name + (n.visit.started ? "" : " (waiting)");
     }
     out["golden 1 in"] = this.goldenRate;
+    out["3D models"] = Object.keys(Actors.models).map(r => CAST[r] ? CAST[r].name : r).join(", ") || "none (2D drawings)";
     return out;
   }
   debugSkipHour() { if (this.screen === "night" && this.n && !this.n.frozen) this.n.clock = 70 - TICK; }

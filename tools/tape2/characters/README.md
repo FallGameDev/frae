@@ -20,14 +20,10 @@ Drop a character drawing here, named after the role it plays, then rebuild:
 | endo.svg      | Bare endoskeleton          | (vent / prize corner) |
 | shadow.svg    | Shadow Freddy              | (drawn all black) |
 
+These 2D drawings are only used for a character that has no 3D model yet.
+A 3D model in the repo's `models/` folder always wins (see `models/README.md`).
+
 Any missing file uses a stand-in (the Tape 1 drawings, or a simple "?" figure).
-One full-body drawing per character is enough: the build places it in every
+One full-body drawing per character is enough: the game places it in every
 room, close-up, vent and jumpscare by itself (heads = the top 40% of the drawing).
 The names players see are in texts.json ("Characters"), so mods can rename them.
-
-## 3D toys
-`tfreddy.png`, `tbonnie.png`, `tchica.png` and `mangle.png` (plus `-lunge.png` versions used in the
-office and jumpscares) are rendered from the rigged 3D toys in `models/toys/toys_rigged.blend` by
-`python3 tools/render_toys.py` (needs `pip install bpy`). A `<role>.png` wins over a `<role>.svg`.
-Mangled Endo uses Toy Endo in a broken pose. The same script makes `tools/tape2/turntable.png`,
-the turning Toy Eddy on the loading screens.

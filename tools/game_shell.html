@@ -290,7 +290,8 @@ function fit() {
   canvas.style.width = w + "px";
   canvas.style.height = h + "px";
   frame.style.setProperty("--u", (w / VIEW_W) + "px");     // 1 game pixel, used by the panels
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  // sharp on hi-res screens, but never bigger than 1440 pixels wide (the pictures are 960 wide; more only costs speed)
+  const dpr = Math.min(2, window.devicePixelRatio || 1, 1440 / w);
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
 }

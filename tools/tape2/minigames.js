@@ -165,7 +165,7 @@ Object.assign(Game.prototype, {
       }
       if (m.last) draw(ctx, pic("Sprite69", "GiveThemLifeEndo"), 240, 210, { size: 50 });
       this.drawPixel(ctx, "puppet", m.x, m.y + 40, 60, m.flip);
-      if (m.scare) draw(ctx, pic("Scare", "puppet-9"), 240, 180);
+      if (m.scare) drawScare(ctx, "puppet", 8);
     } else {
       const bg = m.state === "late" ? "foxy stage2" : m.state === "party" ? "foxy stage" :
                  m.state === "ready" ? "foxy GET READY" : (m.t % 1 < 0.5 ? "foxy GO! GO! GO!" : "foxy blank");

@@ -126,7 +126,7 @@ def write_page():
     code = '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read() for f in ('names.js', 'words.js'))
     code += '\n\n' + '\n\n'.join(open(os.path.join(HERE, 'game', f), encoding='utf-8').read() for f in ('pictures.js', 'sound.js'))
     code += '\n\n' + '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read()
-                                 for f in ('game.js', 'minigames.js', 'achievements.js'))
+                                 for f in ('poses.js', 'actors.js', 'game.js', 'minigames.js', 'achievements.js'))
     ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
     shell = open(os.path.join(TAPE, 'shell.html'), encoding='utf-8').read()
     html = shell.replace('/*GAME*/', code).replace('/*UI*/', ui)

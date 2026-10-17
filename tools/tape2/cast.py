@@ -3,32 +3,32 @@ cast.py
 Swaps every original FNaF character in Tape 2 for the fan-made cast.
 
 Every room comes in two versions (dark, and lit by the flashlight), both
-EMPTY. Each character in each room is a separate "pose" picture drawn on
-top, so the game can show any mix of characters. A pose is the
-character's own file (tools/tape2/characters/<role>.svg) placed where
-the FNaF character stood in the original picture (the boxes below were
-measured by hand from the Scratch costumes, in their pixels).
+EMPTY. The characters are NOT painted into pictures: the game draws them
+itself, at runtime, wherever they stand (tools/tape2/actors.js). Each
+character is its 3D model from the repo's models/ folder (toy_eddy.glb,
+withered_weddy.obj...), or its 2D drawing when there is no model yet.
+
+This file measures WHERE they stand: the boxes below were measured by hand
+from the Scratch costumes (in their pixels), and the build writes them,
+with how dark each spot is, to tools/tape2/poses.js.
 
   body  the whole character fits the box (feet at the bottom)
   head  the character's head fills the box (close-ups, vents)
 
-Character files: put a file named after the role in tools/tape2/characters
-(for example wfreddy.svg) and rebuild. Until a file is there, a stand-in
-is used (the Tape 1 characters, or a simple placeholder drawing).
+2D drawings (used until a 3D model is in models/): put a file named after
+the role in tools/tape2/characters (for example wfreddy.svg) and rebuild.
+Until a file is there, a stand-in is used (the Tape 1 characters, or a
+simple placeholder drawing).
 
 Made here (picture groups the game uses):
   Office      the office: 000 (dark), 010 (hall light), 100 / 001 (vent lights)
-  OfficePose  hall-<role>, ventL-<role>, ventR-<role>, in-<role>
-  Cam1..Cam12 dark, light, <role>, <role>-dark, and extras (puppet1-3, endo...)
-  Chars       every character, standing (pin at the feet)
-  Heads       every character's head (custom night portraits)
-  Scare       jumpscare frames: <role>-1, <role>-2...
-  OfficeExtra BB under the desk, Mangled Endo on the ceiling, Golden Eddie...
-  Plush       the custom night prizes
-  Title       the title screen faces
+  Cam1..Cam12 dark, light (empty rooms)
+  Chars       every character's 2D drawing, standing (pin at the feet)
+  Plush       the two custom night prizes that are not characters
   Loading     the spinning rice bowl
+  Pixel       8-bit versions of the cast (death minigames)
 """
-import base64, io, math, os, re, shutil
+import base64, io, json, math, os, re, shutil
 import numpy as np
 from PIL import Image
 
@@ -195,37 +195,25 @@ class Char:
     """One character file: its size and where its head is."""
     def __init__(self, b, role):
         self.role = role
-        png = os.path.join(CHAR_DIR, role + '.png')       # a picture rendered from the 3D model (tools/render_toys.py)
         own = os.path.join(CHAR_DIR, role + '.svg')
-        if os.path.exists(png):
-            rel = f'assets/characters/{role}.png'
-            shutil.copy(png, os.path.join(b.out_root, rel))
+        rel = f'assets/characters/{role}.svg'
+        dst = os.path.join(b.out_root, rel)
+        if os.path.exists(own):
+            shutil.copy(own, dst)
             self.stand_in = False
-            self.src = rel
-            im = Image.open(png)
-            self.w, self.h = float(im.width), float(im.height)
-            a = np.array(im.convert('RGBA'))[:, :, 3] > 40
-            k = 1.0
-            head_part = 0.36                                # 3D toys: head + ears are the top third
+        elif STAND_IN.get(role):
+            shutil.copy(os.path.join(TAPE1_CHARS, STAND_IN[role]), dst)
+            self.stand_in = True
         else:
-            rel = f'assets/characters/{role}.svg'
-            dst = os.path.join(b.out_root, rel)
-            if os.path.exists(own):
-                shutil.copy(own, dst)
-                self.stand_in = False
-            elif STAND_IN.get(role):
-                shutil.copy(os.path.join(TAPE1_CHARS, STAND_IN[role]), dst)
-                self.stand_in = True
-            else:
-                open(dst, 'w', encoding='utf-8').write(PLACEHOLDER[role])
-                self.stand_in = True
-            self.src = rel
-            text = open(dst, encoding='utf-8').read()
-            _, _, self.w, self.h = b.svg_size(text)
-            # draw it once to find the drawing's outline and its head
-            k = 600 / max(self.w, self.h)
-            a = np.array(Image.open(io.BytesIO(b.renderer.svg_to_png(text, self.w, self.h, k))))[:, :, 3] > 40
-            head_part = 0.40
+            open(dst, 'w', encoding='utf-8').write(PLACEHOLDER[role])
+            self.stand_in = True
+        self.src = rel
+        text = open(dst, encoding='utf-8').read()
+        _, _, self.w, self.h = b.svg_size(text)
+        # draw it once to find the drawing's outline and its head
+        k = 600 / max(self.w, self.h)
+        a = np.array(Image.open(io.BytesIO(b.renderer.svg_to_png(text, self.w, self.h, k))))[:, :, 3] > 40
+        head_part = 0.40
         ys, xs = np.where(a)
         x0, x1, y0, y1 = xs.min() / k, (xs.max() + 1) / k, ys.min() / k, (ys.max() + 1) / k
         self.body = (x0, y0, x1, y1)
@@ -288,31 +276,130 @@ def pose_pic(w, h, layers, cut=None):
     return p
 
 
-def cover_layers(chars, sprite, costume, w_px, h_px, dim=False):
-    """Covers for posters and toys in a room picture (costume units). dim: the room is dark."""
+def cover_layers(sprite, costume, dim=False):
+    """Dark backing over posters that show FNaF characters (the game draws the new cast on top)."""
     out = []
-    extra = 0.5 if dim else 0.0
     for s, c, box, role, kind in COVERS:
-        if s != sprite or (c and c != costume):
+        if s != sprite or (c and c != costume) or kind not in ('poster', 'posters'):
             continue
         x0, y0, x1, y1 = [v / 2 for v in box]
+        out.append(dict(rect=[x0, y0, x1 - x0, y1 - y0], fill='#0c0a12' if dim else '#1a1424'))
+    return out
+
+
+def cover_spots(sprite):
+    """Where the new cast goes on posters, plates and shelves (room picture units)."""
+    out = []
+    for s, c, box, role, kind in COVERS:
+        if s != sprite:
+            continue
+        x0, y0, x1, y1 = [v / 2 for v in box]
+        cut = [x0, y0, x1 - x0, y1 - y0]
         if kind in ('poster', 'posters'):
-            out.append(dict(rect=[x0, y0, x1 - x0, y1 - y0], fill='#0c0a12' if dim else '#1a1424'))
             n = 1 if kind == 'poster' else 3
             roles = [role] if n == 1 else ['tbonnie', 'tfreddy', 'tchica']
             cw = (x1 - x0) / n
             for i, r in enumerate(roles):
                 hb = [x0 + cw * i + cw * 0.12, y0 + (y1 - y0) * 0.18, x0 + cw * (i + 1) - cw * 0.12, y0 + (y1 - y0) * 0.62]
-                L = chars[r].layer(hb, 'head', shade=0.35 + extra)
-                L['cut'] = [x0, y0, x1 - x0, y1 - y0]
-                out.append(L)
+                out.append(dict(role=r, box=hb, mode='head', shade=0.35, cut=cut))
         elif kind == 'plate':   # a paper plate pal on the wall: just the head, a bit faded
-            L = chars[role].layer([x0 + 6, y0 + 6, x1 - 6, y1 - 6], 'head', shade=0.3 + extra)
-            L['cut'] = [x0, y0, x1 - x0, y1 - y0]
-            out.append(L)
-        else:   # a plush on a shelf
-            out.append(chars[role].layer([x0, y0, x1, y1], 'body', shade=0.55 + extra * 0.7))
+            out.append(dict(role=role, box=[x0 + 6, y0 + 6, x1 - 6, y1 - 6], mode='head', shade=0.3, cut=cut))
+        else:                   # a plush on a shelf
+            out.append(dict(role=role, box=[x0, y0, x1, y1], mode='body', shade=0.55))
     return out
+
+
+def js_obj(d):
+    """A small dict as JavaScript (keys without quotes, numbers rounded)."""
+    def val(v):
+        if isinstance(v, float):
+            v = round(v, 2)
+            return str(int(v)) if v == int(v) else str(v)
+        if isinstance(v, (list, tuple)):
+            return '[' + ', '.join(val(x) for x in v) + ']'
+        if isinstance(v, bool):
+            return 'true' if v else 'false'
+        if isinstance(v, int):
+            return str(v)
+        return json.dumps(v)
+    return '{' + ', '.join(f'{k}: {val(v)}' for k, v in d.items()) + '}'
+
+
+POSES_HEAD = """/* =====================================================================
+   WHERE THE CHARACTERS STAND  (written by tools/tape2/cast.py: edit the
+   tables there and rebuild, this file is made again)
+
+   Every spot a character can be seen, measured by hand from where the
+   FNaF character stood in the original pictures. The game draws the
+   character there (its 3D model from the models folder, or its 2D
+   drawing) on top of the empty room. See actors.js.
+
+   box    [left, top, right, bottom] in the room picture (its own pixels,
+          0,0 = the picture's top-left corner)
+   mode   "body": the whole character fits the box (feet at the bottom)
+          "head": the head fills the box (close-ups, vents, posters)
+   shade  how dark the character is there (0 = full light, 0.9 = almost black)
+   role   who it is (when the spot's name is not the role)
+   rot    turned this many degrees
+   cut    only drawn inside [left, top, width, height]
+   same   looks the same with and without the camera flashlight
+   kind   "lunge" = reaching for you (otherwise standing)
+   ===================================================================== */
+"use strict";
+"""
+
+
+def write_poses(b, rooms_light):
+    """tools/tape2/poses.js: every spot, with how dark the character looked there."""
+    L = [POSES_HEAD, '// camera number -> spot -> where (spot = the role, unless it says role:)', 'const CAM_POSES = {']
+    cams = {}
+    for c, name, s, cos, mode, box, opt in CAM_POSES:
+        e = dict(box=[v / 2 for v in box], mode=mode,
+                 shade=measured_shade(costume_image(b, s, cos), rooms_light[c], box))
+        if 'role' in opt:
+            e['role'] = opt['role']
+        if opt.get('rot'):
+            e['rot'] = float(opt['rot'])
+        if 'cut' in opt:
+            x0, y0, x1, y1 = [v / 2 for v in opt['cut']]
+            e['cut'] = [x0, y0, x1 - x0, y1 - y0]
+        if opt.get('light'):
+            e['same'] = True
+        if name == 'shadow':
+            e['tint'] = True
+        cams.setdefault(c, {})[name] = e
+    for (c, role), other in CAM_BORROW.items():
+        e = {k: v for k, v in cams[c][other].items() if k != 'role'}
+        cams[c][role] = e
+    for c in sorted(cams):
+        L.append(f'  {c}: {{')
+        L += [f'    {k}: {js_obj(e)},' for k, e in cams[c].items()]
+        L.append('  },')
+    L += ['};', '', '// the office: hall-<who> (hall light), ventL- / ventR-<who> (vent lights), in-<who> (in the office)',
+          'const OFFICE_POSES = {']
+    for name, cos, base, mode, box in OFFICE_POSES:
+        role = name.split('-', 1)[1]
+        spot = name.split('-')[0]
+        shade = measured_shade(costume_image(b, 'The office', cos), costume_image(b, 'The office', base), box)
+        if role == 'golden':
+            shade = max(shade, 0.35)
+        e = dict(box=[v / 2 for v in box], mode=mode, shade=shade)
+        if spot == 'in':
+            e['kind'] = 'lunge'
+        if spot in VENT_HOLE:
+            x0, y0, x1, y1 = [v / 2 for v in VENT_HOLE[spot]]
+            e['cut'] = [x0, y0, x1 - x0, y1 - y0]
+        L.append(f'  {json.dumps(name)}: {js_obj(e)},')
+    L += ['};', '', '// posters, paper plates and plushies in the rooms ("office" or the camera number);',
+          '// in a dark room the game makes them darker', 'const ROOM_COVERS = {']
+    for key, sprite in [('office', 'The office')] + [(str(c), r[0]) for c, r in ROOMS.items()]:
+        spots = cover_spots(sprite)
+        if spots:
+            L.append(f'  {json.dumps(key)}: [')
+            L += [f'    {js_obj(e)},' for e in spots]
+            L.append('  ],')
+    L += ['};', '']
+    open(os.path.join(HERE, 'poses.js'), 'w', encoding='utf-8').write('\n'.join(L))
 
 
 # ---------------------------------------------------------------------------
@@ -320,45 +407,26 @@ def cover_layers(chars, sprite, costume, w_px, h_px, dim=False):
 # ---------------------------------------------------------------------------
 def apply(b):
     chars = {r: Char(b, r) for r in ROLES}
-    # "reaching for you" pictures (from the 3D toys) for the office and jumpscares, when there is one
-    lunge = {r: (Char(b, r + '-lunge') if os.path.exists(os.path.join(CHAR_DIR, r + '-lunge.png')) else chars[r]) for r in ROLES}
     stand_ins = [r for r in ROLES if chars[r].stand_in]
     if stand_ins:
-        b.notes.append('stand-in drawings used for: ' + ', '.join(stand_ins))
+        b.notes.append('stand-in 2D drawings (until there is a 3D model or a drawing): ' + ', '.join(stand_ins))
     art = {}
 
-    # ---- the office ----
+    # ---- the office (empty) ----
     office = {}
     for name in ('000', '010', '100', '001'):
         im = costume_image(b, 'The office', name)
         rel = save_img(b, im, f'office-{name}')
-        w, h = im.width / 2, im.height / 2
-        office[name] = room_pic(rel, w, h, cover_layers(chars, 'The office', name, im.width, im.height, dim=name != '010'))
+        office[name] = room_pic(rel, im.width / 2, im.height / 2, cover_layers('The office', name, dim=name != '010'))
     art['Office'] = office
-    ow, oh = office['000']['w'], office['000']['h']
-    poses = {}
-    for name, cos, base, mode, box in OFFICE_POSES:
-        role = name.split('-', 1)[1]
-        orig, bim = costume_image(b, 'The office', cos), costume_image(b, 'The office', base)
-        shade = measured_shade(orig, bim, box)
-        if role == 'golden':
-            shade = max(shade, 0.35)
-        spot = name.split('-')[0]
-        who = lunge[role] if spot == 'in' else chars[role]
-        L = who.layer([v / 2 for v in box], mode, shade=shade)
-        cut = None
-        if spot in VENT_HOLE:
-            x0, y0, x1, y1 = [v / 2 for v in VENT_HOLE[spot]]
-            cut = [x0, y0, x1 - x0, y1 - y0]
-        poses[name] = pose_pic(ow, oh, [L], cut)
-    art['OfficePose'] = poses
 
-    # ---- the cameras ----
+    # ---- the cameras (empty rooms) ----
+    rooms_light = {}
     for cam, (sprite, dark, light) in ROOMS.items():
         g = {}
         dim = costume_image(b, sprite, dark)
         w, h = dim.width / 2, dim.height / 2
-        g['dark'] = room_pic(save_img(b, dim, f'cam{cam}-dark'), w, h, cover_layers(chars, sprite, dark, dim.width, dim.height, dim=True))
+        g['dark'] = room_pic(save_img(b, dim, f'cam{cam}-dark'), w, h, cover_layers(sprite, dark, dim=True))
         if light:
             lim = costume_image(b, sprite, light)
         else:
@@ -366,102 +434,26 @@ def apply(b):
             a = np.asarray(dim).astype(float)
             lim = Image.fromarray(np.clip(a * 1.9 + 8, 0, 255).astype(np.uint8))
             light = dark
-        g['light'] = room_pic(save_img(b, lim, f'cam{cam}-light'), w, h, cover_layers(chars, sprite, light, lim.width, lim.height))
-        for c, name, s, cos, mode, box, opt in CAM_POSES:
-            if c != cam:
-                continue
-            role = opt.get('role', name)
-            orig = costume_image(b, s, cos)
-            shade = measured_shade(orig, lim, box)
-            ubox = [v / 2 for v in box]
-            cut = [v / 2 for v in opt['cut']] if 'cut' in opt else None
-            if cut:
-                cut = [cut[0], cut[1], cut[2] - cut[0], cut[3] - cut[1]]
-            tint = '#050505' if role == 'shadow' else None
-            g[name] = pose_pic(w, h, [chars[role].layer(ubox, mode, rot=opt.get('rot', 0), shade=shade, tint=tint)], cut)
-            if not opt.get('light'):
-                # in the dark (no flashlight) they are barely there
-                g[name + '-dark'] = pose_pic(w, h, [chars[role].layer(ubox, mode, rot=opt.get('rot', 0), shade=max(0.86, shade))], cut)
-        for (c, role), other in CAM_BORROW.items():
-            if c == cam and role not in g:
-                # same spot and light as the other character's picture
-                ref = next(p for p in CAM_POSES if p[0] == cam and p[1] == other)
-                ubox = [v / 2 for v in ref[5]]
-                shade = g[other]['layers'][0].get('shade', 0)
-                g[role] = pose_pic(w, h, [chars[role].layer(ubox, ref[4], shade=shade)])
-                g[role + '-dark'] = pose_pic(w, h, [chars[role].layer(ubox, ref[4], shade=0.86)])
+        rooms_light[cam] = lim
+        g['light'] = room_pic(save_img(b, lim, f'cam{cam}-light'), w, h, cover_layers(sprite, light))
         art[f'Cam{cam}'] = g
+    write_poses(b, rooms_light)
 
-    # ---- every character standing, and their heads ----
+    # ---- every character's 2D drawing, standing (used when there is no 3D model) ----
     art['Chars'] = {}
-    art['Heads'] = {}
     for r, ch in chars.items():
         x0, y0, x1, y1 = ch.body
         H = 300.0
-        k = H / (y1 - y0)
-        W = (x1 - x0) * k
-        L = ch.layer([0, 0, W, H], 'body')
-        art['Chars'][r] = dict(w=W, h=H, cx=W / 2, cy=H, layers=[L])
-        L = ch.layer([4, 4, 76, 66], 'head')
-        art['Heads'][r] = dict(w=80, h=70, cx=40, cy=35, clip=True, layers=[L])
+        W = (x1 - x0) * H / (y1 - y0)
+        art['Chars'][r] = dict(w=W, h=H, cx=W / 2, cy=H, layers=[ch.layer([0, 0, W, H], 'body')])
 
-    # ---- jumpscares: the character lunges at you in the office ----
-    scare_bg = save_img(b, costume_image(b, 'The office', '000'), 'scare-office')
-    bg = [dict(rect=[0, 0, 480, 360], fill='#000000'), dict(img=scare_bg, x=-60, y=0, w=600, h=360)]
-    art['Scare'] = {}
-    for r in ['tfreddy', 'tbonnie', 'tchica', 'mangle', 'bb', 'puppet', 'wfreddy', 'wbonnie', 'wchica', 'foxy', 'golden']:
-        frames = 1 if r == 'golden' else 9
-        for i in range(frames):
-            k = i / max(1, frames - 1)
-            u = k * k * (3 - 2 * k)
-            jit = math.sin(i * 2.7) * 6 * u
-            hh = 120 + 260 * u if r != 'golden' else 330
-            hy = 190 - 20 * u if r != 'puppet' else 300 - 120 * u
-            L = lunge[r].layer([240 + jit - hh / 2, hy - hh / 2, 240 + jit + hh / 2, hy + hh / 2], 'head',
-                               rot=math.sin(i * 1.9) * 7 * u, shade=0.18)
-            dark = dict(rect=[0, 0, 480, 360], fill=f'rgba(0,0,0,{0.35 + 0.25 * u:.2f})')
-            art['Scare'][f'{r}-{i + 1}'] = dict(w=480, h=360, cx=240, cy=180, clip=True, layers=bg + [dark, L])
-
-    # ---- in the office ----
-    ex = {}
-    ex['bb'] = dict(w=295, h=345, cx=141, cy=180, layers=[chars['bb'].layer([40, 20, 250, 345], 'body', shade=0.35)])
-    ex['mangle'] = dict(w=359, h=207, cx=205, cy=108,
-                        layers=[lunge['mangle'].layer([60, -120, 300, 200], 'body', rot=168, shade=0.45)])
-    ex['golden'] = dict(w=360, h=360, cx=180, cy=180, layers=[chars['golden'].layer([40, 40, 320, 340], 'body', rot=-12, shade=0.5)])
-    ex['shadow'] = dict(w=168, h=360, cx=84, cy=180, layers=[chars['shadow'].layer([10, 20, 158, 360], 'body', tint='#040404')])
-    ex['tbonnie'] = dict(w=150, h=208, cx=75, cy=104, layers=[lunge['tbonnie'].layer([-20, 10, 170, 150], 'head', rot=-8, shade=0.4)])
-    ex['bbEyes'] = dict(w=166, h=139, cx=83, cy=69, layers=[chars['bb'].layer([10, 10, 156, 130], 'head', shade=0.7)])
-    art['OfficeExtra'] = ex
-
-    # ---- custom night prizes (little plushies) ----
-    PRIZES = {'Sprite58': 'bb', 'Sprite59': 'wbonnie', 'Sprite60': 'wchica', 'Sprite62': 'foxy',
-              'Sprite63': 'wfreddy', 'Sprite64': 'golden', 'Sprite66': 'tbonnie'}
+    # ---- the two custom night prizes that are not characters (the others are drawn by the game) ----
     plush = {}
-    for spr, r in PRIZES.items():
-        plush[spr] = dict(w=120, h=170, cx=60, cy=85, layers=[chars[r].layer([10, 10, 110, 165], 'body', shade=0.3)])
-    for spr, cos in (('Sprite61', 'FNAF2CupcakePlushie'), ('Sprite65', 'LoneMicrophone')):     # no characters in these two
+    for spr, cos in (('Sprite61', 'FNAF2CupcakePlushie'), ('Sprite65', 'LoneMicrophone')):
         t = next(t for t in b.project['targets'] if t['name'] == spr)
         c = next(c for c in t['costumes'] if c['name'] == cos)
         plush[spr] = {k: v for k, v in b.costume(t, c).items() if k != 'name'}
     art['Plush'] = plush
-
-    # ---- title screen faces (the toys staring, and the old ones for a split second) ----
-    title = {}
-    for i, (r, box, sh) in enumerate([('tfreddy', [250, 30, 520, 330], 0.5), ('wfreddy', [240, 20, 530, 340], 0.45),
-                                      ('wbonnie', [250, -10, 520, 330], 0.45), ('wchica', [240, 20, 530, 340], 0.45)]):
-        title[f'face{i + 1}'] = dict(w=480, h=360, cx=240, cy=180, clip=True,
-                                     layers=[dict(rect=[0, 0, 480, 360], fill='#000000'),
-                                             chars[r].layer(box, 'head', rot=-6 if i else -3, shade=sh)])
-    art['Title'] = title
-    # the 3D Toy Eddy turning around (night loading corner), 16 frames from turntable.png
-    turn = os.path.join(HERE, 'turntable.png')
-    if os.path.exists(turn):
-        strip = Image.open(turn).convert('RGBA')
-        art['Turntable'] = {}
-        for i in range(16):
-            rel = save_img(b, strip.crop((i * 200, 0, i * 200 + 200, 260)), f'turntable-{i + 1:02d}')
-            art['Turntable'][f'frame{i + 1:02d}'] = dict(w=100, h=130, cx=50, cy=65, layers=[dict(img=rel, x=0, y=0, w=100, h=130)])
-        shutil.copy(turn, os.path.join(b.out_root, 'assets', 'turntable.png'))
     art['Loading'] = {'icon': dict(w=40, h=40, cx=20, cy=20, spin=True,
                                    layers=[dict(img='assets/loading-rice.webp', x=-3, y=4.85, w=46, h=34.85)])}
 
@@ -473,12 +465,8 @@ def apply(b):
         for kind in ('body', 'head'):
             x0, y0, x1, y1 = ch.body if kind == 'body' else ch.head
             k = (tall if kind == 'body' else 20) / (y1 - y0)
-            if path.endswith('.png'):
-                im = Image.open(path).convert('RGBA')
-                im = im.resize((max(1, round(im.width * k)), max(1, round(im.height * k))), Image.LANCZOS)
-            else:
-                text = open(path, encoding='utf-8').read()
-                im = Image.open(io.BytesIO(b.renderer.svg_to_png(text, ch.w, ch.h, k))).convert('RGBA')
+            text = open(path, encoding='utf-8').read()
+            im = Image.open(io.BytesIO(b.renderer.svg_to_png(text, ch.w, ch.h, k))).convert('RGBA')
             im = im.crop((int(x0 * k), int(y0 * k), int(math.ceil(x1 * k)), int(math.ceil(y1 * k))))
             a = np.array(im)
             a[:, :, 3] = np.where(a[:, :, 3] > 110, 255, 0)
@@ -490,5 +478,5 @@ def apply(b):
             pix[(r if kind == 'body' else 'head-' + r)] = dict(w=W, h=H, cx=W / 2, cy=H / 2 if kind == 'head' else H,
                                                                 pixel=True, layers=[dict(img=rel, x=0, y=0, w=W, h=H)])
     art['Pixel'] = pix
-    b.notes.append(f"cast: {sum(len(v) for v in art.values())} pictures made with the fan-made cast")
+    b.notes.append(f"cast: {sum(len(v) for v in art.values())} pictures (the characters are drawn by the game)")
     return art

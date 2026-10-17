@@ -41,21 +41,19 @@
   }
   #stage { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
 
-  /* ===== Loading screen: Toy Eddy (the 3D model) turning around, with a bar under it ===== */
+  /* ===== Loading screen: the spinning rice bowl, with a bar under it ===== */
   #cover {
     position: absolute; inset: 0; z-index: 5;
     background: #000; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 4%;
+    align-items: center; justify-content: center; gap: 6%;
     transition: opacity .4s;
   }
   #cover.done { opacity: 0; pointer-events: none; }
-  /* turntable.png is 16 frames side by side (200 x 260 each); steps() shows one at a time */
   #spinner {
-    height: 46%; aspect-ratio: 200 / 260;
-    background: url("assets/turntable.png") 0 0 / 1600% 100% no-repeat;
-    animation: turn 1.6s steps(16) infinite;   /* one full turn every 1.6 seconds */
+    width: 38%;
+    animation: spin 2.4s linear infinite;    /* one full turn every 2.4 seconds */
   }
-  @keyframes turn { from { background-position-x: 0%; } to { background-position-x: 106.6667%; } }
+  @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
   #barOuter { width: 46%; height: 16px; border: 3px solid #fff; padding: 2px; }
   #barInner { height: 100%; width: 0; background: #fff; transition: width .15s; }
 
@@ -204,7 +202,7 @@
 
   <!-- Loading screen: spinning rice bowl + loading bar -->
   <div id="cover">
-    <div id="spinner"></div>
+    <img id="spinner" src="assets/loading-rice.webp" alt="">
     <div id="barOuter"><div id="barInner"></div></div>
   </div>
 
@@ -261,6 +259,10 @@
 
 </div>
 
+<!-- three.js (draws the 3D models once while loading). Only fetched when there is a model. -->
+<script type="importmap">
+{ "imports": { "three": "./lib/three/three.module.min.js", "three/addons/": "./lib/three/addons/" } }
+</script>
 <script>
 // Which game this is (settings, mods and saves are kept apart from Tape 1)
 const GAME_INFO = { key: "frae2", modName: "My Eddie's 2 Mod", gameId: "fried-rice-at-eddies-2",
@@ -303,26 +305,20 @@ const PICTURE_NAMES = {
   "Sprite75": ["ConfettiBurst-0", "ConfettiBurst-1", "ConfettiBurst-2", "ConfettiBurst-3", "ConfettiBurst-4", "ConfettiBurst-5", "ConfettiBurst-6", "ConfettiBurst-7"],
   "Sprite76": ["Purple_man"],
   "Office": ["000", "010", "100", "001"],
-  "OfficePose": ["hall-wfreddy", "hall-foxy", "hall-tfreddy", "hall-tchica", "hall-wbonnie", "hall-mangle", "hall-golden", "ventL-tchica", "ventL-bb", "ventL-wbonnie", "ventL-endo", "ventR-tbonnie", "ventR-mangle", "ventR-wchica", "in-wchica", "in-wbonnie", "in-tfreddy", "in-wfreddy", "in-tchica", "in-tbonnie"],
-  "Cam1": ["dark", "light", "wbonnie", "wbonnie-dark", "tchica", "tchica-dark"],
-  "Cam2": ["dark", "light", "wchica", "wchica-dark", "tbonnie", "tbonnie-dark"],
-  "Cam3": ["dark", "light", "wfreddy", "wfreddy-dark", "tbonnie", "tbonnie-dark"],
-  "Cam4": ["dark", "light", "tbonnie", "tbonnie-dark", "wchica", "wchica-dark", "tchica", "tchica-dark"],
-  "Cam5": ["dark", "light", "wbonnie", "wbonnie-dark", "tchica", "tchica-dark", "bb", "bb-dark", "endo", "endo-dark"],
-  "Cam6": ["dark", "light", "tbonnie", "tbonnie-dark", "mangle", "mangle-dark", "wchica", "wchica-dark"],
-  "Cam7": ["dark", "light", "tchica", "tchica-dark", "wbonnie", "wbonnie-dark", "wfreddy", "wfreddy-dark", "puppetwalk1", "puppetwalk2", "puppetwalk3", "mangle", "mangle-dark"],
-  "Cam8": ["dark", "light", "wchica", "wchica-dark", "wbonnie", "wbonnie-dark", "foxy", "foxy-dark", "wfreddy", "wfreddy-dark", "shadow"],
-  "Cam9": ["dark", "light", "tbonnie", "tbonnie-dark", "tfreddy", "tfreddy-dark", "tchica", "tchica-dark"],
-  "Cam10": ["dark", "light", "bb", "bb-dark", "tfreddy", "tfreddy-dark", "mangle", "mangle-dark"],
-  "Cam11": ["dark", "light", "puppet1", "puppet2", "puppet3", "endo"],
-  "Cam12": ["dark", "light", "mangle", "mangle-dark"],
+  "Cam1": ["dark", "light"],
+  "Cam2": ["dark", "light"],
+  "Cam3": ["dark", "light"],
+  "Cam4": ["dark", "light"],
+  "Cam5": ["dark", "light"],
+  "Cam6": ["dark", "light"],
+  "Cam7": ["dark", "light"],
+  "Cam8": ["dark", "light"],
+  "Cam9": ["dark", "light"],
+  "Cam10": ["dark", "light"],
+  "Cam11": ["dark", "light"],
+  "Cam12": ["dark", "light"],
   "Chars": ["tfreddy", "tbonnie", "tchica", "wfreddy", "wbonnie", "wchica", "foxy", "mangle", "golden", "endo", "shadow", "bb", "puppet"],
-  "Heads": ["tfreddy", "tbonnie", "tchica", "wfreddy", "wbonnie", "wchica", "foxy", "mangle", "golden", "endo", "shadow", "bb", "puppet"],
-  "Scare": ["tfreddy-1", "tfreddy-2", "tfreddy-3", "tfreddy-4", "tfreddy-5", "tfreddy-6", "tfreddy-7", "tfreddy-8", "tfreddy-9", "tbonnie-1", "tbonnie-2", "tbonnie-3", "tbonnie-4", "tbonnie-5", "tbonnie-6", "tbonnie-7", "tbonnie-8", "tbonnie-9", "tchica-1", "tchica-2", "tchica-3", "tchica-4", "tchica-5", "tchica-6", "tchica-7", "tchica-8", "tchica-9", "mangle-1", "mangle-2", "mangle-3", "mangle-4", "mangle-5", "mangle-6", "mangle-7", "mangle-8", "mangle-9", "bb-1", "bb-2", "bb-3", "bb-4", "bb-5", "bb-6", "bb-7", "bb-8", "bb-9", "puppet-1", "puppet-2", "puppet-3", "puppet-4", "puppet-5", "puppet-6", "puppet-7", "puppet-8", "puppet-9", "wfreddy-1", "wfreddy-2", "wfreddy-3", "wfreddy-4", "wfreddy-5", "wfreddy-6", "wfreddy-7", "wfreddy-8", "wfreddy-9", "wbonnie-1", "wbonnie-2", "wbonnie-3", "wbonnie-4", "wbonnie-5", "wbonnie-6", "wbonnie-7", "wbonnie-8", "wbonnie-9", "wchica-1", "wchica-2", "wchica-3", "wchica-4", "wchica-5", "wchica-6", "wchica-7", "wchica-8", "wchica-9", "foxy-1", "foxy-2", "foxy-3", "foxy-4", "foxy-5", "foxy-6", "foxy-7", "foxy-8", "foxy-9", "golden-1"],
-  "OfficeExtra": ["bb", "mangle", "golden", "shadow", "tbonnie", "bbEyes"],
-  "Plush": ["Sprite58", "Sprite59", "Sprite60", "Sprite62", "Sprite63", "Sprite64", "Sprite66", "Sprite61", "Sprite65"],
-  "Title": ["face1", "face2", "face3", "face4"],
-  "Turntable": ["frame01", "frame02", "frame03", "frame04", "frame05", "frame06", "frame07", "frame08", "frame09", "frame10", "frame11", "frame12", "frame13", "frame14", "frame15", "frame16"],
+  "Plush": ["Sprite61", "Sprite65"],
   "Loading": ["icon"],
   "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy"],
   "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],
@@ -360,6 +356,9 @@ const SOUND_NAMES = {
 // sounds that follow the Music slider (all others follow the Sound slider)
 const MUSIC_NAMES = new Set(["Chimes", "During mini game.mp3", "FNAF 2 - Win Music-Lullaby Waltz (End Of The Game).mp3", "Music_Box_Melody_Playful", "With_S3", "jackinthebox", "title"]);
 
+// pictures saved at half size (1 image pixel per game pixel) to save memory: long animations
+const HALF_SIZE_GROUPS = new Set(["Sprite4", "Sprite5", "Sprite10", "Sprite28", "Sprite45"]);
+
 
 /* =====================================================================
    WORDS ON PICTURES
@@ -393,6 +392,8 @@ const PICTURE_WORDS = {
 
 const VIEW_W = 480, VIEW_H = 360;
 const IMG_SCALE = 2;                  // image pixels per game pixel
+// groups saved at half size to save memory (long animations): 1 image pixel per game pixel (names.js)
+const imgScale = group => (typeof HALF_SIZE_GROUPS !== "undefined" && HALF_SIZE_GROUPS.has(group) ? 1 : IMG_SCALE);
 
 // "Show Stage" -> "show-stage" (how names become file names)
 function fileName(s) {
@@ -413,6 +414,21 @@ const Files = {
 
   image(path) { return this.images.get(path); },
 
+  // The same picture with every visible pixel black (for darkening), made once
+  blacks: new Map(),
+  black(img) {
+    if (!this.blacks.has(img)) {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
+      const g = c.getContext("2d");
+      g.drawImage(img, 0, 0);
+      g.globalCompositeOperation = "source-in";
+      g.fillStyle = "#000"; g.fillRect(0, 0, c.width, c.height);
+      this.blacks.set(img, c);
+    }
+    return this.blacks.get(img);
+  },
+
   // Loads every picture and sound, reporting progress from 0 to 1
   async loadAll(imagePaths, soundPaths, onProgress) {
     const total = imagePaths.length + soundPaths.length;
@@ -420,7 +436,7 @@ const Files = {
     const tick = () => onProgress(++done / total);
     const loadOne = url => new Promise(res => {
       const img = new Image();
-      img.onload = () => res(img);
+      img.onload = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(() => res(img));
       img.onerror = () => { console.warn("Missing image", url); res(null); };
       img.src = url;
     });
@@ -465,7 +481,8 @@ function pic(group, name) {
   if (!hasPic(group, name)) { console.warn("No picture", group, name); return undefined; }
   const path = picturePath(group, name), img = Files.image(path);
   const [nw, nh] = Files.sizes.get(path) || (img ? [img.naturalWidth, img.naturalHeight] : [0, 0]);
-  const iw = nw / IMG_SCALE, ih = nh / IMG_SCALE;
+  const k = imgScale(group);
+  const iw = nw / k, ih = nh / k;
   const words = typeof PICTURE_WORDS !== "undefined" ? PICTURE_WORDS[key] : undefined;
   const [w, h, cx, cy] = words ? words.box : [iw, ih, iw / 2, ih / 2];
   const p = { img, iw, ih, w, h, cx, cy, words: words ? words.words : null,
@@ -575,8 +592,14 @@ function draw(ctx, p, x, y, o = {}) {
   ctx.translate(-p.cx, -p.cy);
   if (p.pixel) ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha *= alpha;
-  if (o.bright) ctx.filter = `brightness(${Math.max(0, 1 + o.bright / 100)})`;
   paintPicture(ctx, p);
+  // darker / lighter: the picture's own shape painted black (or added again) on top.
+  // (much faster than ctx.filter, which makes the browser redo the whole picture every frame)
+  if (o.bright && p.img) {
+    ctx.globalAlpha = alpha * Math.min(1, Math.abs(o.bright) / 100);
+    if (o.bright > 0) ctx.globalCompositeOperation = "lighter";
+    ctx.drawImage(o.bright < 0 ? Files.black(p.img) : p.img, p.cx - p.iw / 2, p.cy - p.ih / 2, p.iw, p.ih);
+  }
   ctx.restore();
 }
 
@@ -746,6 +769,505 @@ class Speaker {
 // Play a sound on a speaker only if it is not already playing (for sounds that loop back to back)
 function keepPlaying(speaker, group, name) {
   if (!speaker.isPlaying(name)) speaker.play(group, name);
+}
+
+
+/* =====================================================================
+   WHERE THE CHARACTERS STAND  (written by tools/tape2/cast.py: edit the
+   tables there and rebuild, this file is made again)
+
+   Every spot a character can be seen, measured by hand from where the
+   FNaF character stood in the original pictures. The game draws the
+   character there (its 3D model from the models folder, or its 2D
+   drawing) on top of the empty room. See actors.js.
+
+   box    [left, top, right, bottom] in the room picture (its own pixels,
+          0,0 = the picture's top-left corner)
+   mode   "body": the whole character fits the box (feet at the bottom)
+          "head": the head fills the box (close-ups, vents, posters)
+   shade  how dark the character is there (0 = full light, 0.9 = almost black)
+   role   who it is (when the spot's name is not the role)
+   rot    turned this many degrees
+   cut    only drawn inside [left, top, width, height]
+   same   looks the same with and without the camera flashlight
+   kind   "lunge" = reaching for you (otherwise standing)
+   ===================================================================== */
+"use strict";
+
+// camera number -> spot -> where (spot = the role, unless it says role:)
+const CAM_POSES = {
+  1: {
+    wbonnie: {box: [55, 75, 150, 350], mode: "body", shade: 0.48},
+    tchica: {box: [45, 125, 170, 300], mode: "body", shade: 0.09},
+  },
+  2: {
+    wchica: {box: [132.5, 15, 277.5, 210], mode: "head", shade: 0.34},
+    tbonnie: {box: [320, 75, 415, 210], mode: "body", shade: 0},
+  },
+  3: {
+    wfreddy: {box: [85, 60, 385, 360], mode: "head", shade: 0.55},
+    tbonnie: {box: [175, 30, 265, 220], mode: "body", shade: 0.27},
+  },
+  4: {
+    tbonnie: {box: [100, -30, 370, 290], mode: "head", shade: 0.28},
+    wchica: {box: [190, 85, 320, 275], mode: "body", shade: 0.17},
+    tchica: {box: [160, 65, 235, 250], mode: "body", shade: 0},
+  },
+  5: {
+    wbonnie: {box: [150, 50, 325, 280], mode: "head", shade: 0.34},
+    tchica: {box: [140, 95, 260, 250], mode: "head", shade: 0},
+    bb: {box: [135, 90, 310, 280], mode: "head", shade: 0},
+    endo: {box: [135, 145, 350, 280], mode: "head", shade: 0.39},
+  },
+  6: {
+    tbonnie: {box: [220, 90, 405, 250], mode: "head", shade: 0},
+    mangle: {box: [200, 95, 395, 295], mode: "head", shade: 0},
+    wchica: {box: [190, 85, 380, 350], mode: "head", shade: 0.21},
+  },
+  7: {
+    tchica: {box: [102.5, 75, 187.5, 165], mode: "head", shade: 0.38},
+    wbonnie: {box: [180, 67.5, 220, 150], mode: "body", shade: 0.62},
+    wfreddy: {box: [215, 62.5, 260, 225], mode: "body", shade: 0.41},
+    puppetwalk1: {box: [195, 2.5, 280, 225], mode: "body", shade: 0.6, role: "puppet", same: true},
+    puppetwalk2: {box: [185, 30, 310, 180], mode: "head", shade: 0.21, role: "puppet", same: true},
+    puppetwalk3: {box: [155, 20, 325, 200], mode: "head", shade: 0.33, role: "puppet", same: true},
+    mangle: {box: [102.5, 75, 187.5, 165], mode: "head", shade: 0.38},
+  },
+  8: {
+    wchica: {box: [60, 50, 165, 180], mode: "body", shade: 0.31},
+    wbonnie: {box: [85, -10, 165, 170], mode: "body", shade: 0.17},
+    foxy: {box: [200, 10, 285, 225], mode: "body", shade: 0.13},
+    wfreddy: {box: [275, 85, 325, 150], mode: "head", shade: 0.13},
+    shadow: {box: [115, 15, 260, 165], mode: "body", shade: 0.05, same: true, tint: true},
+  },
+  9: {
+    tbonnie: {box: [85, 20, 185, 235], mode: "body", shade: 0.28},
+    tfreddy: {box: [190, 5, 310, 240], mode: "body", shade: 0.24},
+    tchica: {box: [315, 20, 420, 235], mode: "body", shade: 0.38},
+  },
+  10: {
+    bb: {box: [45, 85, 140, 225], mode: "body", shade: 0.31},
+    tfreddy: {box: [145, 65, 195, 172.5], mode: "body", shade: 0},
+    mangle: {box: [145, 65, 195, 172.5], mode: "body", shade: 0},
+  },
+  11: {
+    puppet1: {box: [302.5, 75, 342.5, 165], mode: "body", shade: 0.5, role: "puppet", cut: [0, 0, 480, 129], same: true},
+    puppet2: {box: [295, 62.5, 345, 165], mode: "body", shade: 0.51, role: "puppet", cut: [0, 0, 480, 129], same: true},
+    puppet3: {box: [280, 47.5, 350, 210], mode: "body", shade: 0.59, role: "puppet", same: true},
+    endo: {box: [265, 0, 380, 230], mode: "body", shade: 0.54, same: true},
+  },
+  12: {
+    mangle: {box: [225, 70, 355, 165], mode: "body", shade: 0.14, rot: -75},
+  },
+};
+
+// the office: hall-<who> (hall light), ventL- / ventR-<who> (vent lights), in-<who> (in the office)
+const OFFICE_POSES = {
+  "hall-wfreddy": {box: [214.5, 75, 261.5, 228.5], mode: "body", shade: 0.27},
+  "hall-foxy": {box: [215, 75, 265, 210], mode: "body", shade: 0.27},
+  "hall-tfreddy": {box: [230, 70, 280, 225], mode: "body", shade: 0.28},
+  "hall-tchica": {box: [225, 80, 265, 167.5], mode: "body", shade: 0.02},
+  "hall-wbonnie": {box: [230, 75, 270, 225], mode: "body", shade: 0.31},
+  "hall-mangle": {box: [235, 70, 280, 165], mode: "body", shade: 0.02},
+  "hall-golden": {box: [210, 75, 280, 145], mode: "head", shade: 0.35},
+  "ventL-tchica": {box: [17.5, 140, 57.5, 185], mode: "head", shade: 0.62, cut: [10, 140, 57.5, 90]},
+  "ventL-bb": {box: [15, 147.5, 52.5, 192.5], mode: "head", shade: 0.7, cut: [10, 140, 57.5, 90]},
+  "ventL-wbonnie": {box: [15, 135, 57.5, 187.5], mode: "head", shade: 0.64, cut: [10, 140, 57.5, 90]},
+  "ventL-endo": {box: [12.5, 150, 57.5, 195], mode: "head", shade: 0.74, cut: [10, 140, 57.5, 90]},
+  "ventR-tbonnie": {box: [420, 140, 465, 190], mode: "head", shade: 0.73, cut: [412.5, 135, 57.5, 95]},
+  "ventR-mangle": {box: [422.5, 142.5, 465, 200], mode: "head", shade: 0.7, cut: [412.5, 135, 57.5, 95]},
+  "ventR-wchica": {box: [417.5, 137.5, 467.5, 192.5], mode: "head", shade: 0.75, cut: [412.5, 135, 57.5, 95]},
+  "in-wchica": {box: [180, 0, 300, 235], mode: "body", shade: 0.53, kind: "lunge"},
+  "in-wbonnie": {box: [190, -15, 280, 230], mode: "body", shade: 0.66, kind: "lunge"},
+  "in-tfreddy": {box: [250, 0, 390, 235], mode: "body", shade: 0.58, kind: "lunge"},
+  "in-wfreddy": {box: [165, 0, 350, 235], mode: "body", shade: 0.57, kind: "lunge"},
+  "in-tchica": {box: [190, 10, 290, 235], mode: "body", shade: 0.55, kind: "lunge"},
+  "in-tbonnie": {box: [190, -5, 290, 235], mode: "body", shade: 0.66, kind: "lunge"},
+};
+
+// posters, paper plates and plushies in the rooms ("office" or the camera number);
+// in a dark room the game makes them darker
+const ROOM_COVERS = {
+  "office": [
+    {role: "tfreddy", box: [14.56, 44.85, 62.44, 81.15], mode: "head", shade: 0.35, cut: [7, 30, 63, 82.5]},
+  ],
+  "1": [
+    {role: "tbonnie", box: [76.6, 85.3, 118.4, 122.7], mode: "head", shade: 0.35, cut: [70, 70, 165, 85]},
+    {role: "tfreddy", box: [131.6, 85.3, 173.4, 122.7], mode: "head", shade: 0.35, cut: [70, 70, 165, 85]},
+    {role: "tchica", box: [186.6, 85.3, 228.4, 122.7], mode: "head", shade: 0.35, cut: [70, 70, 165, 85]},
+  ],
+  "4": [
+    {role: "tbonnie", box: [283.5, 76, 321.5, 125], mode: "head", shade: 0.3, cut: [277.5, 70, 50, 61]},
+    {role: "tfreddy", box: [346, 96, 386.5, 144], mode: "head", shade: 0.3, cut: [340, 90, 52.5, 60]},
+  ],
+  "7": [
+    {role: "tbonnie", box: [8.4, 82.4, 61.6, 161.6], mode: "head", shade: 0.35, cut: [0, 50, 70, 180]},
+    {role: "tchica", box: [79.08, 64.7, 104.92, 137.3], mode: "head", shade: 0.35, cut: [75, 35, 34, 165]},
+    {role: "tfreddy", box: [428.08, 83.4, 472.92, 140.6], mode: "head", shade: 0.35, cut: [421, 60, 59, 130]},
+  ],
+  "11": [
+    {role: "tbonnie", box: [184.96, 30.8, 210.04, 57.2], mode: "head", shade: 0.35, cut: [181, 20, 99, 60]},
+    {role: "tfreddy", box: [217.96, 30.8, 243.04, 57.2], mode: "head", shade: 0.35, cut: [181, 20, 99, 60]},
+    {role: "tchica", box: [250.96, 30.8, 276.04, 57.2], mode: "head", shade: 0.35, cut: [181, 20, 99, 60]},
+    {role: "tchica", box: [36, 35, 82.5, 85], mode: "body", shade: 0.55},
+    {role: "tfreddy", box: [131, 114, 167.5, 150], mode: "body", shade: 0.55},
+  ],
+};
+
+
+/* =====================================================================
+   ACTORS: the characters, drawn by the game wherever they stand
+
+   Every character is drawn at runtime on top of the empty rooms, the
+   office, the title screen, the jumpscares and so on. What gets drawn:
+
+     1. its 3D model, if there is one in the models folder of the repo
+        (models/toy_eddy.glb, models/withered_weddy.obj ...). Any of
+        .glb  .gltf  .fbx  .obj  works. (Browsers can't open .blend
+        files: tools/convert_models.py turns them into .glb.)
+     2. otherwise its 2D drawing (the "Chars" pictures).
+
+   The models are rendered ONCE while the game loads (standing, and
+   reaching for you), into flat pictures. Drawing those every frame is
+   as cheap as drawing any other picture, so there is no 3D cost while
+   you play.
+
+   Which file is which character: ACTOR_FILES below. The first file name
+   that exists wins.
+   ===================================================================== */
+"use strict";
+
+const MODEL_DIR = "../models/";
+const MODEL_TYPES = ["glb", "gltf", "fbx", "obj"];
+
+// role -> model file names to look for (without the ending), first one found wins.
+// pose: "broken" = bent and wrecked (Toy Endo's model standing in for Mangled Endo)
+const ACTOR_FILES = {
+  tfreddy: [{ file: "toy_eddy" }],
+  tbonnie: [{ file: "toy_weddy" }],
+  tchica:  [{ file: "toy_cheddy" }],
+  mangle:  [{ file: "mangled_endo" }, { file: "toy_endo", pose: "broken" }],
+  bb:      [{ file: "balloon_kid" }],
+  puppet:  [{ file: "the_puppet" }, { file: "puppet" }],
+  wfreddy: [{ file: "withered_eddy" }],
+  wbonnie: [{ file: "withered_weddy" }],
+  wchica:  [{ file: "withered_cheddy" }],
+  foxy:    [{ file: "withered_endo" }],
+  golden:  [{ file: "golden_eddie" }, { file: "golden_eddy" }],
+  endo:    [{ file: "endo" }, { file: "endoskeleton" }],
+  // the shadow in Parts/Service is drawn all black, so any Eddy works
+  shadow:  [{ file: "shadow_eddy" }, { file: "withered_eddy" }, { file: "toy_eddy" }],
+};
+
+// Bone poses for the 3D models: bone name -> [x, y, z] turn in degrees (the
+// bone's own axes, like the rotation boxes in Blender's pose mode).
+// Bone names are matched without dots, spaces or capitals ("UpperArm.L" = "upperarml").
+const MODEL_POSES = {
+  stand: { "UpperArm.L": [-78, 0, 0], "UpperArm.R": [-78, 0, 0], "Head": [0, 6, 0] },
+  lunge: { "UpperArm.L": [-12, 0, -88], "UpperArm.R": [-12, 0, 88], "Chest": [-14, 0, 0], "Head": [-12, -10, 0],
+           "Ear.L": [0, -20, 0], "Ear.R": [0, 20, 0], "Leg.L": [18, 0, 0], "Leg.R": [-12, 0, 0] },
+  // wrecked: twisted head, one arm wrenched up, one hanging, legs splayed
+  broken: { "UpperArm.L": [40, 0, 30], "UpperArm.R": [-88, 0, 0], "Head": [25, 35, 18], "Chest": [8, 10, 6],
+            "Ear.L": [0, -55, 0], "Ear.R": [0, 70, 30], "Leg.L": [0, 25, 0], "Leg.R": [30, -15, 0], "Hand.L": [60, 0, 0] },
+  brokenlunge: { "UpperArm.L": [-10, 0, -75], "UpperArm.R": [-30, 0, 85], "Chest": [-18, 6, 0], "Head": [-15, 30, 25],
+                 "Ear.L": [0, -55, 0], "Ear.R": [0, 70, 30], "Leg.L": [20, 20, 0] },
+};
+const ACTOR_RENDER_H = 760;          // how tall (in pixels) each 3D character picture is made
+
+// One finished character picture: the image, its black copy (for darkening),
+// and where its body and head are inside it (pixels: [left, top, right, bottom])
+function makeSprite(canvas, headPart) {
+  const w = canvas.width, h = canvas.height;
+  const k = Math.min(1, 220 / Math.max(w, h));         // measure on a small copy (fast)
+  const sw = Math.max(1, Math.round(w * k)), sh = Math.max(1, Math.round(h * k));
+  const m = document.createElement("canvas");
+  m.width = sw; m.height = sh;
+  const g = m.getContext("2d", { willReadFrequently: true });
+  g.drawImage(canvas, 0, 0, sw, sh);
+  const a = g.getImageData(0, 0, sw, sh).data;
+  let x0 = sw, y0 = sh, x1 = -1, y1 = -1;
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+    if (a[(y * sw + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) { x0 = 0; y0 = 0; x1 = sw - 1; y1 = sh - 1; }
+  // the head: the top part of the body, as wide as the drawing is there
+  const band = Math.round(y0 + (y1 - y0) * headPart);
+  let hx0 = sw, hx1 = -1;
+  for (let y = y0; y <= band; y++) for (let x = 0; x < sw; x++) {
+    if (a[(y * sw + x) * 4 + 3] > 40) { if (x < hx0) hx0 = x; if (x > hx1) hx1 = x; }
+  }
+  if (hx1 < 0) { hx0 = x0; hx1 = x1; }
+  const black = document.createElement("canvas");
+  black.width = w; black.height = h;
+  const bg = black.getContext("2d");
+  bg.drawImage(canvas, 0, 0);
+  bg.globalCompositeOperation = "source-in";
+  bg.fillStyle = "#000"; bg.fillRect(0, 0, w, h);
+  return { img: canvas, black, w, h,
+           body: [x0 / k, y0 / k, (x1 + 1) / k, (y1 + 1) / k],
+           head: [hx0 / k, y0 / k, (hx1 + 1) / k, (band + 1) / k] };
+}
+
+const Actors = {
+  sprites: new Map(),          // "role/kind" -> sprite
+  models: {},                  // role -> the model file used (for the debug panel)
+
+  get(role, kind) {
+    return this.sprites.get(role + "/" + (kind || "stand")) || this.sprites.get(role + "/stand") || this.flat(role);
+  },
+
+  // the 2D drawing (made the first time it is needed)
+  flat(role) {
+    const key = role + "/stand";
+    if (this.sprites.has(key)) return this.sprites.get(key);
+    if (!hasPic("Chars", role)) return null;
+    const p = pic("Chars", role);
+    if (!p.img) return null;
+    const c = document.createElement("canvas");
+    c.width = p.img.naturalWidth || p.img.width; c.height = p.img.naturalHeight || p.img.height;
+    c.getContext("2d").drawImage(p.img, 0, 0);
+    const s = makeSprite(c, 0.4);
+    this.sprites.set(key, s);
+    return s;
+  },
+
+  // Look for each character's model and render it. Never fails: anything
+  // that goes wrong just leaves that character as its 2D drawing.
+  async load(onProgress) {
+    const found = {};
+    await Promise.all(Object.entries(ACTOR_FILES).map(async ([role, list]) => {
+      for (const choice of list) {
+        for (const type of MODEL_TYPES) {
+          const url = MODEL_DIR + choice.file + "." + type;
+          try {
+            const r = await fetch(url, { method: "HEAD", cache: "no-cache" });
+            if (r.ok) { found[role] = { ...choice, url, type }; return; }
+          } catch (e) { /* no file */ }
+        }
+      }
+    }));
+    const roles = Object.keys(found);
+    if (!roles.length) return;
+    let three;
+    try { three = await this.startThree(); }
+    catch (e) { console.warn("3D models could not be started (using the 2D drawings)", e); return; }
+    const cache = new Map();          // the same file used twice (the shadow) is loaded once
+    let done = 0;
+    for (const role of roles) {
+      const f = found[role];
+      try {
+        if (!cache.has(f.url)) cache.set(f.url, await three.loadModel(f.url, f.type));
+        const model = cache.get(f.url);
+        const poses = f.pose === "broken" ? ["broken", "brokenlunge"] : ["stand", "lunge"];
+        this.sprites.set(role + "/stand", makeSprite(three.render(model, poses[0], 8), 0.36));
+        this.sprites.set(role + "/lunge", makeSprite(three.render(model, poses[1], 0), 0.36));
+        this.models[role] = f.url;
+      } catch (e) { console.warn("Could not use the 3D model", f.url, e); }
+      if (onProgress) onProgress(++done / roles.length);
+    }
+    three.dispose();
+  },
+
+  // three.js (lib/three, loaded only when there is a model to show)
+  async startThree() {
+    const THREE = await import("three");
+    const R = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+    R.outputColorSpace = THREE.SRGBColorSpace;
+    R.setClearColor(0x000000, 0);
+    const scene = new THREE.Scene();
+    // stage lights: a soft room light, a key light from above the camera, a fill and a rim
+    scene.add(new THREE.HemisphereLight(0xc8c8d8, 0x2a2a30, 1.1));
+    for (const [x, y, z, power] of [[-2.5, 4.5, 4, 2.4], [3.5, 2, 3, 0.8], [0.5, 3.5, -4, 1.8]]) {
+      const l = new THREE.DirectionalLight(0xffffff, power);
+      l.position.set(x, y, z);
+      scene.add(l);
+    }
+    const camera = new THREE.PerspectiveCamera(26, 1, 0.01, 1000);
+    const DEG = Math.PI / 180;
+    const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    async function loadModel(url, type) {
+      let root;
+      if (type === "glb" || type === "gltf") {
+        const { GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js");
+        root = (await new GLTFLoader().loadAsync(url)).scene;
+      } else if (type === "fbx") {
+        const { FBXLoader } = await import("three/addons/loaders/FBXLoader.js");
+        root = await new FBXLoader().loadAsync(url);
+      } else {
+        const { OBJLoader } = await import("three/addons/loaders/OBJLoader.js");
+        root = await new OBJLoader().loadAsync(url);
+        // a plain .obj has no colors: give it a plastic grey
+        root.traverse(o => { if (o.isMesh && (!o.material || o.material.type === "MeshPhongMaterial"))
+          o.material = new THREE.MeshStandardMaterial({ color: 0xb8b0a8, roughness: 0.6 }); });
+      }
+      // make every model the same size (2.4 tall, feet on the floor, in the middle).
+      // (measured on the real, skinned shape: "precise")
+      root.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(root, true);
+      const size = box.getSize(new THREE.Vector3());
+      const k = 2.4 / (size.y || 1);
+      root.scale.multiplyScalar(k);
+      root.updateMatrixWorld(true);
+      const b2 = new THREE.Box3().setFromObject(root, true);
+      const c = b2.getCenter(new THREE.Vector3());
+      root.position.x -= c.x; root.position.z -= c.z; root.position.y -= b2.min.y;
+      root.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
+      // the bones by their plain names, with their resting turn remembered
+      const bones = {};
+      root.traverse(o => { if (o.isBone) { bones[norm(o.name)] = o; o.userData.rest = o.quaternion.clone(); } });
+      return { root, bones };
+    }
+
+    function pose(model, which) {
+      for (const b of Object.values(model.bones)) b.quaternion.copy(b.userData.rest);
+      for (const [name, [x, y, z]] of Object.entries(MODEL_POSES[which] || {})) {
+        const b = model.bones[norm(name)];
+        // Blender's XYZ turn order = three.js "ZYX"
+        if (b) b.quaternion.copy(b.userData.rest).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(x * DEG, y * DEG, z * DEG, "ZYX")));
+      }
+      model.root.updateMatrixWorld(true);
+    }
+
+    // one picture of the model in a pose, seen from `angle` degrees to the side
+    function render(model, which, angle) {
+      pose(model, which);
+      const H = ACTOR_RENDER_H, W = Math.round(H * 0.95);
+      R.setSize(W, H, false);
+      camera.aspect = W / H;
+      const d = 9.2, a = angle * DEG;
+      camera.position.set(Math.sin(a) * d, 1.45, Math.cos(a) * d);
+      camera.lookAt(0, 1.2, 0);
+      camera.updateProjectionMatrix();
+      scene.add(model.root);
+      R.render(scene, camera);
+      scene.remove(model.root);
+      // copy it into a normal picture, cut down to the character
+      const c = document.createElement("canvas");
+      c.width = W; c.height = H;
+      c.getContext("2d").drawImage(R.domElement, 0, 0);
+      return trim(c);
+    }
+
+    function dispose() { R.dispose(); R.forceContextLoss && R.forceContextLoss(); }
+    return { loadModel, render, dispose };
+  },
+};
+
+// Cut the empty space around a picture away (keeps memory small)
+function trim(c) {
+  const g = c.getContext("2d", { willReadFrequently: true });
+  const { width: w, height: h } = c;
+  const a = g.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+    if (a[(y * w + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) return c;
+  x0 = Math.max(0, x0 - 4); y0 = Math.max(0, y0 - 4); x1 = Math.min(w, x1 + 5); y1 = Math.min(h, y1 + 5);
+  const out = document.createElement("canvas");
+  out.width = x1 - x0; out.height = y1 - y0;
+  out.getContext("2d").drawImage(c, -x0, -y0);
+  return out;
+}
+
+/* ---------------------------------------------------------------------
+   drawActor(ctx, role, box, options)
+   Draws a character into box [left, top, right, bottom] (current units).
+   options: mode "body" (feet at the bottom of the box) or "head" (head fills it),
+            kind "lunge", shade 0..1 (darker), tint true (all black),
+            rot (degrees), cut [x, y, w, h] (only inside), alpha, flip
+   --------------------------------------------------------------------- */
+function drawActor(ctx, role, box, o = {}) {
+  const s = Actors.get(role, o.kind);
+  if (!s) return;
+  const head = o.mode === "head";
+  const part = head ? s.head : s.body;
+  const k = (box[3] - box[1]) / Math.max(1, part[3] - part[1]);
+  const ax = (part[0] + part[2]) / 2, ay = head ? (part[1] + part[3]) / 2 : part[3];   // this point of the picture...
+  const tx = (box[0] + box[2]) / 2, ty = head ? (box[1] + box[3]) / 2 : box[3];       // ...goes here
+  ctx.save();
+  if (o.cut) { ctx.beginPath(); ctx.rect(o.cut[0], o.cut[1], o.cut[2], o.cut[3]); ctx.clip(); }
+  if (o.alpha !== undefined) ctx.globalAlpha *= o.alpha;
+  ctx.translate(tx, ty);
+  if (o.rot) ctx.rotate(o.rot * Math.PI / 180);
+  ctx.scale(o.flip ? -k : k, k);
+  ctx.translate(-ax, -ay);
+  if (!o.tint) ctx.drawImage(s.img, 0, 0);
+  const shade = o.tint ? 1 : Math.min(0.95, o.shade || 0);
+  if (shade > 0.01) { ctx.globalAlpha *= shade; ctx.drawImage(s.black, 0, 0); }
+  ctx.restore();
+}
+
+// Draws a character spot that was made for a picture of its own:
+// spot.pin is that picture's pin, spot.box is in its units. (x, y, size) like draw().
+function drawSpot(ctx, spot, x, y, size = 100, o = {}) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size / 100, size / 100);
+  ctx.translate(-spot.pin[0], -spot.pin[1]);
+  drawActor(ctx, spot.role, spot.box, { ...spot, ...o });
+  ctx.restore();
+}
+
+// Runs fn with the drawing lined up with a room picture drawn by draw(ctx, p, x, y, {size})
+// (so spots measured in the room picture land in the right place)
+function inPicture(ctx, p, x, y, size, fn) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size / 100, size / 100);
+  ctx.translate(-p.cx, -p.cy);
+  fn();
+  ctx.restore();
+}
+
+// "darker" in draw()'s units (-100..0) and a shade together (both darken)
+const addShade = (shade, bright) => 1 - (1 - (shade || 0)) * (1 - Math.max(0, -(bright || 0)) / 100);
+
+/* ---------------------------------------------------------------------
+   Character spots that are not in a room (the old pictures' pins and boxes)
+   --------------------------------------------------------------------- */
+const EXTRA_SPOTS = {
+  // in the office
+  bb:      { role: "bb", pin: [141, 180], box: [40, 20, 250, 345], mode: "body", shade: 0.35 },
+  mangle:  { role: "mangle", pin: [205, 108], box: [60, -120, 300, 200], mode: "body", rot: 168, shade: 0.45, kind: "lunge" },
+  golden:  { role: "golden", pin: [180, 180], box: [40, 40, 320, 340], mode: "body", rot: -12, shade: 0.5 },
+  shadow:  { role: "shadow", pin: [84, 180], box: [10, 20, 158, 360], mode: "body", tint: true },
+  tbonnie: { role: "tbonnie", pin: [75, 104], box: [-20, 10, 170, 150], mode: "head", rot: -8, shade: 0.4, kind: "lunge" },
+  bbEyes:  { role: "bb", pin: [83, 69], box: [10, 10, 156, 130], mode: "head", shade: 0.7 },
+};
+// custom night prizes that are characters (little plushies on the desk)
+const PLUSH_ROLE = { Sprite58: "bb", Sprite59: "wbonnie", Sprite60: "wchica", Sprite62: "foxy",
+                     Sprite63: "wfreddy", Sprite64: "golden", Sprite66: "tbonnie" };
+const PLUSH_SPOT = { pin: [60, 85], box: [10, 10, 110, 165], mode: "body", shade: 0.3 };
+// custom night portraits
+const HEAD_SPOT = { pin: [40, 35], box: [4, 4, 76, 66], mode: "head" };
+// title screen faces (Toy Eddy staring, and the old ones for a split second)
+const TITLE_FACES = [
+  { role: "tfreddy", box: [250, 30, 520, 330], shade: 0.5, rot: -3 },
+  { role: "wfreddy", box: [240, 20, 530, 340], shade: 0.45, rot: -6 },
+  { role: "wbonnie", box: [250, -10, 520, 330], shade: 0.45, rot: -6 },
+  { role: "wchica", box: [240, 20, 530, 340], shade: 0.45, rot: -6 },
+];
+// jumpscares: how many steps the lunge takes
+const SCARE_FRAMES = who => (who === "golden" ? 1 : 9);
+
+// One jumpscare step: the character lunging at you in the dark office
+function drawScare(ctx, who, i) {
+  const frames = SCARE_FRAMES(who);
+  const k = Math.min(1, i / Math.max(1, frames - 1));
+  const u = k * k * (3 - 2 * k);                       // smooth start and stop
+  const jit = Math.sin(i * 2.7) * 6 * u;
+  const hh = who === "golden" ? 330 : 120 + 260 * u;
+  const hy = who === "puppet" ? 300 - 120 * u : 190 - 20 * u;
+  ctx.save();
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
+  const office = pic("Office", "000");
+  if (office && office.img) ctx.drawImage(office.img, -60, 0, 600, 360);
+  ctx.fillStyle = `rgba(0,0,0,${0.35 + 0.25 * u})`; ctx.fillRect(0, 0, 480, 360);
+  drawActor(ctx, who, [240 + jit - hh / 2, hy - hh / 2, 240 + jit + hh / 2, hy + hh / 2],
+    { mode: "head", kind: "lunge", rot: Math.sin(i * 1.9) * 7 * u, shade: 0.18 });
+  ctx.restore();
 }
 
 
@@ -1168,7 +1690,11 @@ class Game {
     ctx.save();
     ctx.globalAlpha = f;
     // faces on the right, a little static, then the words
-    draw(ctx, picAt("Title", this.face), 240, 180);
+    const face = TITLE_FACES[(this.face - 1) % TITLE_FACES.length];
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
+    drawActor(ctx, face.role, face.box, { mode: "head", rot: face.rot, shade: face.shade });
+    ctx.restore();
     this.drawStatic(ctx, 0.12 + this.titleFlash * 0.4);
     const title = [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
     title.forEach((s, i) => this.text(ctx, s, 22, 46 + i * 27, { size: 27 }));
@@ -1222,8 +1748,8 @@ class Game {
       yield 2.2;
       yield* this.fade(card, 0, 30);
       this.removeOverlay(card);
-      // Toy Eddy turning around in the corner while the night loads
-      const spin = this.overlay(null, null, { paint: () => draw(this.ctx, picAt("Turntable", 1 + Math.floor(performance.now() / 100) % 16), 440, 300, { size: 70 }) });
+      // the spinning rice bowl in the corner while the night loads
+      const spin = this.overlay("Loading", "icon", { x: 450, y: 320, size: 60 });
       yield randFloat(1.5, 3);
       this.removeOverlay(spin);
       this.startNight();
@@ -1386,15 +1912,15 @@ class Game {
     ctx.strokeStyle = "rgba(255, 255, 255, 0.12)"; ctx.lineWidth = 0.75; ctx.stroke();
     const cx = x + 21, cy = y + h / 2, r = 14;
     const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
-    g.addColorStop(0, "#7ee08a"); g.addColorStop(1, "#1f9e4a");
+    g.addColorStop(0, "#c39bff"); g.addColorStop(1, "#6a2bd1");   // Fred's purple circle
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.font = '600 11px "Sans Serif"';
-    ctx.fillText(W("Phone", "AM"), cx, cy + 0.5);
+    ctx.fillText(W("Phone", "F"), cx, cy + 0.5);
     ctx.textAlign = "left";
     ctx.font = '600 10px "Sans Serif"';
-    ctx.fillText(W("Phone", "Aidan") + " (" + W("Phone", "Manager") + ")", x + 41, y + 15, w - 80);
+    ctx.fillText(W("Phone", "Fred"), x + 41, y + 15, w - 80);
     ctx.font = '8px "Sans Serif"';
     ctx.fillStyle = "rgba(235, 235, 245, 0.6)";
     if (n.phone === "ringing") ctx.fillText(W("Phone", "incoming call..."), x + 41, y + 28);
@@ -1903,13 +2429,12 @@ class Game {
     if (who === "golden") return this.goldenCrash();
     if (settings.jumpscares !== "1") return this.dead();
     this.sp.scream.play("Sprite27", "Xscream2");
-    const frames = PICTURE_NAMES.Scare.filter(s => s.startsWith(who + "-"));
-    n.jumpscare = { who, frames, i: 0 };
+    n.jumpscare = { who, frames: SCARE_FRAMES(who), i: 0 };
   }
   updateJumpscare() {
     const j = this.n.jumpscare;
     if (this.tick % 2 === 0) j.i++;
-    if (j.i >= j.frames.length + 4) { this.n.jumpscare = null; this.dead(); }
+    if (j.i >= j.frames + 4) { this.n.jumpscare = null; this.dead(); }
   }
 
   // Static, then (sometimes) a strange little 8-bit game, then the title
@@ -1941,7 +2466,7 @@ class Game {
     this.go("black");
     Sound.stopAll();
     this.sp.scream.play("Sprite27", "Xscream2");
-    if (settings.jumpscares === "1") this.overlay("Scare", "golden-1", { size: 100 });
+    if (settings.jumpscares === "1") this.overlay(null, null, { paint: ctx => drawScare(ctx, "golden", 0) });
     this.scripts.run("crash", function* () { yield 1.2; Sound.stopAll(); this.layers = []; yield 2; this.showTitle(); }.call(this));
   }
 
@@ -2015,7 +2540,7 @@ class Game {
      ================================================================= */
   // A character standing with its feet at (x, y), `h` game pixels tall
   drawChar(ctx, who, x, y, h, o = {}) {
-    draw(ctx, pic("Chars", who), x, y, { size: h / 3, alpha: o.alpha, bright: o.bright, turn: o.turn });
+    drawActor(ctx, who, [x - h, y - h, x + h, y], { mode: "body", alpha: o.alpha, shade: addShade(0, o.bright), rot: o.turn });
   }
   // Old newspaper paper with fake columns of text
   drawPaper(ctx, x, y, w, h, tilt) {
@@ -2217,7 +2742,7 @@ class Game {
       // the portrait (clipped to the card)
       ctx.save();
       ctx.beginPath(); ctx.rect(c.x + 3, c.y + 3, c.w - 6, 70); ctx.clip();
-      draw(ctx, pic("Heads", who), c.x + c.w / 2, c.y + 40, { size: 100 });
+      drawSpot(ctx, { ...HEAD_SPOT, role: who }, c.x + c.w / 2, c.y + 40, 100);
       ctx.restore();
       this.text(ctx, CAST[who].name, c.x + c.w / 2, c.y + 86, { size: 8, align: "center", max: c.w - 6 });
       const y = c.y + c.h - 14;
@@ -2251,7 +2776,7 @@ class Game {
     const n = this.n;
     if (n.jumpscare) {
       const j = n.jumpscare;
-      draw(ctx, pic("Scare", j.frames[Math.min(j.i, j.frames.length - 1)]), 240, 180);
+      drawScare(ctx, j.who, Math.min(j.i, j.frames - 1));
       return;
     }
     const pan = this.smooth.at("pan", a);
@@ -2267,7 +2792,7 @@ class Game {
     }
     this.drawHud(ctx, a);
     if (n.halluc && !n.camsUp) {
-      if (n.halluc === "bbEyes") draw(ctx, pic("OfficeExtra", "bbEyes"), SX(pan + 100), SY(-150), { size: 50 });
+      if (n.halluc === "bbEyes") drawSpot(ctx, EXTRA_SPOTS.bbEyes, SX(pan + 100), SY(-150), 50);
       else draw(ctx, pic("Sprite67", "costume1"), 240, 180);
     }
   }
@@ -2283,9 +2808,17 @@ class Game {
     const v = n.visit && n.visit.started ? n.visit : null;
     // someone in the office: the lights flicker
     const flick = v && !n.maskUp ? (this.tick % 6 < 2 ? -85 : 0) : 0;
-    draw(ctx, pic("Office", base), ox, oy, { size: 150, bright: n.hallFlicker ? -60 : flick });
-    // who is in the hall / at a vent
-    const pose = name => { if (hasPic("OfficePose", name)) draw(ctx, pic("OfficePose", name), ox, oy, { size: 150, bright: flick }); };
+    const room = pic("Office", base), dim = n.hallFlicker ? -60 : flick;
+    draw(ctx, room, ox, oy, { size: 150, bright: dim });
+    // the new cast on the posters (darker when the hall light is off)
+    inPicture(ctx, room, ox, oy, 150, () => {
+      for (const s of ROOM_COVERS.office || []) drawActor(ctx, s.role, s.box, { ...s, shade: addShade(s.shade + (base === "010" ? 0 : 0.5), dim) });
+    });
+    // who is in the hall / at a vent (drawn by the game: see actors.js and poses.js)
+    const pose = name => {
+      const s = OFFICE_POSES[name];
+      if (s) inPicture(ctx, room, ox, oy, 150, () => drawActor(ctx, name.split("-")[1], s.box, { ...s, shade: addShade(s.shade, flick) }));
+    };
     if (n.flash) {
       for (const [who, at] of Object.entries(n.at)) if (at === "hall") pose("hall-" + who);
       if (n.golden === "hall") pose("hall-golden");
@@ -2300,17 +2833,19 @@ class Game {
     draw(ctx, pic("Sprite13", String(n.fanFrame)), SX(pan + 90), SY(-100), { size: 65 });
     for (const prize of this.progress.prizes) {
       const p = PRIZE_SPOT[prize];
-      if (p && hasPic("Plush", prize)) draw(ctx, pic("Plush", prize), SX(pan + p[0]), SY(p[1]), { size: 50 });
+      if (!p) continue;
+      if (PLUSH_ROLE[prize]) drawSpot(ctx, { ...PLUSH_SPOT, role: PLUSH_ROLE[prize] }, SX(pan + p[0]), SY(p[1]), 50);
+      else if (hasPic("Plush", prize)) draw(ctx, pic("Plush", prize), SX(pan + p[0]), SY(p[1]), { size: 50 });
     }
     // others in the office
-    if (n.bbIn) draw(ctx, pic("OfficeExtra", "bb"), SX(pan - 90), SY(-20), { size: 65 });
-    if (n.mangleIn) draw(ctx, pic("OfficeExtra", "mangle"), SX(pan + 100), SY(120), { size: 65 });
-    if (n.golden === "office") draw(ctx, pic("OfficeExtra", "golden"), SX(pan - 20), SY(-42), { size: 75 });
-    if (n.shadow && !n.flash) draw(ctx, pic("OfficeExtra", "shadow"), SX(pan - 170), SY(0), { size: 100, alpha: 0.85 });
+    if (n.bbIn) drawSpot(ctx, EXTRA_SPOTS.bb, SX(pan - 90), SY(-20), 65);
+    if (n.mangleIn) drawSpot(ctx, EXTRA_SPOTS.mangle, SX(pan + 100), SY(120), 65);
+    if (n.golden === "office") drawSpot(ctx, EXTRA_SPOTS.golden, SX(pan - 20), SY(-42), 75);
+    if (n.shadow && !n.flash) drawSpot(ctx, EXTRA_SPOTS.shadow, SX(pan - 170), SY(0), 100, { alpha: 0.85 });
     if (v && v.who === "tbonnie") {
       // Toy Weddy right in front of you; with the mask on he runs off across the room
       if (!n.maskUp) pose("in-tbonnie");
-      else draw(ctx, pic("OfficeExtra", "tbonnie"), 620 - n.slide * 820, SY(25), { size: 160, bright: flick });
+      else drawSpot(ctx, EXTRA_SPOTS.tbonnie, 620 - n.slide * 820, SY(25), 160, { shade: addShade(EXTRA_SPOTS.tbonnie.shade, flick) });
     }
     // vent light buttons
     draw(ctx, pic("Light Left", n.ventL ? "1" : "0"), SX(pan - 300), SY(-15), { size: 65 });
@@ -2322,9 +2857,21 @@ class Game {
     const group = "Cam" + c;
     const light = n.camFlash;
     const x = 240 + this.smooth.at("camPan", a);
-    draw(ctx, pic(group, light ? "light" : "dark"), x, 180, { size: 150 });
-    const pose = name => { if (hasPic(group, name)) draw(ctx, pic(group, name), x, 180, { size: 150 }); };
-    for (const [who, at] of Object.entries(n.at)) if (at === c) pose(who + (light ? "" : "-dark"));
+    const room = pic(group, light ? "light" : "dark");
+    draw(ctx, room, x, 180, { size: 150 });
+    // the characters in the room (drawn by the game: see actors.js and poses.js).
+    // Without the flashlight they are barely there.
+    const spots = CAM_POSES[c] || {};
+    const pose = name => {
+      const s = spots[name];
+      if (!s) return;
+      const shade = light || s.same ? s.shade : Math.max(0.86, s.shade);
+      inPicture(ctx, room, x, 180, 150, () => drawActor(ctx, s.role || name, s.box, { ...s, shade }));
+    };
+    inPicture(ctx, room, x, 180, 150, () => {
+      for (const s of ROOM_COVERS[c] || []) drawActor(ctx, s.role, s.box, { ...s, shade: Math.min(0.95, s.shade + (light ? 0 : 0.5)) });
+    });
+    for (const [who, at] of Object.entries(n.at)) if (at === c) pose(who);
     // the Puppet coming out of the box, and walking down the main hall
     if (c === 11 && n.puppet > 0) pose("puppet" + Math.min(3, n.puppet));
     if (c === 7 && n.puppet >= 3) pose("puppetwalk" + (1 + Math.floor(this.tick / 20) % 3));
@@ -2395,6 +2942,7 @@ class Game {
       if (n.visit) out["in office"] = CAST[n.visit.who].name + (n.visit.started ? "" : " (waiting)");
     }
     out["golden 1 in"] = this.goldenRate;
+    out["3D models"] = Object.keys(Actors.models).map(r => CAST[r] ? CAST[r].name : r).join(", ") || "none (2D drawings)";
     return out;
   }
   debugSkipHour() { if (this.screen === "night" && this.n && !this.n.frozen) this.n.clock = 70 - TICK; }
@@ -2569,7 +3117,7 @@ Object.assign(Game.prototype, {
       }
       if (m.last) draw(ctx, pic("Sprite69", "GiveThemLifeEndo"), 240, 210, { size: 50 });
       this.drawPixel(ctx, "puppet", m.x, m.y + 40, 60, m.flip);
-      if (m.scare) draw(ctx, pic("Scare", "puppet-9"), 240, 180);
+      if (m.scare) drawScare(ctx, "puppet", 8);
     } else {
       const bg = m.state === "late" ? "foxy stage2" : m.state === "party" ? "foxy stage" :
                  m.state === "ready" ? "foxy GET READY" : (m.t % 1 < 0.5 ? "foxy GO! GO! GO!" : "foxy blank");
@@ -3550,7 +4098,8 @@ function fit() {
   canvas.style.width = w + "px";
   canvas.style.height = h + "px";
   frame.style.setProperty("--u", (w / VIEW_W) + "px");     // 1 game pixel, used by the panels
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  // sharp on hi-res screens, but never bigger than 1440 pixels wide (the pictures are 960 wide; more only costs speed)
+  const dpr = Math.min(2, window.devicePixelRatio || 1, 1440 / w);
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
 }
@@ -3570,8 +4119,11 @@ applyMods().then(() => {
     document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Pixel"'),
     document.fonts.load('10px "Press Start 2P"'), document.fonts.load('10px "Share Tech Mono"'),
     document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Serif"'),
-    Files.loadAll(allImagePaths(), Sound.allPaths(), p => { barInner.style.width = Math.round(p * 100) + "%"; })
+    Files.loadAll(allImagePaths(), Sound.allPaths(), p => { barInner.style.width = Math.round(p * 90) + "%"; })
   ]);
+}).then(() => {
+  // the characters' 3D models (models folder), rendered once; the last part of the bar
+  return Actors.load(p => { barInner.style.width = Math.round(90 + p * 10) + "%"; });
 }).then(() => {
   // Everything is loaded: go straight to the title screen
   const cover = document.getElementById("cover");

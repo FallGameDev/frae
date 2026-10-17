@@ -41,21 +41,19 @@
   }
   #stage { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
 
-  /* ===== Loading screen: Toy Eddy (the 3D model) turning around, with a bar under it ===== */
+  /* ===== Loading screen: the spinning rice bowl, with a bar under it ===== */
   #cover {
     position: absolute; inset: 0; z-index: 5;
     background: #000; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 4%;
+    align-items: center; justify-content: center; gap: 6%;
     transition: opacity .4s;
   }
   #cover.done { opacity: 0; pointer-events: none; }
-  /* turntable.png is 16 frames side by side (200 x 260 each); steps() shows one at a time */
   #spinner {
-    height: 46%; aspect-ratio: 200 / 260;
-    background: url("assets/turntable.png") 0 0 / 1600% 100% no-repeat;
-    animation: turn 1.6s steps(16) infinite;   /* one full turn every 1.6 seconds */
+    width: 38%;
+    animation: spin 2.4s linear infinite;    /* one full turn every 2.4 seconds */
   }
-  @keyframes turn { from { background-position-x: 0%; } to { background-position-x: 106.6667%; } }
+  @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
   #barOuter { width: 46%; height: 16px; border: 3px solid #fff; padding: 2px; }
   #barInner { height: 100%; width: 0; background: #fff; transition: width .15s; }
 
@@ -204,7 +202,7 @@
 
   <!-- Loading screen: spinning rice bowl + loading bar -->
   <div id="cover">
-    <div id="spinner"></div>
+    <img id="spinner" src="assets/loading-rice.webp" alt="">
     <div id="barOuter"><div id="barInner"></div></div>
   </div>
 
@@ -261,6 +259,10 @@
 
 </div>
 
+<!-- three.js (draws the 3D models once while loading). Only fetched when there is a model. -->
+<script type="importmap">
+{ "imports": { "three": "./lib/three/three.module.min.js", "three/addons/": "./lib/three/addons/" } }
+</script>
 <script>
 // Which game this is (settings, mods and saves are kept apart from Tape 1)
 const GAME_INFO = { key: "frae2", modName: "My Eddie's 2 Mod", gameId: "fried-rice-at-eddies-2",
@@ -295,7 +297,8 @@ function fit() {
   canvas.style.width = w + "px";
   canvas.style.height = h + "px";
   frame.style.setProperty("--u", (w / VIEW_W) + "px");     // 1 game pixel, used by the panels
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  // sharp on hi-res screens, but never bigger than 1440 pixels wide (the pictures are 960 wide; more only costs speed)
+  const dpr = Math.min(2, window.devicePixelRatio || 1, 1440 / w);
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
 }
@@ -315,8 +318,11 @@ applyMods().then(() => {
     document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Pixel"'),
     document.fonts.load('10px "Press Start 2P"'), document.fonts.load('10px "Share Tech Mono"'),
     document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Serif"'),
-    Files.loadAll(allImagePaths(), Sound.allPaths(), p => { barInner.style.width = Math.round(p * 100) + "%"; })
+    Files.loadAll(allImagePaths(), Sound.allPaths(), p => { barInner.style.width = Math.round(p * 90) + "%"; })
   ]);
+}).then(() => {
+  // the characters' 3D models (models folder), rendered once; the last part of the bar
+  return Actors.load(p => { barInner.style.width = Math.round(90 + p * 10) + "%"; });
 }).then(() => {
   // Everything is loaded: go straight to the title screen
   const cover = document.getElementById("cover");
