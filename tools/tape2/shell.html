@@ -328,7 +328,7 @@ applyMods().then(() => {
   // graphics card already has them all and nothing stutters the first time it shows up
   const g = canvas.getContext("2d");
   for (const img of Files.images.values()) g.drawImage(img, 0, 0, 1, 1);
-  for (const s of Actors.sprites.values()) { g.drawImage(s.img, 0, 0, 1, 1); g.drawImage(s.black, 0, 0, 1, 1); }
+  for (const p of Actors.allPictures()) g.drawImage(p, 0, 0, 1, 1);
   g.clearRect(0, 0, canvas.width, canvas.height);
   // Everything is loaded: go straight to the title screen
   const cover = document.getElementById("cover");

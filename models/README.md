@@ -38,9 +38,14 @@ That converts every .blend here. One character per .blend
 character (`toys_rigged.blend` has "Toy Eddy", "Toy Weddy"... -> `toy_eddy.glb`...).
 
 **Poses:** the game poses each model itself (standing, and reaching for you
-in the office and jumpscares) by turning these bones, if the model has them:
-`UpperArm.L/R`, `Head`, `Chest`, `Ear.L/R`, `Leg.L/R`, `Hand.L`. Models made
-from the base model's skeleton get the poses; anything else is shown as it is.
+in the office and jumpscares). Models made from the base model's skeleton
+are posed bone by bone. Any other skeleton (Mixamo, Rigify, your own...)
+follows the game's set rig: its arms, legs, chest and head are found by name
+(LeftArm, upper_arm.L, Thigh_R...) and pointed the same way, so every
+model ends up in the same poses.
+
+**Animations:** if the model has a looping animation (one named idle or
+loop, otherwise its first one), it plays whenever the character stands.
 
 ## What's here
 - `basemodel.blend`: Aidan's original base model (no skeleton).

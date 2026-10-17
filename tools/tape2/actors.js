@@ -18,6 +18,14 @@
    Which file is which character: ACTOR_FILES below. The first file name
    that exists wins.
 
+   Skeletons: a model built on the base model's skeleton is posed with
+   MODEL_POSES. Any other skeleton (an uploaded model, Mixamo, Rigify...)
+   follows THE SET RIG (below): its arms, legs, chest and head are found
+   by name and pointed the same way, so every model gets the same poses.
+   Animations: if a model has a looping animation (the one named idle or
+   loop, otherwise its first one), it plays whenever the character is
+   standing (rendered while loading into up to 30 frames).
+
    MODS can bring their own characters (Settings > Mods):
      models/<name>.glb (or .gltf .fbx .obj)    a 3D model
      characters/<name>.png (or .webp .jpg .svg)  a 2D drawing (full body)
@@ -62,7 +70,45 @@ const MODEL_POSES = {
   brokenlunge: { "UpperArm.L": [-10, 0, -75], "UpperArm.R": [-30, 0, 85], "Chest": [-18, 6, 0], "Head": [-15, 30, 25],
                  "Ear.L": [0, -55, 0], "Ear.R": [0, 70, 30], "Leg.L": [20, 20, 0] },
 };
-const ACTOR_RENDER_H = 760;
+const ACTOR_RENDER_H = 760;            // how tall (in pixels) each 3D character picture is made
+const ACTOR_ANIM_H = 520;              // ...and each frame of an animation (smaller: there are many)
+const ACTOR_ANIM_FPS = 12, ACTOR_ANIM_MAX = 30;
+
+/* ---------------------------------------------------------------------
+   THE SET RIG: models that don't use the base model's skeleton
+   (uploaded models, Mixamo, Rigify, VRoid...) are posed through it.
+   Their bones are matched to these few parts by name, then each part is
+   turned to POINT a set way, so any skeleton ends up in the same pose:
+     chest, head, armL, armR (upper arms), legL, legR (thighs)
+   Directions: x = the character's left, y = up, z = toward you.
+   --------------------------------------------------------------------- */
+const SET_RIG_POSES = {
+  stand:       { chest: [0, 1, 0.04], armL: [0.2, -1, 0.06], armR: [-0.2, -1, 0.06], legL: [0.06, -1, 0], legR: [-0.06, -1, 0] },
+  lunge:       { chest: [0, 1, 0.38], head: [0, 0.7, 1], armL: [0.32, 0.18, 1], armR: [-0.32, 0.18, 1],
+                 legL: [0.08, -1, 0.35], legR: [-0.08, -1, -0.25] },
+  broken:      { chest: [0.25, 1, 0.12], head: [0.6, 0.6, 0.4], armL: [0.55, 1, 0.2], armR: [-0.12, -1, 0.15],
+                 legL: [0.45, -1, 0.05], legR: [-0.3, -1, 0.35] },
+  brokenlunge: { chest: [0.15, 1, 0.45], head: [0.5, 0.5, 1], armL: [0.4, 0.3, 1], armR: [-0.2, 0.1, 1],
+                 legL: [0.3, -1, 0.3], legR: [-0.1, -1, -0.2] },
+};
+// bone names -> set-rig part ("mixamorig:LeftArm", "DEF-upper_arm.L", "Bip01 L Thigh", "J_Bip_L_UpperArm"...)
+const SET_RIG_PARTS = { arm: ["upperarm", "arm", "uparm"], leg: ["upleg", "upperleg", "thigh", "leg"] };
+const SET_RIG_CHEST = ["upperchest", "chest", "spine2", "spine02", "spine1", "spine01", "spine"];
+function setRigPart(rawName) {
+  const n = String(rawName).toLowerCase().replace(/[^a-z0-9]/g, "")
+    .replace(/^(mixamorig\d*|bip0*1|bip|def|org|ccbase|jbip|jbipc|valvebiped|bip01|armature)/, "");
+  if (n === "head") return "head";
+  // side at the start ("leftarm", "lthigh") or at the end ("upperarml", "thighleft")
+  const tries = [["L", n.match(/^(?:left|l)(.+)$/)], ["L", n.match(/^(.+?)(?:left|l)$/)],
+                 ["R", n.match(/^(?:right|r)(.+)$/)], ["R", n.match(/^(.+?)(?:right|r)$/)]];
+  for (const [side, m] of tries) {
+    if (!m) continue;
+    for (const [part, names] of Object.entries(SET_RIG_PARTS)) if (names.includes(m[1])) return part + side;
+  }
+  return null;
+}
+// Does this skeleton follow the base model (Root > Hips > Chest > Head, UpperArm.L ...)? Then it uses MODEL_POSES.
+const isBaseRig = bones => ["hips", "chest", "head", "upperarml", "upperarmr", "legl", "legr"].every(b => bones[b]);
 
 // The names a character can have in a mod's models/ and characters/ folders
 const actorNames = role => [...ACTOR_FILES[role].map(c => c.file), role];
@@ -76,12 +122,13 @@ function modActorFile(folder, role, types) {
   return null;
 }
 const DRAWING_TYPES = ["png", "webp", "jpg", "jpeg", "gif", "svg"];
-const loadImage = url => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });          // how tall (in pixels) each 3D character picture is made
+const loadImage = url => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
 
 // One finished character picture: the image, its black copy (for darkening),
 // and where its body and head are inside it (pixels: [left, top, right, bottom])
-function makeSprite(canvas, headPart) {
+function makeSprite(canvas, headPart, same) {
   const w = canvas.naturalWidth || canvas.width, h = canvas.naturalHeight || canvas.height;
+  if (same) return { img: canvas, black: blackCopy(canvas, w, h), w, h, body: same.body, head: same.head };   // animation frames share one box
   const k = Math.min(1, 220 / Math.max(w, h));         // measure on a small copy (fast)
   const sw = Math.max(1, Math.round(w * k)), sh = Math.max(1, Math.round(h * k));
   const m = document.createElement("canvas");
@@ -101,13 +148,7 @@ function makeSprite(canvas, headPart) {
     if (a[(y * sw + x) * 4 + 3] > 40) { if (x < hx0) hx0 = x; if (x > hx1) hx1 = x; }
   }
   if (hx1 < 0) { hx0 = x0; hx1 = x1; }
-  const black = document.createElement("canvas");
-  black.width = w; black.height = h;
-  const bg = black.getContext("2d");
-  bg.drawImage(canvas, 0, 0);
-  bg.globalCompositeOperation = "source-in";
-  bg.fillStyle = "#000"; bg.fillRect(0, 0, w, h);
-  return { img: canvas, black, w, h,
+  return { img: canvas, black: blackCopy(canvas, w, h), w, h,
            body: [x0 / k, y0 / k, (x1 + 1) / k, (y1 + 1) / k],
            head: [hx0 / k, y0 / k, (hx1 + 1) / k, (band + 1) / k] };
 }
@@ -117,7 +158,15 @@ const Actors = {
   models: {},                  // role -> the model file used (for the debug panel)
 
   get(role, kind) {
-    return this.sprites.get(role + "/" + (kind || "stand")) || this.sprites.get(role + "/stand") || this.flat(role);
+    const s = this.sprites.get(role + "/" + (kind || "stand")) || this.sprites.get(role + "/stand") || this.flat(role);
+    // an animation: the frame for right now
+    return s && s.frames ? s.frames[Math.floor(performance.now() / 1000 * s.fps) % s.frames.length] : s;
+  },
+  // every picture (for the warm-up while loading)
+  allPictures() {
+    const out = [];
+    for (const s of this.sprites.values()) for (const f of s.frames || [s]) out.push(f.img, f.black);
+    return out;
   },
 
   // the 2D drawing (made the first time it is needed)
@@ -178,7 +227,9 @@ const Actors = {
         if (!cache.has(f.url)) cache.set(f.url, await three.loadModel(f.url, f.type));
         const model = cache.get(f.url);
         const poses = f.pose === "broken" ? ["broken", "brokenlunge"] : ["stand", "lunge"];
-        this.sprites.set(role + "/stand", makeSprite(three.render(model, poses[0], 8), 0.36));
+        // standing: its own looping animation if it has one, otherwise the standing pose
+        if (model.mixer) this.sprites.set(role + "/stand", three.renderAnimation(model, 8, poses[0]));
+        else this.sprites.set(role + "/stand", makeSprite(three.render(model, poses[0], 8), 0.36));
         this.sprites.set(role + "/lunge", makeSprite(three.render(model, poses[1], 0), 0.36));
         this.models[role] = f.url;
       } catch (e) { console.warn("Could not use the 3D model", f.url, e); }
@@ -206,13 +257,15 @@ const Actors = {
     const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
 
     async function loadModel(url, type) {
-      let root;
+      let root, clips = [];
       if (type === "glb" || type === "gltf") {
         const { GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js");
-        root = (await new GLTFLoader().loadAsync(url)).scene;
+        const gltf = await new GLTFLoader().loadAsync(url);
+        root = gltf.scene; clips = gltf.animations || [];
       } else if (type === "fbx") {
         const { FBXLoader } = await import("three/addons/loaders/FBXLoader.js");
         root = await new FBXLoader().loadAsync(url);
+        clips = root.animations || [];
       } else {
         const { OBJLoader } = await import("three/addons/loaders/OBJLoader.js");
         root = await new OBJLoader().loadAsync(url);
@@ -232,14 +285,65 @@ const Actors = {
       const c = b2.getCenter(new THREE.Vector3());
       root.position.x -= c.x; root.position.z -= c.z; root.position.y -= b2.min.y;
       root.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
-      // the bones by their plain names, with their resting turn remembered
+      // the bones by their plain names, with their resting turn (and place) remembered
       const bones = {};
-      root.traverse(o => { if (o.isBone) { bones[norm(o.name)] = o; o.userData.rest = o.quaternion.clone(); } });
-      return { root, bones };
+      root.traverse(o => { if (o.isBone) { bones[norm(o.name)] = o; o.userData.rest = o.quaternion.clone(); o.userData.restPos = o.position.clone(); } });
+      const model = { root, bones, baseRig: isBaseRig(bones) };
+      // not the base skeleton: find the set-rig parts in it
+      if (!model.baseRig) model.rig = findSetRig(root);
+      // a looping animation: the one called idle/loop, otherwise the first one
+      const clip = clips.find(c => /idle|loop/i.test(c.name)) || clips[0];
+      if (clip && clip.duration > 0.05 && clip.tracks.length) {
+        model.mixer = new THREE.AnimationMixer(root);
+        model.action = model.mixer.clipAction(clip);
+        model.action.play();
+        model.clip = clip;
+      }
+      return model;
+    }
+
+    const isAncestor = (a, b) => { for (let p = b.parent; p; p = p.parent) if (p === a) return true; return false; };
+    const firstChildBone = (b, toward) => {
+      const kids = b.children.filter(c => c.isBone);
+      return (toward && kids.find(k => k === toward || isAncestor(k, toward))) || kids[0] || null;
+    };
+    function findSetRig(root) {
+      const rig = {}, all = [];
+      root.traverse(o => { if (o.isBone) all.push(o); });
+      for (const b of all) {
+        const part = setRigPart(b.name);
+        if (!part) continue;
+        // two bones for one part (Mixamo's UpLeg and Leg): the one closer to the body wins
+        if (!rig[part] || isAncestor(b, rig[part])) rig[part] = b;
+      }
+      const plain = b => b.name.toLowerCase().replace(/[^a-z0-9]/g, "").replace(/^(mixamorig\d*|bip0*1|def|org|jbipc?)/, "");
+      for (const want of SET_RIG_CHEST) { const b = all.find(x => plain(x) === want); if (b) { rig.chest = b; break; } }
+      return rig;
+    }
+    // turn one bone so it points along `dir` (from the bone to its child)
+    const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _q = new THREE.Quaternion(), _bw = new THREE.Quaternion(), _pw = new THREE.Quaternion();
+    function aim(bone, child, dir) {
+      if (!bone || !child) return;
+      bone.getWorldPosition(_a); child.getWorldPosition(_b);
+      const d = _b.sub(_a);
+      if (d.lengthSq() < 1e-10) return;
+      _q.setFromUnitVectors(d.normalize(), new THREE.Vector3(...dir).normalize());
+      bone.getWorldQuaternion(_bw);
+      bone.parent.getWorldQuaternion(_pw);
+      bone.quaternion.copy(_pw.invert().multiply(_q.multiply(_bw)));
+      bone.updateMatrixWorld(true);
+    }
+    function poseSetRig(model, which) {
+      const rig = model.rig, P = SET_RIG_POSES[which] || {};
+      model.root.updateMatrixWorld(true);
+      if (P.chest && rig.chest) aim(rig.chest, firstChildBone(rig.chest, rig.head), P.chest);
+      if (P.head && rig.head) aim(rig.head, firstChildBone(rig.head), P.head);
+      for (const part of ["armL", "armR", "legL", "legR"]) if (P[part] && rig[part]) aim(rig[part], firstChildBone(rig[part]), P[part]);
     }
 
     function pose(model, which) {
-      for (const b of Object.values(model.bones)) b.quaternion.copy(b.userData.rest);
+      for (const b of Object.values(model.bones)) { b.quaternion.copy(b.userData.rest); b.position.copy(b.userData.restPos); }
+      if (!model.baseRig) { poseSetRig(model, which); return; }
       for (const [name, [x, y, z]] of Object.entries(MODEL_POSES[which] || {})) {
         const b = model.bones[norm(name)];
         // Blender's XYZ turn order = three.js "ZYX"
@@ -251,7 +355,11 @@ const Actors = {
     // one picture of the model in a pose, seen from `angle` degrees to the side
     function render(model, which, angle) {
       pose(model, which);
-      const H = ACTOR_RENDER_H, W = Math.round(H * 0.95);
+      return trim(shoot(model, angle, ACTOR_RENDER_H));
+    }
+    // the model as it is now -> a picture (H pixels tall, not cut down)
+    function shoot(model, angle, H) {
+      const W = Math.round(H * 0.95);
       R.setSize(W, H, false);
       camera.aspect = W / H;
       const d = 9.2, a = angle * DEG;
@@ -265,14 +373,64 @@ const Actors = {
       const c = document.createElement("canvas");
       c.width = W; c.height = H;
       c.getContext("2d", { willReadFrequently: true }).drawImage(R.domElement, 0, 0);
-      return trim(c);
+      return c;
+    }
+    // the model's looping animation -> pictures (frames), all cut to the same box so it doesn't wobble
+    function renderAnimation(model, angle, standPose) {
+      const clip = model.clip;
+      const n = Math.max(2, Math.min(ACTOR_ANIM_MAX, Math.round(clip.duration * ACTOR_ANIM_FPS)));
+      const shots = [];
+      for (let i = 0; i < n; i++) {
+        pose(model, standPose);                       // standing pose for the bones the animation doesn't move...
+        model.mixer.setTime(clip.duration * i / n);   // ...then the animation on top
+        model.root.updateMatrixWorld(true);
+        shots.push(shoot(model, angle, ACTOR_ANIM_H));
+      }
+      model.mixer.stopAllAction();
+      model.action.play();
+      model.mixer.setTime(0);
+      const box = unionBox(shots);
+      const frames = shots.map(c => cropTo(c, box));
+      const first = makeSprite(frames[0], 0.36);
+      const sprites = frames.map((c, i) => (i === 0 ? first : makeSprite(c, 0.36, first)));
+      return { frames: sprites, fps: n / clip.duration };
     }
 
     function dispose() { R.dispose(); R.forceContextLoss && R.forceContextLoss(); }
-    return { loadModel, render, dispose };
+    return { loadModel, render, renderAnimation, dispose };
   },
 };
 
+// The picture's shape in black (for darkening)
+function blackCopy(canvas, w, h) {
+  const black = document.createElement("canvas");
+  black.width = w; black.height = h;
+  const bg = black.getContext("2d");
+  bg.drawImage(canvas, 0, 0);
+  bg.globalCompositeOperation = "source-in";
+  bg.fillStyle = "#000"; bg.fillRect(0, 0, w, h);
+  return black;
+}
+// The box around everything drawn in any of these pictures (same size pictures)
+function unionBox(list) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+  for (const c of list) {
+    const { width: w, height: h } = c;
+    const a = c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+    for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+      if (a[(y * w + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+  }
+  const w = list[0].width, h = list[0].height;
+  if (x1 < 0) return [0, 0, w, h];
+  return [Math.max(0, x0 - 4), Math.max(0, y0 - 4), Math.min(w, x1 + 5), Math.min(h, y1 + 5)];
+}
+function cropTo(c, [x0, y0, x1, y1]) {
+  const out = document.createElement("canvas");
+  out.width = x1 - x0; out.height = y1 - y0;
+  out.getContext("2d").drawImage(c, -x0, -y0);
+  return out;
+}
 // Cut the empty space around a picture away (keeps memory small)
 function trim(c) {
   const g = c.getContext("2d", { willReadFrequently: true });
