@@ -1031,7 +1031,10 @@ function allImagePaths() {
    its box (w, h, pin cx, cy) that hit tests and words use.
    --------------------------------------------------------------------- */
 const pictureCache = new Map();
-function hasPic(group, name) { return !!(PICTURE_NAMES[group] && PICTURE_NAMES[group].includes(name)); }
+// (any spelling works for pictures a mod added: "Cool Stuff"/"Ball" finds img/cool-stuff/ball)
+function hasPic(group, name) {
+  return !!(PICTURE_NAMES[group] && PICTURE_NAMES[group].includes(name)) || Files.images.has(picturePath(group, name));
+}
 function pic(group, name) {
   const key = group + "/" + name;
   if (pictureCache.has(key)) return pictureCache.get(key);
@@ -1557,7 +1560,7 @@ class Game {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(k, 0, 0, k, 0, 0);
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
+    ctx.imageSmoothingQuality = "low";     // "high" re-filters every scaled picture each frame (slow)
     if (this.screen === "title") this.drawTitle(ctx, a);
     else if (this.screen === "custom") this.drawCustom(ctx, a);
     else if (this.screen === "night") this.drawNight(ctx, a);
@@ -3364,6 +3367,14 @@ const stemOf = p => p.split("/").slice(-2).join("/").replace(/\.[^./]+$/, "").to
 // Every file the game has (pictures, sounds, fonts): what a mod can replace
 function assetFiles() { return [...allImagePaths(), ...Sound.allPaths(), ...Object.keys(FONT_FAMILY)]; }
 let GAME_FILE_BY_STEM = null;
+// A file the game does not have: new pictures and sounds get the game's own kind of path
+// ("img/My Stuff/Big Cat.PNG" -> "img/my-stuff/big-cat.webp"); anything else stays as it is
+function newModFile(rel) {
+  const m = rel.match(/^(img|snd)\/([^/]+)\/([^/]+)\.([a-z0-9]+)$/i);
+  if (m && m[1].toLowerCase() === "img" && kindOf(rel) === "image") return `img/${fileName(m[2])}/${fileName(m[3])}.webp`;
+  if (m && m[1].toLowerCase() === "snd" && kindOf(rel) === "audio") return `snd/${fileName(m[2])}/${fileName(m[3])}.mp3`;
+  return rel;
+}
 // "anything/img/office-normal.png" -> "img/office-normal.webp" (the game's own file), or null
 function gameFile(path) {
   if (!GAME_FILE_BY_STEM) {
@@ -3488,7 +3499,7 @@ async function makeMod(files, fallbackName, source) {
     author: String(manifest.author || ""),
     version: String(manifest.version || ""),
     description: String(manifest.description || ""),
-    source, files: {}, texts: null, size: 0
+    source, files: {}, texts: null, size: 0, scripts: []
   };
   for (const f of files) {
     if (!f.path.startsWith(root)) continue;
@@ -3499,16 +3510,25 @@ async function makeMod(files, fallbackName, source) {
       catch (e) { throw new Error("texts.json is not valid JSON"); }
       continue;
     }
-    // only keep files the game actually has (a mod replaces files, it cannot add new ones).
-    // Same name, any picture/sound/font type: img/x.png replaces img/x.webp.
-    // Characters: models/<name>.glb and characters/<name>.png (see actors.js)
-    const target = actorModFile(rel) || gameFile(rel);
-    if (!target) continue;
+    // Every file is kept (no limits):
+    //  - a file the game has (same name, any picture/sound/font type: img/x.png replaces img/x.webp)
+    //  - characters: models/<name>.glb and characters/<name>.png (see actors.js)
+    //  - NEW pictures img/<group>/<name>.png and sounds snd/<group>/<name>.mp3 (added to the game)
+    //  - code: mod.js and any .js file (runs before the game starts, see MOD SCRIPTS)
+    //  - anything else, kept as it is (a script can use it with FRAE.file("path"))
+    const target = actorModFile(rel) || gameFile(rel) || newModFile(rel);
     mod.files[target] = typed(f.blob, rel);
     mod.size += f.blob.size;
+    if (/\.m?js$/i.test(rel)) mod.scripts.push(target);
+  }
+  // mod.js first, then the other scripts by name
+  mod.scripts.sort((a, b) => (b.toLowerCase() === "mod.js") - (a.toLowerCase() === "mod.js") || a.localeCompare(b));
+  if (mod.scripts.length && !confirm(`"${mod.name}" runs its own code (${mod.scripts.join(", ")}).\n\n` +
+      "Code in a mod can change ANYTHING in the game, and can also read your save files. Only use mods you trust.\n\nLoad it?")) {
+    throw new Error("Not loaded (the mod has code and you said no)");
   }
   if (!Object.keys(mod.files).length && !mod.texts) {
-    throw new Error("No game files found. A mod needs files like img/..., snd/..." + (HAS_ACTORS ? ", models/..., characters/..." : "") + " or a texts.json (download the template to see).");
+    throw new Error("This mod is empty (download the template to see what a mod can have).");
   }
   return mod;
 }
@@ -3601,11 +3621,13 @@ async function buildTemplate(onProgress) {
     version: "1.0.0",
     description: "Describe your mod here",
     game: GI.gameId,
-    howTo: "Replace any file in img, snd or fonts with your own using the SAME file name. Pictures can be PNG, JPG, WEBP or SVG at any size (they are stretched to fit the same spot). Sounds can be MP3, WAV or OGG. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods."
+    howTo: "Replace any file in img, snd or fonts with your own using the SAME file name. Pictures can be PNG, JPG, WEBP or SVG at any size (they are stretched to fit the same spot). Sounds can be MP3, WAV or OGG. Change words in texts.json (only change the text on the right side). Delete the files you did not change to keep your mod small. Then load the folder (or a .zip of it) in Settings > Mods.",
+    noLimits: "You can also ADD things: new pictures (img/<any folder>/<name>.png) and sounds (snd/<any folder>/<name>.mp3), any other file, and CODE: mod.js runs while the game loads and can change anything (see the notes inside mod.js)."
   };
   if (HAS_ACTORS) manifest.characters = "Characters: put a 3D model in models (toy_eddy.glb, withered_weddy.fbx... any of .glb .gltf .fbx .obj; .glb works best) or a full-body 2D drawing in characters (withered_eddy.png...). A model wins over a drawing, and both win over the game's own. File names: the ones already in those folders, or see models/README.txt.";
   entries.push({ path: "manifest.json", bytes: enc.encode(JSON.stringify(manifest, null, 2)) });
   entries.push({ path: "texts.json", bytes: enc.encode(JSON.stringify(DEFAULT_TEXTS, null, 2)) });
+  entries.push({ path: "mod.js", bytes: enc.encode(MOD_JS_EXAMPLE) });
   let done = 0;
   // (the characters' drawings go in characters/ instead of img/chars)
   const files = assetFiles().filter(f => !(HAS_ACTORS && f.startsWith("img/chars/")));
@@ -3629,6 +3651,40 @@ async function buildTemplate(onProgress) {
   entries.sort((a, b) => a.path.localeCompare(b.path));
   return makeZip(entries);
 }
+
+// mod.js in the template: notes and small examples (all switched off with //)
+const MOD_JS_EXAMPLE = `// =====================================================================
+// mod.js: your mod's own code. It runs while the game loads, before the
+// title screen, and can change ANYTHING. (Delete this file if you don't need it.)
+//
+// Useful things:
+//   game                  the running game (game.n = the night, game.level, game.progress...)
+//   Game.prototype        every game function (update, render, drawOffice, startNight...)
+//   PICTURE_NAMES         every picture group; pic("Group", "name") gets one, draw(ctx, p, x, y) draws it
+//   SOUND_NAMES           every sound; game.sp.<speaker>.play("Group", "name")
+//   TEXTS                 every word on screen (old text -> new text)
+//   settings              the Settings menu values
+//   FRAE.file(path)       url of any file in this mod
+//   FRAE.image(path)      a picture from this mod, ready to draw (Promise)
+//   FRAE.onReady(fn)      run when everything is loaded
+//   FRAE.after / before / replace(object, "function", yourFunction)
+//
+// New pictures: put them in img/<any folder>/<name>.png and use pic("<folder>", "<name>").
+// New sounds:   snd/<any folder>/<name>.mp3 and play them the same way.
+// Open the browser console (F12) to see errors from your code.
+// =====================================================================
+
+// EXAMPLE: say hi when the game is ready
+// FRAE.onReady(game => console.log("My mod is on!"));
+
+// EXAMPLE: draw something of your own on top of every frame
+// FRAE.after(Game.prototype, "render", function () {
+//   const ctx = this.ctx;
+//   ctx.fillStyle = "#ff0";
+//   ctx.font = '12px "Press Start 2P"';
+//   ctx.fillText("MODDED", 10, 350);
+// });
+`;
 
 // Tape 2 templates: models/ (the game's 3D models) and characters/ (every 2D drawing, as PNG)
 async function addActorTemplate(entries, enc) {
@@ -3689,8 +3745,7 @@ async function loadFromGitHub(input, onStatus) {
   if (!tree.tree) throw new Error("Could not read the repo files");
   const folder = (folderIn || "").replace(/\/$/, "");
   const blobs = tree.tree.filter(t => t.type === "blob" && (!folder || t.path.startsWith(folder + "/")));
-  const wanted = blobs.filter(t => /(^|\/)(manifest\.json|texts\.json)$/i.test(t.path) ||
-                                   gameFile(t.path) || /(^|\/)(models|characters)\/[^/]+$/i.test(t.path));
+  const wanted = blobs.filter(t => !/(^|\/)(\.|README|LICENSE)/i.test(t.path));      // every file (no limits)
   if (!wanted.length) throw new Error("No mod files in that repo");
   const files = [];
   let done = 0;
@@ -3742,6 +3797,7 @@ async function applyMods() {
     if (mod.texts) mergeTexts(mod.texts);
   }
   TEXTS = texts;
+  addNewModFiles(files);
   for (const [path, blob] of Object.entries(files)) {
     MOD_FILES[path] = URL.createObjectURL(blob);         // the game loads this instead of its own file
     if (FONT_FAMILY[path]) {
@@ -3752,8 +3808,88 @@ async function applyMods() {
       } catch (e) { console.warn("Mod font did not load", path); }
     }
   }
+  // mod code runs last (bottom mod first, so the top mod's code has the final say)
+  for (const mod of [...mods].reverse()) {
+    for (const path of mod.scripts || []) {
+      const blob = mod.files[path];
+      if (!blob) continue;
+      FRAE.mod = mod.name;
+      try { await runModScript(blob, mod.name + "/" + path); }
+      catch (e) { console.error("Mod code failed:", mod.name, path, e); }
+    }
+  }
+  FRAE.mod = null;
   return mods.length;
 }
+
+// New pictures and sounds from mods join the game's lists (so pic("My Stuff", "big-cat") works)
+function addNewModFiles(files) {
+  const have = new Set([...allImagePaths(), ...Sound.allPaths()]);
+  for (const path of Object.keys(files)) {
+    if (have.has(path)) continue;
+    const m = path.match(/^(img|snd)\/([^/]+)\/([^/]+)\.(webp|mp3)$/);
+    if (!m) continue;
+    const list = m[1] === "img" ? PICTURE_NAMES : SOUND_NAMES;
+    // an existing group with the same file name, or a new group named after the folder
+    const group = Object.keys(list).find(g => fileName(g) === m[2]) || m[2];
+    (list[group] = list[group] || []).push(m[3]);
+  }
+}
+
+// Runs one script file from a mod (a normal <script>, so it can use and change everything)
+function runModScript(blob, label) {
+  return new Promise(resolve => {
+    const el = document.createElement("script");
+    el.src = URL.createObjectURL(new Blob([blob], { type: "text/javascript" }));
+    el.dataset.mod = label;
+    el.onload = () => resolve();
+    el.onerror = () => { console.error("Mod code did not load:", label); resolve(); };
+    document.head.appendChild(el);
+  });
+}
+
+/* =====================================================================
+   MOD SCRIPTS: the modding toolbox (FRAE)
+   A mod's mod.js (and any other .js file in it) runs while the game
+   loads, before the title screen. It can use and change EVERYTHING:
+   the game object (game), the Game class, every picture, sound, word
+   and setting. These helpers make the common jobs short:
+
+     FRAE.file("my-folder/thing.png")   url of any file in your mod
+     FRAE.onReady(game => { ... })       run when everything is loaded
+     FRAE.after(Game.prototype, "update", function () { ... })
+         run your code after one of the game's functions
+     FRAE.before(obj, "name", function (...args) { ... })
+         run your code before it
+     FRAE.replace(obj, "name", function (original, ...args) { ... })
+         swap it for your own (call original(...args) to still run it)
+     FRAE.image("my-folder/thing.png")   a ready-to-draw <img> (Promise)
+   ===================================================================== */
+const FRAE = {
+  mod: null,
+  readyList: [],
+  file: path => MOD_FILES[path] || MOD_FILES[newModFile(path)] || null,
+  onReady(fn) { this.readyList.push(fn); },
+  runReady(game) {
+    for (const fn of this.readyList) { try { fn(game); } catch (e) { console.error("Mod onReady failed", e); } }
+  },
+  after(obj, name, fn) {
+    const old = obj[name];
+    obj[name] = function (...args) { const r = old.apply(this, args); fn.apply(this, [r, ...args]); return r; };
+  },
+  before(obj, name, fn) {
+    const old = obj[name];
+    obj[name] = function (...args) { fn.apply(this, args); return old.apply(this, args); };
+  },
+  replace(obj, name, fn) {
+    const old = obj[name];
+    obj[name] = function (...args) { return fn.call(this, (...a) => old.apply(this, a), ...args); };
+  },
+  image(path) {
+    return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = FRAE.file(path) || path; });
+  },
+};
+
 
 /* =====================================================================
    DEBUG MODE
@@ -4207,6 +4343,7 @@ applyMods().then(() => {
   canvas.focus();
   Sound.ctx.resume();
   // ?file=1, 2 or 3 picks the save file; anything else asks first
+  FRAE.runReady(game);                         // mods: code that waits for everything to load
   const file = fileFromUrl();
   if (file) { game.useFile(file); game.boot(); }
   else showFiles();

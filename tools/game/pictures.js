@@ -100,7 +100,10 @@ function allImagePaths() {
    its box (w, h, pin cx, cy) that hit tests and words use.
    --------------------------------------------------------------------- */
 const pictureCache = new Map();
-function hasPic(group, name) { return !!(PICTURE_NAMES[group] && PICTURE_NAMES[group].includes(name)); }
+// (any spelling works for pictures a mod added: "Cool Stuff"/"Ball" finds img/cool-stuff/ball)
+function hasPic(group, name) {
+  return !!(PICTURE_NAMES[group] && PICTURE_NAMES[group].includes(name)) || Files.images.has(picturePath(group, name));
+}
 function pic(group, name) {
   const key = group + "/" + name;
   if (pictureCache.has(key)) return pictureCache.get(key);

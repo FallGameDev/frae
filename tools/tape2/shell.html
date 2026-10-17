@@ -337,6 +337,7 @@ applyMods().then(() => {
   canvas.focus();
   Sound.ctx.resume();
   // ?file=1, 2 or 3 picks the save file; anything else asks first
+  FRAE.runReady(game);                         // mods: code that waits for everything to load
   const file = fileFromUrl();
   if (file) { game.useFile(file); game.boot(); }
   else showFiles();

@@ -264,7 +264,7 @@ class Game {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(k, 0, 0, k, 0, 0);
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
+    ctx.imageSmoothingQuality = "low";     // "high" re-filters every scaled picture each frame (slow)
     if (this.screen === "title") this.drawTitle(ctx, a);
     else if (this.screen === "custom") this.drawCustom(ctx, a);
     else if (this.screen === "night") this.drawNight(ctx, a);
