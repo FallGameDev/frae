@@ -78,10 +78,11 @@ const SOUND_NAMES = {
   "Sprite27": ["Xscream2", "After Death", "jackinthebox"],
   "Title": ["title"],
   "Ringtone": ["ringtone"],
+  "VHS": ["Self"],
 };
 
 // sounds that follow the Music slider (all others follow the Sound slider)
-const MUSIC_NAMES = new Set(["Chimes", "During mini game.mp3", "FNAF 2 - Win Music-Lullaby Waltz (End Of The Game).mp3", "Music_Box_Melody_Playful", "With_S3", "jackinthebox", "title"]);
+const MUSIC_NAMES = new Set(["Chimes", "During mini game.mp3", "FNAF 2 - Win Music-Lullaby Waltz (End Of The Game).mp3", "Music_Box_Melody_Playful", "Self", "With_S3", "jackinthebox", "title"]);
 
 // pictures saved at half size (1 image pixel per game pixel) to save memory: long animations
 const HALF_SIZE_GROUPS = new Set(["Sprite4", "Sprite5", "Sprite10", "Sprite28", "Sprite45"]);

@@ -244,6 +244,10 @@ def main():
     shutil.copy(os.path.join(HERE, 'calls', 'ringtone.mp3'), os.path.join(ASSETS, 'snd', 'ringtone.mp3'))
     sounds['Ringtone'] = {'ringtone': {'src': 'assets/snd/ringtone.mp3', 'music': 0}}
 
+    # the song on the VHS death guide (DOORS "Self", turned down 10 dB: tools/game/vhs_song.mp3)
+    shutil.copy(os.path.join(HERE, 'game', 'vhs_song.mp3'), os.path.join(ASSETS, 'snd', 'vhs-song.mp3'))
+    sounds['VHS'] = {'Self': {'src': 'assets/snd/vhs-song.mp3', 'music': 1}}
+
     data_js = 'const ART = ' + json.dumps(art, ensure_ascii=False, separators=(',', ':')) + ';'
     data_js += '\nconst SOUNDS = ' + json.dumps(sounds, ensure_ascii=False, separators=(',', ':')) + ';'
     files = sorted(os.path.relpath(os.path.join(dp, f), ASSETS).replace(os.sep, '/')

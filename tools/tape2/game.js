@@ -246,6 +246,7 @@ class Game {
       camHum: sp(0), camBlip: sp(60), mask: sp(100), breath: sp(0), steps: sp(30), bb: sp(80), radio: sp(0),
       musicbox: sp(0), windup: sp(70), jack: sp(0), scream: sp(100), stat: sp(100), phone: sp(100),
       chime: sp(100), honk: sp(100), mini: sp(80), flicker: sp(100),
+      vhs: sp(70),               // the song on the VHS death guide
     };
   }
 
@@ -1295,8 +1296,10 @@ class Game {
   *playGuide(who) {
     const g = new VhsGuide(CAST[who] ? CAST[who].name : who, deathGuide(who));
     this.sp.blip.play("Sprite10", "COMPUTER_DIGITAL_L2076605");
+    this.sp.vhs.play("VHS", "Self", { loop: true });
     const L = this.overlay(null, null, { paint: ctx => g.draw(ctx) });
     yield () => g.step(this.clicks, this.keys);
+    this.sp.vhs.stopAll();
     this.removeOverlay(L);
   }
 

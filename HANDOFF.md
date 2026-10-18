@@ -30,6 +30,7 @@ Repo: FallGameDev/frae (GitHub Pages: fallgamedev.github.io/frae)
 - After every death: a blue VHS screen says STOP (with who caught you), then PLAY slides on how to survive them, then the tape's usual death flow (Tape 1: game over card; Tape 2: 1 in 3 minigame, else GAME OVER).
 - `tools/game/vhs.js` draws it (shared; font "VCR OSD Mono" = Aidan's `VCR_OSD_MONO.ttf` in 1/assets/fonts, copied to 2/). Controls: click / SPACE / ENTER / RIGHT next, LEFT back, DOWN or SKIP skips, last page EJECT.
 - The words: `tools/game/guide.js` (Tape 1, `deathGuide(killer, powerOut)`, separate power-out guide) and `tools/tape2/guide.js` (Tape 2, `deathGuide(who)`, routes built from `PATHS`/`CAMS`). They describe the real AI, so update them when the AI changes. Hooked in via `playGuide()` in each game.js (also after Golden Eddie in either tape).
+- Music on it: DOORS "Self" (`tools/game/vhs_song.mp3`, already turned down 10 dB), sound "VHS"/"Self" (music, follows the Music slider), speaker `vhs` at 70, looped while the guide is up. Tape 1: the full build adds it in build_game1.py; it was also added by hand to tools/game/names.js + 1/assets/snd/vhs/self.mp3.
 
 ## Testing tips
 - Serve the repo (`python3 -m http.server 8765`) and open `/1/?file=3`.

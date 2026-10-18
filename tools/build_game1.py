@@ -276,6 +276,10 @@ def main():
     shutil.copy(os.path.join(calls_dir, 'ringtone.mp3'), os.path.join(ASSETS, 'snd', 'ringtone.mp3'))
     sounds['Phone Calls']['ringtone'] = {'src': 'assets/snd/ringtone.mp3', 'music': 0}
 
+    # the song on the VHS death guide (DOORS "Self", turned down 10 dB: tools/game/vhs_song.mp3)
+    shutil.copy(os.path.join(HERE, 'game', 'vhs_song.mp3'), os.path.join(ASSETS, 'snd', 'vhs-song.mp3'))
+    sounds['VHS'] = {'Self': {'src': 'assets/snd/vhs-song.mp3', 'music': 1}}
+
     data_js = 'const ART = ' + json.dumps(art, ensure_ascii=False, separators=(',', ':')) + ';'
     data_js += '\nconst SOUNDS = ' + json.dumps(sounds, ensure_ascii=False, separators=(',', ':')) + ';'
     # everything a mod template needs: every asset file (except the loading picture) and the words

@@ -98,6 +98,7 @@ const PICTURE_NAMES = {
 };
 
 const SOUND_NAMES = {
+  "VHS": ["Self"],
   "Stage": ["Menu", "ColdPresc B", "Fried Rice At Eddies (1)_E_major__bpm_103"],
   "back": ["pop"],
   "FNaF text": [],
@@ -187,7 +188,7 @@ const SOUND_NAMES = {
 };
 
 // sounds that follow the Music slider (all others follow the Sound slider)
-const MUSIC_NAMES = new Set(["ColdPresc B", "Download (5)", "Fried Rice At Eddies (1)_E_major__bpm_103", "Menu", "chimes 2", "circus", "music box", "pirate song2", "shimmy-shimmy-yay-made-with-Voicemod"]);
+const MUSIC_NAMES = new Set(["Self", "ColdPresc B", "Download (5)", "Fried Rice At Eddies (1)_E_major__bpm_103", "Menu", "chimes 2", "circus", "music box", "pirate song2", "shimmy-shimmy-yay-made-with-Voicemod"]);
 
 // pictures saved at half size (1 image pixel per game pixel) to save memory: long animations
 const HALF_SIZE_GROUPS = new Set(["dance", "Foxy", "Chica", "Bonnie", "Eddie", "West Hall", "moniter", "Secret??//Fnaf Static", "Secret??//Glitch lines song", "Secret??//Static Line", "Secret??//Static Line2"]);

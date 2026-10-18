@@ -173,6 +173,7 @@ class Game {
     this.sp = {
       music: sp(100),       // title song, night music, secret song
       blip: sp(100),        // menu blips
+      vhs: sp(70),          // the song on the VHS death guide
       star: sp(5),          // rare circus music
       office: sp(25),       // fan buzz
       nose: sp(100),        // boop, window scare, error buzz
@@ -1376,9 +1377,11 @@ class Game {
     const g = new VhsGuide(name, slides);
     this.sp.monitor.setVolume(100);
     this.sp.monitor.play("moniter", "MiniDV_Tape_Eject_1");     // the tape stopping
+    this.sp.vhs.play("VHS", "Self", { loop: true });
     const L = { draw: ctx => g.draw(ctx) };
     this.layers.push(L);
     yield () => g.step(this.clicks, this.keys);
+    this.sp.vhs.stopAll();
     this.removeOverlay(L);
   }
 
