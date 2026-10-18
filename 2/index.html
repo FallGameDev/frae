@@ -2164,10 +2164,9 @@ class Game {
     this.smooth.jump("slide", -500);
 
     const sp = this.sp;
-    // (no static hum on the cameras or the flashlight: just the fan and rain)
+    // (no static hum on the cameras, the flashlight or the vent lights: just the fan and rain)
     sp.fan.setVolume(25); sp.fan.play("Fansound", "fansound", { loop: true });
     sp.amb.setVolume(35); sp.amb.play("Stage", "Ambient", { loop: true });
-    sp.vent.setVolume(0); sp.vent.play("Light Left", "ComputerInteriorLong_EVL02_2", { loop: true });
     sp.radio.setVolume(0); sp.radio.play("Mangle", "elec garble", { loop: true });
     sp.musicbox.setVolume(0); sp.musicbox.play("Sprite6", "Music_Box_Melody_Playful", { loop: true });
     sp.breath.setVolume(0); sp.breath.play("Sprite3", "deepbreaths", { loop: true });
@@ -2744,7 +2743,6 @@ class Game {
   updateNightSounds() {
     const n = this.n, sp = this.sp;
     sp.fan.setVolume(n.camsUp ? 10 : n.maskUp ? 15 : 25);
-    sp.vent.setVolume(n.ventL || n.ventR ? 30 : 0);
     sp.breath.setVolume(n.maskUp ? 70 : 0);
     // radio static when Meyg is close
     const m = n.at.mangle;
