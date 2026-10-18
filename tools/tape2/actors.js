@@ -676,8 +676,8 @@ function drawRedaction(ctx, f) {
   const rnd = glitchRandom(Math.floor(performance.now() / 70));   // a new glitch about 14 times a second
   ctx.save();
   // face space: x -1..1 = left..right of the face, y -1..1 = top..bottom
-  // (the whole face: eyes down to the chin, so a bit below the middle of the face)
-  ctx.transform(f.ax * 0.64, f.ay * 0.64, -f.bx * 0.6, -f.by * 0.6, f.x - f.bx * 0.22, f.y - f.by * 0.22);
+  // (the whole front of the head, edge to edge and top to chin; the ears stick out)
+  ctx.transform(f.ax * 1.06, f.ay * 1.06, -f.bx * 1.08, -f.by * 1.08, f.x + f.bx * 0.2, f.y + f.by * 0.2);
   const jump = rnd() < 0.3 ? (rnd() - 0.5) * 0.4 : 0;     // the whole box jumps sideways
   ctx.fillStyle = "#000";
   for (let i = 0; i < 4; i++) {                          // 4 slices, each can slip
