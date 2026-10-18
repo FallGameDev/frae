@@ -51,7 +51,7 @@ PICTURES = {
 # FNaF's purple man becomes a grey stranger (same pixels, colors moved away from purple)
 RECOLOR = {('Sprite54', 'Purple_Car')}
 # FNaF's Freddy mask becomes an Eddy mask: the brown turns Eddy yellow, the grey fur cream
-MASK_SPRITES = {'Sprite3', 'Sprite4'}
+MASK_SPRITES = set()      # (the old Freddy mask recolor; Aidan's own mask replaced it, see aidan_mask)
 
 # ---------------------------------------------------------------------------
 # Sounds: sprite -> sound names (None = every sound). Music follows the Music slider.
@@ -99,6 +99,30 @@ def eddy_mask(a):
     out = np.where(furry, cream * np.clip(val * 1.25, 0, 1)[:, :, None], out)
     a[:, :, :3] = out * 255
     return a
+
+
+# Aidan's mask (tools/tape2/mask.svg, 578 x 481.75): what you see with the mask on.
+# Sprite3 "88" = the mask on; Sprite4's 6 costumes = it sliding up onto your face.
+# The game draws both at size 150, Sprite3 at (225, 165) and Sprite4 at (240, 180).
+MASK_SLIDE = [(330, 1.35), (200, 1.25), (100, 1.15), (40, 1.07), (12, 1.02), (0, 1.0)]   # (pixels below, size)
+
+
+def aidan_mask(b):
+    import io
+    from PIL import Image
+    svg = open(os.path.join(TAPE, 'mask.svg')).read()
+    W, H = 578, 481.75
+    im = Image.open(io.BytesIO(b.renderer.svg_to_png(svg, W, H, 2))).convert('RGBA')
+    rel = b.out_name('img', 'eddy-mask', 'webp')
+    b.save_webp(im, rel)
+    w, h = W / 1.5, H / 1.5                       # drawn at size 150 -> exactly 578 x 481.75 on screen
+    b.custom[('Sprite3', '88')] = dict(name='88', w=w, h=h, cx=w / 2, cy=h / 2, layers=[dict(img=rel, x=0, y=0, w=w, h=h)])
+    t = next(t for t in b.project['targets'] if t['name'] == 'Sprite4')
+    for c, (down, size) in zip(t['costumes'], MASK_SLIDE):
+        fw, fh = w * size, h * size
+        # pin (240, 180) on screen; the mask's middle lands on (225, 165 + down) like the worn mask
+        b.custom[('Sprite4', c['name'])] = dict(name=c['name'], w=fw, h=fh, cx=fw / 2 + 10, cy=fh / 2 + (15 - down) / 1.5,
+                                               layers=[dict(img=rel, x=0, y=0, w=fw, h=fh)])
 
 
 def recolor(b, pictures):
@@ -184,6 +208,7 @@ def main():
     extra_art.update(extras.apply(b, None))           # the camera map
     pictures = picture_groups(b.project)
     recolor(b, pictures)
+    aidan_mask(b)
     print('\n'.join(b.notes))
 
     art = {}
