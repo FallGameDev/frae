@@ -211,6 +211,9 @@ def main():
             if want is None or s['name'] in want:
                 rec = b.sound(t, s)
                 sounds.setdefault(t['name'], {})[s['name']] = {'src': rec['src'], 'music': rec['music']}
+    # the office fan: Aidan's fan noise with rain, mixed into one loop (tools/tape2/fan.mp3)
+    shutil.copy(os.path.join(TAPE, 'fan.mp3'), os.path.join(ASSETS, 'snd', 'fan.mp3'))
+    sounds['Fansound']['fansound'] = {'src': 'assets/snd/fan.mp3', 'music': 0}
     shutil.copy(TITLE_SONG, os.path.join(ASSETS, 'snd', 'title.mp3'))
     sounds['Title'] = {'title': {'src': 'assets/snd/title.mp3', 'music': 1}}
     shutil.copy(os.path.join(HERE, 'calls', 'ringtone.mp3'), os.path.join(ASSETS, 'snd', 'ringtone.mp3'))
