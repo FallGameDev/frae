@@ -230,6 +230,10 @@ def write_page():
     game_dir = os.path.join(HERE, 'game')
     code = '\n\n'.join(open(os.path.join(game_dir, f), encoding='utf-8').read()
                         for f in ('names.js', 'words.js', 'pictures.js', 'sound.js', 'vhs.js', 'game.js', 'guide.js', 'secret.js', 'achievements.js'))
+
+    # the devlog (Settings > Devlog): this tape's updates from tools/devlog.json
+    log = [e for e in json.load(open(os.path.join(HERE, 'devlog.json'), encoding='utf-8')) if 1 in e['tapes']]
+    code = 'const DEVLOG = ' + json.dumps(log, ensure_ascii=False) + ';\n\n' + code
     ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
     shell = open(os.path.join(HERE, 'game_shell.html'), encoding='utf-8').read()
     html = shell.replace('/*GAME*/', code).replace('/*UI*/', ui)

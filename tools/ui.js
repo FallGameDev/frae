@@ -814,7 +814,8 @@ function buildSettings() {
     el("div", { class: "row" }, el("span", { class: "label" }, T("Music")), ...slider("music")),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Sound")), ...slider("sound")),
     el("div", { class: "row" }, el("span", { class: "label" }, ""),
-       el("button", { class: "big", onclick: () => { blip(); openMods(); } }, T("Mods"))),
+       el("button", { class: "big", onclick: () => { blip(); openMods(); } }, T("Mods")),
+       el("button", { class: "big", onclick: () => { blip(); openDevlog(); } }, T("Devlog"))),
     el("button", { class: "confirm", onclick: closeSettings }, T("CONFIRM"))
   );
 }
@@ -837,6 +838,41 @@ function blip() {
   g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.08);
   o.connect(g).connect(Sound.sfxBus); o.start(); o.stop(ac.currentTime + 0.08);
 }
+
+/* =====================================================================
+   DEVLOG (Settings > Devlog): every update, newest first, by day.
+   The list is tools/devlog.json (the build puts this tape's part in DEVLOG).
+   ===================================================================== */
+function openDevlog() {
+  const box = $("#devlogPanel");
+  box.innerHTML = "";
+  const log = typeof DEVLOG !== "undefined" ? DEVLOG : [];
+  const days = new Map();
+  for (const e of log) { if (!days.has(e.date)) days.set(e.date, []); days.get(e.date).push(e); }
+  const list = el("div", { class: "logList" });
+  const order = [...days.keys()].sort().reverse();
+  order.forEach((d, i) => {
+    const items = days.get(d);
+    const when = new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+    const day = el("div", { class: "logDay" },
+      el("div", { class: "logHead" },
+        el("span", { class: "logVer" }, T("Update") + " " + (order.length - i)),
+        el("span", { class: "logDate" }, when),
+        el("span", { class: "logCount" }, items.length + " " + T(items.length === 1 ? "change" : "changes"))),
+      el("ul", {}, ...items.map(e => el("li", { class: e.tapes.length > 1 ? "both" : "" }, e.text,
+        e.tapes.length > 1 ? el("span", { class: "logTag" }, T("both tapes")) : ""))));
+    list.append(day);
+  });
+  box.append(
+    el("div", { class: "logTop" },
+      el("button", { onclick: closeDevlog }, "< " + T("BACK")),
+      el("h2", {}, T("Devlog")),
+      el("span", { class: "logTotal" }, log.length + " " + T("changes") + ", " + order.length + " " + T("updates"))),
+    list);
+  box.hidden = false;
+  list.scrollTop = 0;
+}
+function closeDevlog() { $("#devlogPanel").hidden = true; blip(); }
 
 /* =====================================================================
    MODS SCREEN

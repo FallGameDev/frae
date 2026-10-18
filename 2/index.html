@@ -146,6 +146,22 @@
     color: #fff; font: 600 calc(var(--u) * 13) "Sans Serif", sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,.6);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
   .achIcon.locked { filter: grayscale(1) brightness(.45); }
+  /* ===== Devlog (Settings > Devlog) ===== */
+  #devlogPanel { z-index: 7; gap: calc(var(--u) * 8); }
+  .logTop { display: flex; align-items: center; gap: calc(var(--u) * 12); }
+  .logTop h2 { font-weight: normal; font-size: calc(var(--u) * 20); }
+  .logTop button { font-size: calc(var(--u) * 11); }
+  .logTotal { margin-left: auto; color: #888; font-size: calc(var(--u) * 10); }
+  .logList { flex: 1; overflow-y: auto; padding-right: calc(var(--u) * 6); }
+  .logDay { margin-bottom: calc(var(--u) * 12); }
+  .logHead { display: flex; align-items: baseline; gap: calc(var(--u) * 10); border-bottom: 1px solid #444; padding-bottom: calc(var(--u) * 3); margin-bottom: calc(var(--u) * 5); }
+  .logVer { color: #f7931e; font-size: calc(var(--u) * 15); }
+  .logDate { font-size: calc(var(--u) * 12); }
+  .logCount { margin-left: auto; color: #888; font-size: calc(var(--u) * 9); }
+  .logList ul { list-style: none; margin: 0; padding: 0; }
+  .logList li { font-family: "Sans Serif", sans-serif; font-size: calc(var(--u) * 10); line-height: 1.45; padding-left: calc(var(--u) * 12); position: relative; color: #ddd; }
+  .logList li::before { content: ""; position: absolute; left: calc(var(--u) * 3); top: .62em; width: calc(var(--u) * 4); height: calc(var(--u) * 4); background: #f7931e; }
+  .logTag { margin-left: calc(var(--u) * 6); font-family: "Share Tech Mono", monospace; font-size: calc(var(--u) * 8); color: #7ff6ff; border: 1px solid #3a7f86; padding: 0 calc(var(--u) * 3); }
   #achPanel { background: #1b2838; font-family: "Sans Serif", sans-serif; gap: calc(var(--u) * 6); }
   .achTop { display: flex; align-items: center; gap: calc(var(--u) * 10); }
   .achTop h2 { font-weight: normal; font-size: calc(var(--u) * 16); }
@@ -219,6 +235,7 @@
 
   <!-- Settings screen (opens when the Settings button is clicked) -->
   <div id="settingsPanel" class="panel" hidden></div>
+  <div id="devlogPanel" class="panel" hidden></div>
 
   <!-- Mods screen -->
   <div id="modsPanel" class="panel" hidden>
@@ -271,6 +288,8 @@ const GAME_INFO = { key: "frae2", modName: "My Eddie's 2 Mod", gameId: "fried-ri
 /* =====================================================================
    THE GAME (tools/tape2/*.js)
    ===================================================================== */
+const DEVLOG = [{"date": "2026-10-16", "tapes": [2], "text": "Tape 2 is here: Fried Rice at Eddie's 2, a FNaF 2 style night."}, {"date": "2026-10-16", "tapes": [2], "text": "Rigged 3D models for Toy Eddy, Toy Weddy, Toy Cheddy and Toy Endo."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-16", "tapes": [2], "text": "The toys are drawn from their 3D models."}, {"date": "2026-10-17", "tapes": [2], "text": "Characters are drawn live from the models folder, with less lag. Fred makes the phone calls."}, {"date": "2026-10-17", "tapes": [2], "text": "Fixed the stutter once characters start moving."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's own office."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [2], "text": "Mods can add 3D models and 2D characters (models and characters folders)."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-17", "tapes": [2], "text": "Uploaded models follow the game's rig, and their looping animations play."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys have faces (calm, creepy and scary). Mangled Endo is now Meyg."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: a red star over each character's right eye, stronger the harder they are."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: the \"F*CK NO!\" preset, everyone on 20."}, {"date": "2026-10-17", "tapes": [2], "text": "GET READY minigame: the rainbow Endo runs, and the last run ends in a huge fire."}, {"date": "2026-10-17", "tapes": [2], "text": "After the GET READY run the title reads \"Eddies Riceria\" with the crying rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "New tab icon: the rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "The death minigame depends on who caught you (still 1 in 3)."}, {"date": "2026-10-17", "tapes": [2], "text": "The Eddy mask, and the withered cast is torn up and broken."}, {"date": "2026-10-17", "tapes": [2], "text": "Toy Weddy's new model."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's new Puppet."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys breathe while they stand, and each toy has its own 3D jumpscare."}, {"date": "2026-10-17", "tapes": [2], "text": "No idle animation on the title screen and custom night portraits."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: < on 0 jumps to 20 and > on 20 jumps to 0 (not when held or spammed)."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys crawl in the vents and walk down the hall. Sharp close-up on the title screen."}, {"date": "2026-10-18", "tapes": [2], "text": "No static noise on the cameras or the flashlight. New fan sound with rain."}, {"date": "2026-10-18", "tapes": [2], "text": "No more vent light hum."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's newspaper ad at the start of a new game."}, {"date": "2026-10-18", "tapes": [2], "text": "Cheddy takes Bonnie's spots and Weddy takes Chica's."}, {"date": "2026-10-18", "tapes": [2], "text": "Withered Endo no longer kills you right away: survive his stare minigame."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's new mask."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy takes her face plate off when she leaves the stage: a glitching black box covers her face."}, {"date": "2026-10-18", "tapes": [2], "text": "Balloon Boy is now the Peepeepoopoo Monster."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy wears a shirt, and her chest wobbles with real physics."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}];
+
 /* =====================================================================
    PICTURES AND SOUNDS
    Every picture is the file assets/img/<group>/<name>.webp and every sound
@@ -5092,7 +5111,8 @@ function buildSettings() {
     el("div", { class: "row" }, el("span", { class: "label" }, T("Music")), ...slider("music")),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Sound")), ...slider("sound")),
     el("div", { class: "row" }, el("span", { class: "label" }, ""),
-       el("button", { class: "big", onclick: () => { blip(); openMods(); } }, T("Mods"))),
+       el("button", { class: "big", onclick: () => { blip(); openMods(); } }, T("Mods")),
+       el("button", { class: "big", onclick: () => { blip(); openDevlog(); } }, T("Devlog"))),
     el("button", { class: "confirm", onclick: closeSettings }, T("CONFIRM"))
   );
 }
@@ -5115,6 +5135,41 @@ function blip() {
   g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.08);
   o.connect(g).connect(Sound.sfxBus); o.start(); o.stop(ac.currentTime + 0.08);
 }
+
+/* =====================================================================
+   DEVLOG (Settings > Devlog): every update, newest first, by day.
+   The list is tools/devlog.json (the build puts this tape's part in DEVLOG).
+   ===================================================================== */
+function openDevlog() {
+  const box = $("#devlogPanel");
+  box.innerHTML = "";
+  const log = typeof DEVLOG !== "undefined" ? DEVLOG : [];
+  const days = new Map();
+  for (const e of log) { if (!days.has(e.date)) days.set(e.date, []); days.get(e.date).push(e); }
+  const list = el("div", { class: "logList" });
+  const order = [...days.keys()].sort().reverse();
+  order.forEach((d, i) => {
+    const items = days.get(d);
+    const when = new Date(d + "T12:00:00").toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+    const day = el("div", { class: "logDay" },
+      el("div", { class: "logHead" },
+        el("span", { class: "logVer" }, T("Update") + " " + (order.length - i)),
+        el("span", { class: "logDate" }, when),
+        el("span", { class: "logCount" }, items.length + " " + T(items.length === 1 ? "change" : "changes"))),
+      el("ul", {}, ...items.map(e => el("li", { class: e.tapes.length > 1 ? "both" : "" }, e.text,
+        e.tapes.length > 1 ? el("span", { class: "logTag" }, T("both tapes")) : ""))));
+    list.append(day);
+  });
+  box.append(
+    el("div", { class: "logTop" },
+      el("button", { onclick: closeDevlog }, "< " + T("BACK")),
+      el("h2", {}, T("Devlog")),
+      el("span", { class: "logTotal" }, log.length + " " + T("changes") + ", " + order.length + " " + T("updates"))),
+    list);
+  box.hidden = false;
+  list.scrollTop = 0;
+}
+function closeDevlog() { $("#devlogPanel").hidden = true; blip(); }
 
 /* =====================================================================
    MODS SCREEN
@@ -5445,6 +5500,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     // Esc closes the open panel, or goes back to the game menu
     if (!$("#ask").hidden) { $("#ask").hidden = true; game.paused = false; canvas.focus(); }
+    else if (!$("#devlogPanel").hidden) closeDevlog();
     else if (!$("#achPanel").hidden) closeAchievements();
     else if (!$("#modsPanel").hidden) closeMods();
     else if (!$("#settingsPanel").hidden) closeSettings();
