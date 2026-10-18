@@ -12,6 +12,7 @@
   @font-face { font-family: "Pixel"; src: url("assets/fonts/Grand9K-Pixel.ttf"); }
   @font-face { font-family: "Press Start 2P"; src: url("assets/fonts/PressStart2P.woff2"); }
   @font-face { font-family: "Share Tech Mono"; src: url("assets/fonts/ShareTechMono.woff2"); }
+  @font-face { font-family: "VCR OSD Mono"; src: url("assets/fonts/VCR_OSD_MONO.ttf"); }   /* the VHS death screen (Aidan's font) */
   @font-face { font-family: "Courier Prime"; src: url("assets/fonts/CourierPrime.woff2"); }
   @font-face { font-family: "Serif"; src: url("assets/fonts/SourceSerifPro-Regular.otf"); }
 
@@ -315,7 +316,7 @@ const barInner = document.getElementById("barInner");
 applyMods().then(() => {
   return Promise.all([
     document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Pixel"'),
-    document.fonts.load('10px "Press Start 2P"'), document.fonts.load('10px "Share Tech Mono"'),
+    document.fonts.load('10px "Press Start 2P"'), document.fonts.load('10px "Share Tech Mono"'), document.fonts.load('10px "VCR OSD Mono"'),
     document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Serif"'),
     Files.loadAll(allImagePaths(), Sound.allPaths(), p => { barInner.style.width = Math.round(p * 90) + "%"; })
   ]);

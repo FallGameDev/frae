@@ -15,6 +15,7 @@
   @font-face { font-family: "Press Start 2P"; src: url("assets/fonts/PressStart2P.woff2"); }
   @font-face { font-family: "Courier Prime"; src: url("assets/fonts/CourierPrime.woff2"); }
   @font-face { font-family: "Share Tech Mono"; src: url("assets/fonts/ShareTechMono.woff2"); }
+  @font-face { font-family: "VCR OSD Mono"; src: url("assets/fonts/VCR_OSD_MONO.ttf"); }   /* the VHS death screen (Aidan's font) */
 
   /* ===== Page theme: black VHS look to match the game menu ===== */
   :root {
@@ -1333,6 +1334,208 @@ function keepPlaying(speaker, group, name) {
 
 
 /* =====================================================================
+   vhs.js: after a death, a blue VHS screen says STOP, then it plays a
+   guide (slides) on how to survive whoever got you. Used by both tapes.
+
+     const g = new VhsGuide("Withered Endo", slides);
+     each update:  if (g.step(this.clicks, this.keys)) ...finished
+     each frame:   g.draw(ctx)
+
+   A slide: { title, text: ["paragraph", ...], tip: "optional line" }
+   Controls: click / SPACE / ENTER / RIGHT = next, LEFT = back,
+             DOWN or the SKIP button = skip the rest.
+   Font: "VCR OSD Mono" (assets/fonts/VCR_OSD_MONO.ttf, from Aidan).
+   ===================================================================== */
+"use strict";
+
+const VHS_FONT = '"VCR OSD Mono", "Share Tech Mono", monospace';
+const VHS_BLUE = ["#1846e0", "#0d2fb8"];        // top and bottom of the blue screen
+const VHS_CYAN = "#7ff6ff";
+const VHS_STOP_TIME = 2.2;                      // seconds the STOP card stays (a click skips it)
+// footer buttons: [left, top, width, height]
+const VHS_BUTTONS = { back: [14, 324, 92, 24], next: [194, 324, 92, 24], skip: [374, 324, 92, 24] };
+
+class VhsGuide {
+  constructor(name, slides) {
+    this.name = name;                 // who got you (shown on the STOP card)
+    this.slides = slides;
+    this.phase = "stop";              // "stop" card, then "play" (the slides)
+    this.t = 0;                       // seconds since it started (the tape counter)
+    this.pageT = 0;                   // seconds on this page
+    this.page = 0;
+    this.done = false;
+  }
+
+  // One update. Returns true when the guide is finished.
+  step(clicks, keys) {
+    const dt = typeof TICK === "number" ? TICK : 1 / 30;
+    this.t += dt;
+    this.pageT += dt;
+    if (this.phase === "stop") {
+      if (this.t > VHS_STOP_TIME || (this.t > 0.4 && (clicks.length || keys.length))) { this.phase = "play"; this.pageT = 0; }
+      return false;
+    }
+    if (this.pageT < 0.2) return false;          // (so one click doesn't flip two pages)
+    for (const c of clicks) {
+      const b = this.buttonAt(c.x, c.y);
+      if (b === "back") this.turn(-1);
+      else if (b === "skip") this.done = true;
+      else this.turn(1);
+      break;
+    }
+    for (const k of keys) {
+      if (k === "left") this.turn(-1);
+      else if (k === "down") this.done = true;
+      else if (k === "enter" || k === "space" || k === "right") this.turn(1);
+      break;
+    }
+    return this.done;
+  }
+  turn(d) {
+    const p = this.page + d;
+    if (p < 0) return;
+    if (p >= this.slides.length) { this.done = true; return; }
+    this.page = p;
+    this.pageT = 0;
+  }
+  buttonAt(x, y) {
+    for (const [k, [bx, by, bw, bh]] of Object.entries(VHS_BUTTONS))
+      if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) return k;
+    return null;
+  }
+
+  /* ---------------- drawing ---------------- */
+  draw(ctx) {
+    ctx.save();
+    // the blue screen
+    const g = ctx.createLinearGradient(0, 0, 0, 360);
+    g.addColorStop(0, VHS_BLUE[0]); g.addColorStop(1, VHS_BLUE[1]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 480, 360);
+    // the picture wobbles a pixel now and then (old tape)
+    const wob = Math.sin(this.t * 37) > 0.97 ? 1 : 0;
+    ctx.translate(wob, 0);
+    if (this.phase === "stop") this.drawStop(ctx);
+    else this.drawSlide(ctx);
+    ctx.restore();
+    vhsLines(ctx, this.t);
+  }
+
+  drawStop(ctx) {
+    const blink = Math.floor(this.t * 2) % 2 === 0;
+    vhsText(ctx, "STOP", 30, 52, 30);
+    if (blink) { ctx.fillStyle = "#fff"; ctx.fillRect(122, 30, 20, 20); }     // the square stop sign
+    vhsText(ctx, vhsCounter(this.t), 450, 52, 18, { align: "right" });
+    if (this.t > 0.5) {
+      vhsText(ctx, "CAUGHT BY", 240, 170, 16, { align: "center", color: VHS_CYAN });
+      vhsText(ctx, String(this.name).toUpperCase(), 240, 200, 24, { align: "center" });
+    }
+    if (this.t > 1.2) vhsText(ctx, "PRESS PLAY FOR THE GUIDE", 240, 300, 12, { align: "center", color: VHS_CYAN });
+  }
+
+  drawSlide(ctx) {
+    const s = this.slides[this.page];
+    // top: PLAY (a blinking triangle) and the page
+    if (Math.floor(this.t * 2) % 2 === 0) vhsTriangle(ctx, 30, 33, 18, 1);
+    vhsText(ctx, "PLAY", 56, 50, 22);
+    vhsText(ctx, "GUIDE " + (this.page + 1) + "/" + this.slides.length, 450, 50, 16, { align: "right" });
+    vhsText(ctx, String(this.name).toUpperCase(), 450, 68, 11, { align: "right", color: VHS_CYAN });
+    // the slide
+    vhsText(ctx, String(s.title).toUpperCase(), 30, 104, 20, { color: VHS_CYAN });
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.fillRect(30, 112, 420, 2);
+    let y = 136;
+    // the words appear quickly, like a typed caption
+    let budget = Math.floor(this.pageT * 260);
+    ctx.font = "13px " + VHS_FONT;
+    for (const para of s.text || []) {
+      for (const line of vhsWrap(ctx, para, 420)) {
+        if (budget <= 0) break;
+        vhsText(ctx, line.slice(0, budget), 30, y, 13);
+        budget -= line.length;
+        y += 18;
+      }
+      y += 8;
+    }
+    if (s.tip && budget > 0) {
+      ctx.font = "12px " + VHS_FONT;
+      for (const line of vhsWrap(ctx, "TIP: " + s.tip, 420)) { vhsText(ctx, line, 30, y, 12, { color: VHS_CYAN }); y += 17; }
+    }
+    // bottom: the tape counter and the buttons
+    vhsText(ctx, "SP " + vhsCounter(this.t), 450, 312, 11, { align: "right", color: "rgba(255,255,255,0.7)" });
+    const last = this.page === this.slides.length - 1;
+    this.button(ctx, "back", "BACK", this.page > 0);
+    this.button(ctx, "next", last ? "EJECT" : "NEXT", true);
+    this.button(ctx, "skip", "SKIP", !last);
+  }
+  button(ctx, id, label, on) {
+    const [x, y, w, h] = VHS_BUTTONS[id];
+    ctx.globalAlpha = on ? 1 : 0.3;
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    // a little VCR symbol on each
+    if (id === "back") vhsTriangle(ctx, x + 8, y + 6, 12, -1);
+    if (id === "next") vhsTriangle(ctx, x + 8, y + 6, 12, 1);
+    if (id === "skip") { vhsTriangle(ctx, x + 6, y + 6, 12, 1); vhsTriangle(ctx, x + 13, y + 6, 12, 1); }
+    vhsText(ctx, label, x + w / 2 + 9, y + 17, 13, { align: "center" });
+    ctx.globalAlpha = 1;
+  }
+}
+
+// White VCR text with the slight red / cyan edges of an old TV
+function vhsText(ctx, s, x, y, size, o = {}) {
+  ctx.font = size + "px " + VHS_FONT;
+  ctx.textAlign = o.align || "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "rgba(255,40,80,0.45)"; ctx.fillText(s, x - 1, y);
+  ctx.fillStyle = "rgba(60,255,255,0.45)"; ctx.fillText(s, x + 1, y);
+  ctx.fillStyle = o.color || "#fff"; ctx.fillText(s, x, y);
+}
+// A play triangle (dir 1) or a back one (-1), size tall, top-left at (x, y)
+function vhsTriangle(ctx, x, y, size, dir) {
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  if (dir > 0) { ctx.moveTo(x, y); ctx.lineTo(x + size * 0.8, y + size / 2); ctx.lineTo(x, y + size); }
+  else { ctx.moveTo(x + size * 0.8, y); ctx.lineTo(x, y + size / 2); ctx.lineTo(x + size * 0.8, y + size); }
+  ctx.fill();
+}
+// 0:00:00 like a VCR counter
+function vhsCounter(t) {
+  const s = Math.floor(t);
+  return Math.floor(s / 3600) + ":" + String(Math.floor(s / 60) % 60).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+}
+// Breaks a paragraph into lines that fit `w`
+function vhsWrap(ctx, text, w) {
+  const out = [];
+  let line = "";
+  for (const word of String(text).split(" ")) {
+    const test = line ? line + " " + word : word;
+    if (ctx.measureText(test).width > w && line) { out.push(line); line = word; }
+    else line = test;
+  }
+  if (line) out.push(line);
+  return out;
+}
+// Scan lines (a picture made once) and a soft tracking band rolling down
+let vhsScan = null;
+function vhsLines(ctx, t) {
+  if (!vhsScan) {
+    vhsScan = document.createElement("canvas");
+    vhsScan.width = 480; vhsScan.height = 360;
+    const g = vhsScan.getContext("2d");
+    g.fillStyle = "rgba(0,0,30,0.16)";
+    for (let y = 0; y < 360; y += 3) g.fillRect(0, y, 480, 1);
+  }
+  ctx.drawImage(vhsScan, 0, 0);
+  const band = (t * 45) % 460 - 50;
+  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  ctx.fillRect(0, band, 480, 22);
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.fillRect(0, band + 9, 480, 2);
+}
+
+
+/* =====================================================================
    FRIED RICE AT EDDIE'S (game 1)
    The whole game, written as a normal browser game:
      - update() runs 30 times a second and moves the game forward
@@ -2471,7 +2674,7 @@ class Game {
     this.sp.golden.play("Golden", "golden-freddy_robotic-voice-fnaf-1-made-with-Voicemod");
     this.scripts.run("golden", function* () {
       yield 5;
-      if (n.goldenInOffice) this.creepyEnd();
+      if (n.goldenInOffice) this.creepyEnd(true);
     }.call(this));
   }
 
@@ -2663,6 +2866,7 @@ class Game {
     n.hallucination = null;
     n.phone = "off";
     this.killer = { Bonnie: "Bonnie", Chica: "Chica", Foxy: "Foxy", Eddie: "Freddy" }[who];
+    this.killedByPowerOut = !!n.powerOut;          // (the guide after: power out, not Eddie's walk)
     this.caughtBy(this.killer);
     if (settings.jumpscares !== "1") return this.dead();
     this.sp.halluc.setVolume(100);
@@ -2689,26 +2893,44 @@ class Game {
     this.go("black");
     Sound.stopAll();
     const js = settings.jumpscares === "1";
-    const card = this.overlay("Backdrop", js ? "mike stuffed" : "NoJS" + this.killer, { fade: 0 });
     this.scripts.run("gameover", function* () {
+      // the VHS STOP screen and the survival guide (vhs.js, guide.js)
+      yield* this.playGuide(this.killer, this.killedByPowerOut);
+      const card = this.overlay("Backdrop", js ? "mike stuffed" : "NoJS" + this.killer, { fade: 0 });
+      // a tiny chance of something worse while you look at it
+      this.scripts.run("gameover", function* () {
+        for (let i = 0; i < 10; i++) { yield 1; if (chance(10000)) return this.creepyEnd(); }
+      }.call(this));
       yield* this.fade(card, 1);
       yield js ? 15 : 3;
       this.showTitle();
     }.call(this));
-    // a tiny chance of something worse while you look at it
-    this.scripts.run("gameover", function* () {
-      for (let i = 0; i < 10; i++) { yield 1; if (chance(10000)) return this.creepyEnd(); }
-    }.call(this));
+  }
+
+  // The blue VHS screen: STOP, then the guide's slides (until EJECT or SKIP)
+  *playGuide(killer, powerOut) {
+    const { name, slides } = deathGuide(killer, powerOut);
+    const g = new VhsGuide(name, slides);
+    this.sp.monitor.setVolume(100);
+    this.sp.monitor.play("moniter", "MiniDV_Tape_Eject_1");     // the tape stopping
+    const L = { draw: ctx => g.draw(ctx) };
+    this.layers.push(L);
+    yield () => g.step(this.clicks, this.keys);
+    this.removeOverlay(L);
   }
 
   // Golden's scream: the game shuts down (back to the title)
-  creepyEnd() {
+  creepyEnd(guide) {
     this.go("black");
     Sound.stopAll();
     this.sp.halluc.setVolume(100);
     this.sp.halluc.play("hallucinations", "XSCREAM2");
     this.overlay("hallucinations", settings.jumpscares === "1" ? "Golden Freddy" : "NoJSGFreddy");
-    this.scripts.run("creepy", function* () { yield 1; Sound.stopAll(); yield 2; this.showTitle(); }.call(this));
+    this.scripts.run("creepy", function* () {
+      yield 1; Sound.stopAll(); this.layers = []; yield 2;
+      if (guide) yield* this.playGuide("Golden");       // (he got you in the office: how to beat him)
+      this.showTitle();
+    }.call(this));
   }
 
   /* --------------------------------------------------------------
@@ -2971,6 +3193,86 @@ class Game {
   // Debug buttons
   debugSkipHour() { if (this.screen === "night" && this.n && !this.n.frozen) this.n.clock = 90 - TICK; }
   debugAddPower() { if (this.screen === "night" && this.n && !this.n.powerOut) this.n.power = Math.min(999, this.n.power + 100); }
+}
+
+
+/* =====================================================================
+   guide.js (Tape 1): what the VHS guide (vhs.js) teaches after each death.
+   Written from how the night actually works in game.js, so if the AI
+   changes, change it here too. deathGuide(killer, powerOut) -> slides
+   killer: "Bonnie" (Weddy), "Chica" (Cheddy), "Foxy" (Endo), "Freddy" (Eddie), "Golden"
+   ===================================================================== */
+"use strict";
+
+// the names the player sees
+const GUIDE_NAMES = { Bonnie: "Weddy", Chica: "Cheddy", Foxy: "Endo", Freddy: "Eddie", Golden: "Golden Eddie", Power: "Eddie" };
+
+const GUIDE_POWER_TIP = { title: "Power", text: [
+  "Doors, lights and the cameras all use power. The bars next to the clock show how much you use right now.",
+  "Shut a door only while someone is there. Later nights drain power faster on their own."] };
+
+const GUIDE_SLIDES = {
+  Bonnie: [
+    { title: "Weddy", text: ["She comes down the LEFT side: Show Stage, then the Dining Area or Backstage, the West Hall, then the W. Hall Corner or the Supply Closet, then your LEFT door.",
+      "Every 5 seconds or so she may move."],
+      tip: "Her footsteps get louder the closer she is." },
+    { title: "Check the left light", text: ["Press the LEFT LIGHT button (the lower button by the left door).",
+      "If she is standing in the window, press the LEFT DOOR button (the upper one) and keep it shut until she leaves. She goes back to the Dining Area."] },
+    { title: "Too late?", text: ["If the door was open when she moved, she is INSIDE.",
+      "Signs: the left buttons stop working (they buzz) and you hear breathing on the cameras.",
+      "She gets you the moment you put the monitor down. All you can do is hope for 6 AM."] },
+    GUIDE_POWER_TIP,
+  ],
+  Chica: [
+    { title: "Cheddy", text: ["She comes down the RIGHT side: Show Stage, Dining Area, the Kitchen or the Restrooms, the East Hall, the E. Hall Corner, then your RIGHT door.",
+      "Every 5 seconds or so she may move."],
+      tip: "The Kitchen has no picture, but you can hear her clattering pots in there." },
+    { title: "Check the right light", text: ["Press the RIGHT LIGHT button (the lower button by the right door).",
+      "If she is standing in the window, press the RIGHT DOOR button (the upper one) and keep it shut until she leaves. She goes back to the East Hall."] },
+    { title: "Too late?", text: ["If the door was open when she moved, she is INSIDE.",
+      "Signs: the right buttons stop working (they buzz) and you hear breathing on the cameras.",
+      "She gets you the moment you put the monitor down."] },
+    GUIDE_POWER_TIP,
+  ],
+  Foxy: [
+    { title: "Endo", text: ["He hides behind the curtain in Pirate Cove.",
+      "Every 5 seconds or so he may get a bit further out. After 4 steps he is out of the cove."] },
+    { title: "Watch him, but not too much", text: ["Looking at the cameras makes him freeze for a while.",
+      "If you sit in the office and never check, he gets ready fast."] },
+    { title: "He runs", text: ["Once he leaves the cove he runs down the West Hall within 25 seconds, or right away if you look at the West Hall camera.",
+      "Shut the LEFT DOOR. He bangs on it and takes some power, a bit more every time."],
+      tip: "Pirate Cove empty? Shut the left door right now." },
+    GUIDE_POWER_TIP,
+  ],
+  Freddy: [
+    { title: "Eddie", text: ["He only starts moving once Weddy AND Cheddy have both left the stage.",
+      "He laughs every time he moves, and he never moves while you are watching his camera."] },
+    { title: "His route", text: ["Show Stage, Dining Area, Restrooms, Kitchen, East Hall, E. Hall Corner, then your RIGHT door.",
+      "In the Kitchen you can hear his music box."] },
+    { title: "The corner", text: ["At the E. Hall Corner he waits until you switch to another camera, then walks in unless the RIGHT DOOR is shut.",
+      "While he is in the East Hall, keep the right door shut or keep your eyes on him."] },
+    GUIDE_POWER_TIP,
+  ],
+  Power: [
+    { title: "Out of power", text: ["At 0% everything shuts down: the doors open, the lights and cameras stop."] },
+    { title: "Eddie's song", text: ["His face flickers in the left doorway while his music box plays. Then the lights go out and he gets you.",
+      "Nothing stops him now. You can only hope 6 AM comes first."] },
+    GUIDE_POWER_TIP,
+    { title: "Saving power", text: ["Don't leave doors shut or lights on 'just in case'. Check, react, open again.",
+      "Endo banging on the left door costs power too."] },
+  ],
+  Golden: [
+    { title: "Golden Eddie", text: ["Very rare: a strange poster in the W. Hall Corner.",
+      "If you see it and put the monitor down, he is sitting in your office."] },
+    { title: "Look away", text: ["Lift the monitor back up within 5 seconds and he is gone.", "Stare at him and the game shuts down."] },
+  ],
+};
+
+function deathGuide(killer, powerOut) {
+  const key = killer === "Freddy" && powerOut ? "Power" : killer;
+  const slides = [...(GUIDE_SLIDES[key] || [])];
+  slides.push({ title: "Rewind", text: ["Survive until 6 AM to win the night.", "Press EJECT to rewind the tape."] });
+  return { name: GUIDE_NAMES[key] || killer, slides };
 }
 
 
@@ -4387,7 +4689,7 @@ applyMods().then(() => {
   return Promise.all([
     document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Serif"'),
     document.fonts.load('10px "Pixel"'), document.fonts.load('10px "Press Start 2P"'),
-    document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Share Tech Mono"'),
+    document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Share Tech Mono"'), document.fonts.load('10px "VCR OSD Mono"'),
     Files.loadAll(allImagePaths(), Sound.allPaths(), p => { barInner.style.width = Math.round(p * 100) + "%"; })
   ]);
 }).then(() => {

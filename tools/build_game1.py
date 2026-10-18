@@ -229,7 +229,7 @@ def write_page():
     (Pictures and sounds are plain files in 1/assets, listed by names.js.)"""
     game_dir = os.path.join(HERE, 'game')
     code = '\n\n'.join(open(os.path.join(game_dir, f), encoding='utf-8').read()
-                        for f in ('names.js', 'words.js', 'pictures.js', 'sound.js', 'game.js', 'secret.js', 'achievements.js'))
+                        for f in ('names.js', 'words.js', 'pictures.js', 'sound.js', 'vhs.js', 'game.js', 'guide.js', 'secret.js', 'achievements.js'))
     ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
     shell = open(os.path.join(HERE, 'game_shell.html'), encoding='utf-8').read()
     html = shell.replace('/*GAME*/', code).replace('/*UI*/', ui)

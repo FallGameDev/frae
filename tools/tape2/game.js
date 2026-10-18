@@ -1260,23 +1260,16 @@ class Game {
     if (j.i >= j.frames + 4) { this.n.jumpscare = null; this.dead(); }
   }
 
-  // Static, then (sometimes) a strange little 8-bit game, then the title
+  // The VHS STOP screen and the survival guide (vhs.js, guide.js),
+  // then (sometimes) a strange little 8-bit game, then the title
   dead() {
     this.died = true;
     this.go("black");
     Sound.stopAll();
-    this.sp.stat.play("Sprite28", "After Death");
-    const st = this.overlay(null, null, { paint: ctx => {
-      this.drawStatic(ctx, 1);
-      if (settings.jumpscares !== "1") this.text(ctx, W("Game over", "You were caught by") + " " + CAST[this.killer].name, 240, 190,
-        { size: 14, align: "center", shadow: "#000" });
-    } });
     this.scripts.run("dead", function* () {
-      yield settings.jumpscares === "1" ? 4 : 5;
-      this.sp.stat.stopAll();
+      yield* this.playGuide(this.killer);
       // 1 in 3 deaths go to a minigame, picked by who caught you
       if (chance(3)) return this.startMinigame(MINIGAME_FOR[this.killer]);
-      this.removeOverlay(st);
       const over = this.overlay(null, null, { fade: 0, paint: ctx => this.text(ctx, W("Game over", "GAME OVER"), 470, 350,
         { size: 20, align: "right", font: "Press Start 2P" }) });
       yield* this.fade(over, 1, 20);
@@ -1291,7 +1284,20 @@ class Game {
     Sound.stopAll();
     this.sp.scream.play("Sprite27", "Xscream2");
     if (settings.jumpscares === "1") this.overlay(null, null, { paint: ctx => drawScare(ctx, "golden", 0) });
-    this.scripts.run("crash", function* () { yield 1.2; Sound.stopAll(); this.layers = []; yield 2; this.showTitle(); }.call(this));
+    this.scripts.run("crash", function* () {
+      yield 1.2; Sound.stopAll(); this.layers = []; yield 2;
+      yield* this.playGuide("golden");
+      this.showTitle();
+    }.call(this));
+  }
+
+  // The blue VHS screen: STOP, then the guide's slides for `who` (until EJECT or SKIP)
+  *playGuide(who) {
+    const g = new VhsGuide(CAST[who] ? CAST[who].name : who, deathGuide(who));
+    this.sp.blip.play("Sprite10", "COMPUTER_DIGITAL_L2076605");
+    const L = this.overlay(null, null, { paint: ctx => g.draw(ctx) });
+    yield () => g.step(this.clicks, this.keys);
+    this.removeOverlay(L);
   }
 
   sixAM() {

@@ -26,6 +26,11 @@ Repo: FallGameDev/frae (GitHub Pages: fallgamedev.github.io/frae)
 - `tools/ui.js` (shared by both tapes): settings, debug mode (H/P/G keys; blocks saving + achievements), mods, save file screen, Golden rate box (left arrow). Each shell sets `GAME_INFO` (storage key prefix `frae1` / `frae2`, mod template name, debug key help); Tape 1 uses the defaults.
 - `tools/game_shell.html`: page, CSS, startup, main loop, input.
 
+## Death guide (both tapes)
+- After every death: a blue VHS screen says STOP (with who caught you), then PLAY slides on how to survive them, then the tape's usual death flow (Tape 1: game over card; Tape 2: 1 in 3 minigame, else GAME OVER).
+- `tools/game/vhs.js` draws it (shared; font "VCR OSD Mono" = Aidan's `VCR_OSD_MONO.ttf` in 1/assets/fonts, copied to 2/). Controls: click / SPACE / ENTER / RIGHT next, LEFT back, DOWN or SKIP skips, last page EJECT.
+- The words: `tools/game/guide.js` (Tape 1, `deathGuide(killer, powerOut)`, separate power-out guide) and `tools/tape2/guide.js` (Tape 2, `deathGuide(who)`, routes built from `PATHS`/`CAMS`). They describe the real AI, so update them when the AI changes. Hooked in via `playGuide()` in each game.js (also after Golden Eddie in either tape).
+
 ## Testing tips
 - Serve the repo (`python3 -m http.server 8765`) and open `/1/?file=3`.
 - `game.level = N; game.startNight()` jumps into a night; `game.debugInfo()` shows state.

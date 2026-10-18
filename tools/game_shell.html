@@ -15,6 +15,7 @@
   @font-face { font-family: "Press Start 2P"; src: url("assets/fonts/PressStart2P.woff2"); }
   @font-face { font-family: "Courier Prime"; src: url("assets/fonts/CourierPrime.woff2"); }
   @font-face { font-family: "Share Tech Mono"; src: url("assets/fonts/ShareTechMono.woff2"); }
+  @font-face { font-family: "VCR OSD Mono"; src: url("assets/fonts/VCR_OSD_MONO.ttf"); }   /* the VHS death screen (Aidan's font) */
 
   /* ===== Page theme: black VHS look to match the game menu ===== */
   :root {
@@ -310,7 +311,7 @@ applyMods().then(() => {
   return Promise.all([
     document.fonts.load('10px "Sans Serif"'), document.fonts.load('10px "Serif"'),
     document.fonts.load('10px "Pixel"'), document.fonts.load('10px "Press Start 2P"'),
-    document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Share Tech Mono"'),
+    document.fonts.load('10px "Courier Prime"'), document.fonts.load('10px "Share Tech Mono"'), document.fonts.load('10px "VCR OSD Mono"'),
     Files.loadAll(allImagePaths(), Sound.allPaths(), p => { barInner.style.width = Math.round(p * 100) + "%"; })
   ]);
 }).then(() => {

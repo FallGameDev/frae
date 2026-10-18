@@ -1137,7 +1137,7 @@ class Game {
     this.sp.golden.play("Golden", "golden-freddy_robotic-voice-fnaf-1-made-with-Voicemod");
     this.scripts.run("golden", function* () {
       yield 5;
-      if (n.goldenInOffice) this.creepyEnd();
+      if (n.goldenInOffice) this.creepyEnd(true);
     }.call(this));
   }
 
@@ -1329,6 +1329,7 @@ class Game {
     n.hallucination = null;
     n.phone = "off";
     this.killer = { Bonnie: "Bonnie", Chica: "Chica", Foxy: "Foxy", Eddie: "Freddy" }[who];
+    this.killedByPowerOut = !!n.powerOut;          // (the guide after: power out, not Eddie's walk)
     this.caughtBy(this.killer);
     if (settings.jumpscares !== "1") return this.dead();
     this.sp.halluc.setVolume(100);
@@ -1355,26 +1356,44 @@ class Game {
     this.go("black");
     Sound.stopAll();
     const js = settings.jumpscares === "1";
-    const card = this.overlay("Backdrop", js ? "mike stuffed" : "NoJS" + this.killer, { fade: 0 });
     this.scripts.run("gameover", function* () {
+      // the VHS STOP screen and the survival guide (vhs.js, guide.js)
+      yield* this.playGuide(this.killer, this.killedByPowerOut);
+      const card = this.overlay("Backdrop", js ? "mike stuffed" : "NoJS" + this.killer, { fade: 0 });
+      // a tiny chance of something worse while you look at it
+      this.scripts.run("gameover", function* () {
+        for (let i = 0; i < 10; i++) { yield 1; if (chance(10000)) return this.creepyEnd(); }
+      }.call(this));
       yield* this.fade(card, 1);
       yield js ? 15 : 3;
       this.showTitle();
     }.call(this));
-    // a tiny chance of something worse while you look at it
-    this.scripts.run("gameover", function* () {
-      for (let i = 0; i < 10; i++) { yield 1; if (chance(10000)) return this.creepyEnd(); }
-    }.call(this));
+  }
+
+  // The blue VHS screen: STOP, then the guide's slides (until EJECT or SKIP)
+  *playGuide(killer, powerOut) {
+    const { name, slides } = deathGuide(killer, powerOut);
+    const g = new VhsGuide(name, slides);
+    this.sp.monitor.setVolume(100);
+    this.sp.monitor.play("moniter", "MiniDV_Tape_Eject_1");     // the tape stopping
+    const L = { draw: ctx => g.draw(ctx) };
+    this.layers.push(L);
+    yield () => g.step(this.clicks, this.keys);
+    this.removeOverlay(L);
   }
 
   // Golden's scream: the game shuts down (back to the title)
-  creepyEnd() {
+  creepyEnd(guide) {
     this.go("black");
     Sound.stopAll();
     this.sp.halluc.setVolume(100);
     this.sp.halluc.play("hallucinations", "XSCREAM2");
     this.overlay("hallucinations", settings.jumpscares === "1" ? "Golden Freddy" : "NoJSGFreddy");
-    this.scripts.run("creepy", function* () { yield 1; Sound.stopAll(); yield 2; this.showTitle(); }.call(this));
+    this.scripts.run("creepy", function* () {
+      yield 1; Sound.stopAll(); this.layers = []; yield 2;
+      if (guide) yield* this.playGuide("Golden");       // (he got you in the office: how to beat him)
+      this.showTitle();
+    }.call(this));
   }
 
   /* --------------------------------------------------------------
