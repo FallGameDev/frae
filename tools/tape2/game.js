@@ -353,7 +353,8 @@ class Game {
   useFile(file) { this.file = file; this.progress = loadProgress(file); }
   save() { if (!settings.debug) saveProgress(this.file, this.progress); }
 
-  boot() { this.showTitle(); }
+  // (Tape 2 asks about sensitive content first, once per save file unless they say otherwise: warning.js)
+  boot() { if (needsWarning(this.file)) showWarning(() => this.showTitle()); else this.showTitle(); }
 
   menuItems() {
     const items = [

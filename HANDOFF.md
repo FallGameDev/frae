@@ -26,6 +26,11 @@ Repo: FallGameDev/frae (GitHub Pages: fallgamedev.github.io/frae)
 - `tools/ui.js` (shared by both tapes): settings, debug mode (H/P/G keys; blocks saving + achievements), mods, save file screen, Golden rate box (left arrow). Each shell sets `GAME_INFO` (storage key prefix `frae1` / `frae2`, mod template name, debug key help); Tape 1 uses the defaults.
 - `tools/game_shell.html`: page, CSS, startup, main loop, input.
 
+## Sensitive content (Tape 2)
+- `tools/tape2/warning.js`: a WARNING panel (#warnPanel) when a save file boots (`game.boot()` -> `needsWarning`/`showWarning`), unless "Don't show this again on this file" was ticked (localStorage `frae2-warned-fileN`, ticked by default).
+- Sensitive ON = `settings.jumpscares = "1"`, OFF = "0" (the same switch as Settings > Jumpscares; `onJumpscaresChanged()` is called by ui.js).
+- Off hides model parts named "... Chest" / "... Shirt" (`SENSITIVE_PART`, `showSensitive` in actors.js); `Actors.refreshSensitive()` re-renders just those characters (Toy Weddy) via `Actors.jobs`.
+
 ## Devlog (Settings > Devlog, both tapes)
 - `tools/devlog.json` is the list: `{date, tapes: [1] / [2] / [1, 2], text}`, one line per change, plain words for players. ADD AN ENTRY FOR EVERY UPDATE (then rebuild with --code). Each build puts its tape's entries in the page as `DEVLOG`; `openDevlog()` in ui.js shows them by day, newest first ("Update N" = Nth day with changes).
 

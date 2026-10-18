@@ -168,6 +168,23 @@ const HEAD_FRACTION = {
   bb: [0.17, 0.0, 0.52, 0.5],      // the Peepeepoopoo Monster: his face is on the left
 };
 
+// Sensitive content (Settings > Jumpscares; the warning screen when Tape 2 starts):
+// off hides any model part named "... Chest" or "... Shirt" (not bones): Toy Weddy's chest
+const SENSITIVE_PART = /(^|[\s_])(chest|shirt)(_\d+|\.\d+)?$/i;
+const sensitiveOn = () => typeof settings === "undefined" || settings.jumpscares === "1";
+// shows or hides those parts; true if the model has any
+function showSensitive(model) {
+  const on = sensitiveOn();
+  let any = false;
+  model.root.traverse(o => {
+    if (o.isBone || o === model.root || !SENSITIVE_PART.test(o.name || "")) return;
+    if (!o.isMesh && !o.children.some(c => c.isMesh)) return;
+    o.visible = on;
+    any = true;
+  });
+  return any;
+}
+
 const Actors = {
   sprites: new Map(),          // "role/kind" -> sprite
   models: {},                  // role -> the model file used (for the debug panel)
@@ -241,11 +258,13 @@ const Actors = {
     catch (e) { console.warn("3D models could not be started (using the 2D drawings)", e); return; }
     const cache = new Map();          // the same file used twice (the shadow) is loaded once
     let done = 0;
-    for (const role of roles) {
+    // one character's pictures (kept so it can be made again: see refresh)
+    const renderRole = async role => {
       const f = found[role];
       try {
         if (!cache.has(f.url)) cache.set(f.url, await three.loadModel(f.url, f.type));
         const model = cache.get(f.url);
+        if (showSensitive(model)) this.sensitiveRoles.set(role, sensitiveOn());
         const poses = f.pose === "broken" ? ["broken", "brokenlunge"] : ["stand", "lunge"];
         // the toys' other faces (models/faces/<file>_head2.png creepy, _head3.png scary), when there are some
         const faces = await three.loadFaces(f.file);
@@ -279,11 +298,25 @@ const Actors = {
         if (model.scareClip && role !== "shadow") this.scares[role] = { model, face: faces[3] || faces[2] || null };
         this.models[role] = f.url;
       } catch (e) { console.warn("Could not use the 3D model", f.url, e); }
+    };
+    for (const role of roles) {
+      this.jobs[role] = renderRole;
+      await renderRole(role);
       if (onProgress) onProgress(++done / roles.length);
     }
-    // keep three.js only if a jumpscare needs it
-    if (Object.keys(this.scares).length) this.three = three;
+    // keep three.js only if a jumpscare needs it (it also re-makes Weddy when sensitive content is switched)
+    if (Object.keys(this.scares).length || this.sensitiveRoles.size) this.three = three;
     else three.dispose();
+  },
+
+  // Sensitive content switched (jumpscares setting): make again the characters it changes
+  // (the ones with parts named "...Chest" / "...Shirt": Toy Weddy)
+  jobs: {},
+  sensitiveRoles: new Map(),          // role -> sensitive on/off when its pictures were made
+  async refreshSensitive() {
+    for (const [role, was] of this.sensitiveRoles) {
+      if (was !== sensitiveOn() && this.jobs[role]) await this.jobs[role](role);
+    }
   },
 
   // ---- live 3D jumpscares ----

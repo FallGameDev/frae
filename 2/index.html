@@ -146,6 +146,17 @@
     color: #fff; font: 600 calc(var(--u) * 13) "Sans Serif", sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,.6);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
   .achIcon.locked { filter: grayscale(1) brightness(.45); }
+  /* ===== Sensitive content warning (when Tape 2 starts) ===== */
+  #warnPanel { z-index: 8; align-items: center; justify-content: center; text-align: center; gap: calc(var(--u) * 10); }
+  #warnPanel h2 { font-family: "VCR OSD Mono", monospace; font-weight: normal; font-size: calc(var(--u) * 26); color: #ff4040; letter-spacing: .05em; }
+  #warnPanel p { font-family: "Sans Serif", sans-serif; font-size: calc(var(--u) * 10.5); line-height: 1.45; max-width: calc(var(--u) * 380); color: #ddd; margin: 0; }
+  #warnPanel .warnBtns { display: flex; gap: calc(var(--u) * 14); margin-top: calc(var(--u) * 8); }
+  #warnPanel .warnBtns button { min-width: calc(var(--u) * 150); padding: calc(var(--u) * 6) calc(var(--u) * 10); font-size: calc(var(--u) * 13); }
+  #warnPanel .warnBtns small { display: block; font-family: "Sans Serif", sans-serif; font-size: calc(var(--u) * 8); color: #aaa; margin-top: calc(var(--u) * 3); }
+  #warnPanel .on { border-color: #ff4040; }
+  #warnPanel .off { border-color: #4caf50; }
+  #warnPanel label { display: flex; align-items: center; gap: calc(var(--u) * 6); font-size: calc(var(--u) * 10); color: #aaa; cursor: pointer; margin-top: calc(var(--u) * 4); }
+  #warnPanel input[type=checkbox] { width: calc(var(--u) * 11); height: calc(var(--u) * 11); accent-color: #f7931e; }
   /* ===== Devlog (Settings > Devlog) ===== */
   #devlogPanel { z-index: 7; gap: calc(var(--u) * 8); }
   .logTop { display: flex; align-items: center; gap: calc(var(--u) * 12); }
@@ -236,6 +247,7 @@
   <!-- Settings screen (opens when the Settings button is clicked) -->
   <div id="settingsPanel" class="panel" hidden></div>
   <div id="devlogPanel" class="panel" hidden></div>
+  <div id="warnPanel" class="panel" hidden></div>
 
   <!-- Mods screen -->
   <div id="modsPanel" class="panel" hidden>
@@ -288,7 +300,7 @@ const GAME_INFO = { key: "frae2", modName: "My Eddie's 2 Mod", gameId: "fried-ri
 /* =====================================================================
    THE GAME (tools/tape2/*.js)
    ===================================================================== */
-const DEVLOG = [{"date": "2026-10-16", "tapes": [2], "text": "Tape 2 is here: Fried Rice at Eddie's 2, a FNaF 2 style night."}, {"date": "2026-10-16", "tapes": [2], "text": "Rigged 3D models for Toy Eddy, Toy Weddy, Toy Cheddy and Toy Endo."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-16", "tapes": [2], "text": "The toys are drawn from their 3D models."}, {"date": "2026-10-17", "tapes": [2], "text": "Characters are drawn live from the models folder, with less lag. Fred makes the phone calls."}, {"date": "2026-10-17", "tapes": [2], "text": "Fixed the stutter once characters start moving."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's own office."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [2], "text": "Mods can add 3D models and 2D characters (models and characters folders)."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-17", "tapes": [2], "text": "Uploaded models follow the game's rig, and their looping animations play."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys have faces (calm, creepy and scary). Mangled Endo is now Meyg."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: a red star over each character's right eye, stronger the harder they are."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: the \"F*CK NO!\" preset, everyone on 20."}, {"date": "2026-10-17", "tapes": [2], "text": "GET READY minigame: the rainbow Endo runs, and the last run ends in a huge fire."}, {"date": "2026-10-17", "tapes": [2], "text": "After the GET READY run the title reads \"Eddies Riceria\" with the crying rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "New tab icon: the rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "The death minigame depends on who caught you (still 1 in 3)."}, {"date": "2026-10-17", "tapes": [2], "text": "The Eddy mask, and the withered cast is torn up and broken."}, {"date": "2026-10-17", "tapes": [2], "text": "Toy Weddy's new model."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's new Puppet."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys breathe while they stand, and each toy has its own 3D jumpscare."}, {"date": "2026-10-17", "tapes": [2], "text": "No idle animation on the title screen and custom night portraits."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: < on 0 jumps to 20 and > on 20 jumps to 0 (not when held or spammed)."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys crawl in the vents and walk down the hall. Sharp close-up on the title screen."}, {"date": "2026-10-18", "tapes": [2], "text": "No static noise on the cameras or the flashlight. New fan sound with rain."}, {"date": "2026-10-18", "tapes": [2], "text": "No more vent light hum."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's newspaper ad at the start of a new game."}, {"date": "2026-10-18", "tapes": [2], "text": "Cheddy takes Bonnie's spots and Weddy takes Chica's."}, {"date": "2026-10-18", "tapes": [2], "text": "Withered Endo no longer kills you right away: survive his stare minigame."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's new mask."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy takes her face plate off when she leaves the stage: a glitching black box covers her face."}, {"date": "2026-10-18", "tapes": [2], "text": "Balloon Boy is now the Peepeepoopoo Monster."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy wears a shirt, and her chest wobbles with real physics."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}];
+const DEVLOG = [{"date": "2026-10-16", "tapes": [2], "text": "Tape 2 is here: Fried Rice at Eddie's 2, a FNaF 2 style night."}, {"date": "2026-10-16", "tapes": [2], "text": "Rigged 3D models for Toy Eddy, Toy Weddy, Toy Cheddy and Toy Endo."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-16", "tapes": [2], "text": "The toys are drawn from their 3D models."}, {"date": "2026-10-17", "tapes": [2], "text": "Characters are drawn live from the models folder, with less lag. Fred makes the phone calls."}, {"date": "2026-10-17", "tapes": [2], "text": "Fixed the stutter once characters start moving."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's own office."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [2], "text": "Mods can add 3D models and 2D characters (models and characters folders)."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-17", "tapes": [2], "text": "Uploaded models follow the game's rig, and their looping animations play."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys have faces (calm, creepy and scary). Mangled Endo is now Meyg."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: a red star over each character's right eye, stronger the harder they are."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: the \"F*CK NO!\" preset, everyone on 20."}, {"date": "2026-10-17", "tapes": [2], "text": "GET READY minigame: the rainbow Endo runs, and the last run ends in a huge fire."}, {"date": "2026-10-17", "tapes": [2], "text": "After the GET READY run the title reads \"Eddies Riceria\" with the crying rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "New tab icon: the rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "The death minigame depends on who caught you (still 1 in 3)."}, {"date": "2026-10-17", "tapes": [2], "text": "The Eddy mask, and the withered cast is torn up and broken."}, {"date": "2026-10-17", "tapes": [2], "text": "Toy Weddy's new model."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's new Puppet."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys breathe while they stand, and each toy has its own 3D jumpscare."}, {"date": "2026-10-17", "tapes": [2], "text": "No idle animation on the title screen and custom night portraits."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: < on 0 jumps to 20 and > on 20 jumps to 0 (not when held or spammed)."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys crawl in the vents and walk down the hall. Sharp close-up on the title screen."}, {"date": "2026-10-18", "tapes": [2], "text": "No static noise on the cameras or the flashlight. New fan sound with rain."}, {"date": "2026-10-18", "tapes": [2], "text": "No more vent light hum."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's newspaper ad at the start of a new game."}, {"date": "2026-10-18", "tapes": [2], "text": "Cheddy takes Bonnie's spots and Weddy takes Chica's."}, {"date": "2026-10-18", "tapes": [2], "text": "Withered Endo no longer kills you right away: survive his stare minigame."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's new mask."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy takes her face plate off when she leaves the stage: a glitching black box covers her face."}, {"date": "2026-10-18", "tapes": [2], "text": "Balloon Boy is now the Peepeepoopoo Monster."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy wears a shirt, and her chest wobbles with real physics."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-18", "tapes": [2], "text": "A warning screen when the game starts: sensitive content on or off. Off turns jumpscares off and hides Toy Weddy's chest. It can skip itself on that save file."}];
 
 /* =====================================================================
    PICTURES AND SOUNDS
@@ -1315,6 +1327,23 @@ const HEAD_FRACTION = {
   bb: [0.17, 0.0, 0.52, 0.5],      // the Peepeepoopoo Monster: his face is on the left
 };
 
+// Sensitive content (Settings > Jumpscares; the warning screen when Tape 2 starts):
+// off hides any model part named "... Chest" or "... Shirt" (not bones): Toy Weddy's chest
+const SENSITIVE_PART = /(^|[\s_])(chest|shirt)(_\d+|\.\d+)?$/i;
+const sensitiveOn = () => typeof settings === "undefined" || settings.jumpscares === "1";
+// shows or hides those parts; true if the model has any
+function showSensitive(model) {
+  const on = sensitiveOn();
+  let any = false;
+  model.root.traverse(o => {
+    if (o.isBone || o === model.root || !SENSITIVE_PART.test(o.name || "")) return;
+    if (!o.isMesh && !o.children.some(c => c.isMesh)) return;
+    o.visible = on;
+    any = true;
+  });
+  return any;
+}
+
 const Actors = {
   sprites: new Map(),          // "role/kind" -> sprite
   models: {},                  // role -> the model file used (for the debug panel)
@@ -1388,11 +1417,13 @@ const Actors = {
     catch (e) { console.warn("3D models could not be started (using the 2D drawings)", e); return; }
     const cache = new Map();          // the same file used twice (the shadow) is loaded once
     let done = 0;
-    for (const role of roles) {
+    // one character's pictures (kept so it can be made again: see refresh)
+    const renderRole = async role => {
       const f = found[role];
       try {
         if (!cache.has(f.url)) cache.set(f.url, await three.loadModel(f.url, f.type));
         const model = cache.get(f.url);
+        if (showSensitive(model)) this.sensitiveRoles.set(role, sensitiveOn());
         const poses = f.pose === "broken" ? ["broken", "brokenlunge"] : ["stand", "lunge"];
         // the toys' other faces (models/faces/<file>_head2.png creepy, _head3.png scary), when there are some
         const faces = await three.loadFaces(f.file);
@@ -1426,11 +1457,25 @@ const Actors = {
         if (model.scareClip && role !== "shadow") this.scares[role] = { model, face: faces[3] || faces[2] || null };
         this.models[role] = f.url;
       } catch (e) { console.warn("Could not use the 3D model", f.url, e); }
+    };
+    for (const role of roles) {
+      this.jobs[role] = renderRole;
+      await renderRole(role);
       if (onProgress) onProgress(++done / roles.length);
     }
-    // keep three.js only if a jumpscare needs it
-    if (Object.keys(this.scares).length) this.three = three;
+    // keep three.js only if a jumpscare needs it (it also re-makes Weddy when sensitive content is switched)
+    if (Object.keys(this.scares).length || this.sensitiveRoles.size) this.three = three;
     else three.dispose();
+  },
+
+  // Sensitive content switched (jumpscares setting): make again the characters it changes
+  // (the ones with parts named "...Chest" / "...Shirt": Toy Weddy)
+  jobs: {},
+  sensitiveRoles: new Map(),          // role -> sensitive on/off when its pictures were made
+  async refreshSensitive() {
+    for (const [role, was] of this.sensitiveRoles) {
+      if (was !== sensitiveOn() && this.jobs[role]) await this.jobs[role](role);
+    }
   },
 
   // ---- live 3D jumpscares ----
@@ -2380,7 +2425,8 @@ class Game {
   useFile(file) { this.file = file; this.progress = loadProgress(file); }
   save() { if (!settings.debug) saveProgress(this.file, this.progress); }
 
-  boot() { this.showTitle(); }
+  // (Tape 2 asks about sensitive content first, once per save file unless they say otherwise: warning.js)
+  boot() { if (needsWarning(this.file)) showWarning(() => this.showTitle()); else this.showTitle(); }
 
   menuItems() {
     const items = [
@@ -4293,6 +4339,58 @@ function closeAchievements() {
 
 
 /* =====================================================================
+   warning.js (Tape 2): the sensitive content screen when the game starts.
+
+   SENSITIVE ON   jumpscares on, Toy Weddy keeps her chest
+   SENSITIVE OFF  jumpscares off, Toy Weddy's chest (and shirt) are hidden
+   It is the same switch as Settings > Jumpscares (changing either one
+   changes both). "Don't show this again on this file" is ticked at first;
+   it is remembered per save file (frae2-warned-file1..3).
+   ===================================================================== */
+"use strict";
+
+const warnKey = file => GI.key + "-warned-file" + file;
+function needsWarning(file) {
+  try { return localStorage.getItem(warnKey(file)) !== "1"; } catch (e) { return true; }
+}
+
+function showWarning(then) {
+  const box = $("#warnPanel");
+  box.innerHTML = "";
+  game.paused = true;
+  const keep = el("input", { type: "checkbox" });
+  keep.checked = true;
+  const choose = async (on, btn) => {
+    blip();
+    for (const b of box.querySelectorAll("button")) b.disabled = true;
+    btn.firstChild.textContent = T("LOADING...");
+    settings.jumpscares = on ? "1" : "0";
+    saveSettings();
+    if (keep.checked) { try { localStorage.setItem(warnKey(game.file), "1"); } catch (e) {} }
+    await Actors.refreshSensitive();               // Toy Weddy made again with or without her chest
+    box.hidden = true;
+    game.paused = false;
+    canvas.focus();
+    then();
+  };
+  const onBtn = el("button", { class: "on" }, T("SENSITIVE ON"), el("small", {}, T("jumpscares on, everything shown")));
+  const offBtn = el("button", { class: "off" }, T("SENSITIVE OFF"), el("small", {}, T("jumpscares off, the suggestive part is hidden")));
+  onBtn.onclick = () => choose(true, onBtn);
+  offBtn.onclick = () => choose(false, offBtn);
+  box.append(
+    el("h2", {}, T("WARNING")),
+    el("p", {}, T("This tape has jumpscares, loud sounds, flashing lights, creepy broken animatronics and some suggestive stuff (one of the animatronics has a jiggly chest).")),
+    el("p", {}, T("Turn sensitive content off if you'd rather skip the jumpscares and the suggestive part. You can change it any time in Settings (Jumpscares).")),
+    el("div", { class: "warnBtns" }, onBtn, offBtn),
+    el("label", {}, keep, T("Don't show this again on this file")));
+  box.hidden = false;
+}
+
+// Settings > Jumpscares also switches sensitive content (Toy Weddy made again)
+function onJumpscaresChanged() { Actors.refreshSensitive(); }
+
+
+/* =====================================================================
    SETTINGS, MODS AND DEBUG MODE (tools/ui.js)
    ===================================================================== */
 /* =====================================================================
@@ -5082,7 +5180,10 @@ function buildSettings() {
   }, T(label));
   const jsBtn = (label, val) => el("button", {
     class: "pick" + (settings.jumpscares === val ? " on" : ""),
-    onclick: () => { settings.jumpscares = val; saveSettings(); buildSettings(); blip(); }
+    onclick: () => {
+      settings.jumpscares = val; saveSettings(); buildSettings(); blip();
+      if (typeof onJumpscaresChanged === "function") onJumpscaresChanged();      // (Tape 2: sensitive content follows it)
+    }
   }, T(label));
   const slider = (key) => {
     const out = el("span", { class: "val" }, settings[key] + "%");
@@ -5500,6 +5601,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     // Esc closes the open panel, or goes back to the game menu
     if (!$("#ask").hidden) { $("#ask").hidden = true; game.paused = false; canvas.focus(); }
+    else if (!$("#warnPanel").hidden) return;      // (the warning needs an answer)
     else if (!$("#devlogPanel").hidden) closeDevlog();
     else if (!$("#achPanel").hidden) closeAchievements();
     else if (!$("#modsPanel").hidden) closeMods();

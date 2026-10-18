@@ -146,6 +146,17 @@
     color: #fff; font: 600 calc(var(--u) * 13) "Sans Serif", sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,.6);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
   .achIcon.locked { filter: grayscale(1) brightness(.45); }
+  /* ===== Sensitive content warning (when Tape 2 starts) ===== */
+  #warnPanel { z-index: 8; align-items: center; justify-content: center; text-align: center; gap: calc(var(--u) * 10); }
+  #warnPanel h2 { font-family: "VCR OSD Mono", monospace; font-weight: normal; font-size: calc(var(--u) * 26); color: #ff4040; letter-spacing: .05em; }
+  #warnPanel p { font-family: "Sans Serif", sans-serif; font-size: calc(var(--u) * 10.5); line-height: 1.45; max-width: calc(var(--u) * 380); color: #ddd; margin: 0; }
+  #warnPanel .warnBtns { display: flex; gap: calc(var(--u) * 14); margin-top: calc(var(--u) * 8); }
+  #warnPanel .warnBtns button { min-width: calc(var(--u) * 150); padding: calc(var(--u) * 6) calc(var(--u) * 10); font-size: calc(var(--u) * 13); }
+  #warnPanel .warnBtns small { display: block; font-family: "Sans Serif", sans-serif; font-size: calc(var(--u) * 8); color: #aaa; margin-top: calc(var(--u) * 3); }
+  #warnPanel .on { border-color: #ff4040; }
+  #warnPanel .off { border-color: #4caf50; }
+  #warnPanel label { display: flex; align-items: center; gap: calc(var(--u) * 6); font-size: calc(var(--u) * 10); color: #aaa; cursor: pointer; margin-top: calc(var(--u) * 4); }
+  #warnPanel input[type=checkbox] { width: calc(var(--u) * 11); height: calc(var(--u) * 11); accent-color: #f7931e; }
   /* ===== Devlog (Settings > Devlog) ===== */
   #devlogPanel { z-index: 7; gap: calc(var(--u) * 8); }
   .logTop { display: flex; align-items: center; gap: calc(var(--u) * 12); }
@@ -236,6 +247,7 @@
   <!-- Settings screen (opens when the Settings button is clicked) -->
   <div id="settingsPanel" class="panel" hidden></div>
   <div id="devlogPanel" class="panel" hidden></div>
+  <div id="warnPanel" class="panel" hidden></div>
 
   <!-- Mods screen -->
   <div id="modsPanel" class="panel" hidden>
@@ -410,6 +422,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     // Esc closes the open panel, or goes back to the game menu
     if (!$("#ask").hidden) { $("#ask").hidden = true; game.paused = false; canvas.focus(); }
+    else if (!$("#warnPanel").hidden) return;      // (the warning needs an answer)
     else if (!$("#devlogPanel").hidden) closeDevlog();
     else if (!$("#achPanel").hidden) closeAchievements();
     else if (!$("#modsPanel").hidden) closeMods();

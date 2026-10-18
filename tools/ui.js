@@ -785,7 +785,10 @@ function buildSettings() {
   }, T(label));
   const jsBtn = (label, val) => el("button", {
     class: "pick" + (settings.jumpscares === val ? " on" : ""),
-    onclick: () => { settings.jumpscares = val; saveSettings(); buildSettings(); blip(); }
+    onclick: () => {
+      settings.jumpscares = val; saveSettings(); buildSettings(); blip();
+      if (typeof onJumpscaresChanged === "function") onJumpscaresChanged();      // (Tape 2: sensitive content follows it)
+    }
   }, T(label));
   const slider = (key) => {
     const out = el("span", { class: "val" }, settings[key] + "%");

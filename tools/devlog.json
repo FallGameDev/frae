@@ -57,5 +57,6 @@
  {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy wears a shirt, and her chest wobbles with real physics."},
  {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."},
  {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."},
- {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}
+ {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."},
+ {"date": "2026-10-18", "tapes": [2], "text": "A warning screen when the game starts: sensitive content on or off. Off turns jumpscares off and hides Toy Weddy's chest. It can skip itself on that save file."}
 ]
