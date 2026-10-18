@@ -440,7 +440,7 @@ class Game {
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
     if (this.titleRiceria) draw(ctx, pic("Riceria", "crying"), 360, 185);      // the rainbow guy, crying
-    else drawActor(ctx, face.role, face.box, { mode: "head", kind: "creep", rot: face.rot, shade: face.shade });
+    else drawActor(ctx, face.role, face.box, { mode: "head", kind: "creep", still: true, rot: face.rot, shade: face.shade });   // (no idle animation on the menu)
     ctx.restore();
     const title = this.titleRiceria ? [W("Title menu", "Eddies"), W("Title menu", "Riceria")]
       : [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];

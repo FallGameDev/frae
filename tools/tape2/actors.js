@@ -161,10 +161,11 @@ const Actors = {
   sprites: new Map(),          // "role/kind" -> sprite
   models: {},                  // role -> the model file used (for the debug panel)
 
-  get(role, kind) {
+  get(role, kind, still) {
     const s = this.sprites.get(role + "/" + (kind || "stand")) || this.sprites.get(role + "/stand") || this.flat(role);
-    // an animation: the frame for right now
-    return s && s.frames ? s.frames[Math.floor(performance.now() / 1000 * s.fps) % s.frames.length] : s;
+    // an animation: the frame for right now (or always the first one when it should hold still)
+    if (s && s.frames) return still ? s.frames[0] : s.frames[Math.floor(performance.now() / 1000 * s.fps) % s.frames.length];
+    return s;
   },
   // every picture (for the warm-up while loading)
   allPictures() {
@@ -535,11 +536,11 @@ function trim(c) {
    drawActor(ctx, role, box, options)
    Draws a character into box [left, top, right, bottom] (current units).
    options: mode "body" (feet at the bottom of the box) or "head" (head fills it),
-            kind "lunge", shade 0..1 (darker), tint true (all black),
+            kind "lunge", shade 0..1 (darker), tint true (all black), still (no idle animation),
             rot (degrees), cut [x, y, w, h] (only inside), alpha, flip
    --------------------------------------------------------------------- */
 function drawActor(ctx, role, box, o = {}) {
-  const s = Actors.get(role, o.kind);
+  const s = Actors.get(role, o.kind, o.still);
   if (!s) return;
   const head = o.mode === "head";
   const part = head ? s.head : s.body;
@@ -601,7 +602,7 @@ const PLUSH_ROLE = { Sprite58: "bb", Sprite59: "wbonnie", Sprite60: "wchica", Sp
                      Sprite63: "wfreddy", Sprite64: "golden", Sprite66: "tbonnie" };
 const PLUSH_SPOT = { pin: [60, 85], box: [10, 10, 110, 165], mode: "body", shade: 0.3 };
 // custom night portraits
-const HEAD_SPOT = { pin: [40, 35], box: [4, 4, 76, 66], mode: "head" };
+const HEAD_SPOT = { pin: [40, 35], box: [4, 4, 76, 66], mode: "head", still: true };      // (no idle animation here)
 // title screen faces (Toy Eddy staring, and the old ones for a split second)
 const TITLE_FACES = [
   { role: "tfreddy", box: [250, 30, 520, 330], shade: 0.5, rot: -3 },
