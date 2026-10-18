@@ -23,9 +23,9 @@ import bmesh
 HERE = os.path.dirname(os.path.abspath(__file__))
 BLEND = os.path.join(os.path.dirname(HERE), 'models', 'toys_rigged.blend')
 
-SHIRT_COLOR = (0.32, 0.17, 0.85, 1.0)   # (linear) a purple like her pants; change it here
+SHIRT_COLOR = None                      # None = the same pink as her body (Toy Weddy Upper); or (r, g, b, 1) linear
 PUFF = 0.028                            # how far the shirt sits out from the chest (meters)
-SHOW = 0.32                             # how much of the blobs' height shows below the shirt (0..1, from the bottom)
+SHOW = 0.07                             # how much of the blobs' height shows below the shirt (0..1, from the bottom): just the very bottom
 
 
 def main():
@@ -64,7 +64,12 @@ def main():
     mat.use_nodes = True
     mat.use_backface_culling = False
     bsdf = next(n for n in mat.node_tree.nodes if n.type == 'BSDF_PRINCIPLED')
-    bsdf.inputs['Base Color'].default_value = SHIRT_COLOR
+    color = SHIRT_COLOR
+    if color is None:                                    # her body's pink
+        body = bpy.data.objects['Toy Weddy Body']
+        upper = next(m for m in body.data.materials if m and 'Upper' in m.name)
+        color = tuple(next(n for n in upper.node_tree.nodes if n.type == 'BSDF_PRINCIPLED').inputs['Base Color'].default_value)
+    bsdf.inputs['Base Color'].default_value = color
     bsdf.inputs['Roughness'].default_value = 0.85        # cloth, not shiny plastic
     me.materials.append(mat)
 
