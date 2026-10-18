@@ -162,7 +162,9 @@ const Actors = {
   models: {},                  // role -> the model file used (for the debug panel)
 
   get(role, kind, still) {
-    const s = this.sprites.get(role + "/" + (kind || "stand")) || this.sprites.get(role + "/stand") || this.flat(role);
+    const fallback = { vent: "creep", hall: "creep", title: "creep" }[kind];
+    const s = this.sprites.get(role + "/" + (kind || "stand")) || (fallback && this.sprites.get(role + "/" + fallback))
+      || this.sprites.get(role + "/stand") || this.flat(role);
     // an animation: the frame for right now (or always the first one when it should hold still)
     if (s && s.frames) return still ? s.frames[0] : s.frames[Math.floor(performance.now() / 1000 * s.fps) % s.frames.length];
     return s;
@@ -244,6 +246,19 @@ const Actors = {
           three.setFace(model, faces[2]);
           this.sprites.set(role + "/creep", animate ? three.renderAnimation(model, 8, poses[0]) : makeSprite(three.render(model, poses[0], 8), 0.36));
         }
+        if (role !== "shadow") {
+          if (faces[2]) three.setFace(model, faces[2]);
+          // lying down in the vents, walking down the hall (small pictures: they are drawn small)
+          if (model.crawlClip) this.sprites.set(role + "/vent", three.renderAnimation(model, 0, poses[0], { clip: model.crawlClip, frames: 8, H: 300, view: "low", wholeHead: true }));
+          if (model.walkClip) this.sprites.set(role + "/hall", three.renderAnimation(model, 4, poses[0], { clip: model.walkClip, frames: 8, H: 320 }));
+          // the title screen close-up: one big sharp picture
+          if (TITLE_FACES.some(f => f.role === role)) {
+            const big = makeSprite(three.renderBig(model, poses[0], 1100), 0.36);
+            const [x0, y0, x1, y1] = big.body;            // the head and ears: the top of the close-up
+            big.head = [x0, y0, x1, y0 + (y1 - y0) * 0.72];
+            this.sprites.set(role + "/title", big);
+          }
+        }
         // reaching for you (in the office, jumpscares): scary face
         three.setFace(model, faces[3] || faces[2] || null);
         this.sprites.set(role + "/lunge", makeSprite(three.render(model, poses[1], 0), 0.36));
@@ -323,7 +338,7 @@ const Actors = {
       if (!model.baseRig) model.rig = findSetRig(root);
       // a looping animation: the one called idle/loop, otherwise the first one (that isn't a jumpscare)
       const isScare = c => /scare|jump|death|kill/i.test(c.name);
-      const clip = clips.find(c => /idle|loop/i.test(c.name)) || clips.find(c => !isScare(c));
+      const clip = clips.find(c => /idle|loop/i.test(c.name)) || clips.find(c => !isScare(c) && !/crawl|vent|prone|walk|hall/i.test(c.name));
       const usable = c => c && c.duration > 0.05 && c.tracks.length;
       if (usable(clip) || usable(clips.find(isScare))) model.mixer = new THREE.AnimationMixer(root);
       if (usable(clip)) {
@@ -332,6 +347,10 @@ const Actors = {
         model.clip = clip;
       }
       // a jumpscare animation (Scare / Jumpscare / Death): played live when this character gets you
+      // lying down in a vent / coming down the hall
+      const crawl = clips.find(c => /crawl|vent|prone/i.test(c.name)), walk = clips.find(c => /walk|hall/i.test(c.name));
+      if (usable(crawl)) model.crawlClip = crawl;
+      if (usable(walk)) model.walkClip = walk;
       const scare = clips.find(isScare);
       if (usable(scare)) { model.scareClip = scare; model.scareAction = model.mixer.clipAction(scare); }
       return model;
@@ -393,13 +412,23 @@ const Actors = {
       return trim(shoot(model, angle, ACTOR_RENDER_H));
     }
     // the model as it is now -> a picture (H pixels tall, not cut down)
-    function shoot(model, angle, H) {
-      const W = Math.round(H * 0.95);
+    function shoot(model, angle, H, view) {
+      const W = Math.round(H * (view === "low" ? 1.4 : 0.95));
       R.setSize(W, H, false);
       camera.aspect = W / H;
       const d = 9.2, a = angle * DEG;
-      camera.position.set(Math.sin(a) * d, 1.45, Math.cos(a) * d);
-      camera.lookAt(0, 1.2, 0);
+      if (view === "face") {
+        // a close-up of the head (the title screen): the head fills the picture, nice and sharp
+        camera.position.set(0, 2.05, 4.2);
+        camera.lookAt(0, 2.0, 0);
+      } else if (view === "low") {
+        // lying down (vents): seen from in front, a bit above, so the face looking up is in view
+        camera.position.set(Math.sin(a) * d, 2.4, Math.cos(a) * d + 1.5);
+        camera.lookAt(0, 0.35, 1.2);
+      } else {
+        camera.position.set(Math.sin(a) * d, 1.45, Math.cos(a) * d);
+        camera.lookAt(0, 1.2, 0);
+      }
       camera.updateProjectionMatrix();
       scene.add(model.root);
       R.render(scene, camera);
@@ -411,24 +440,34 @@ const Actors = {
       return c;
     }
     // the model's looping animation -> pictures (frames), all cut to the same box so it doesn't wobble
-    function renderAnimation(model, angle, standPose) {
-      const clip = model.clip;
-      const n = Math.max(2, Math.min(ACTOR_ANIM_MAX, Math.round(clip.duration * ACTOR_ANIM_FPS)));
+    // o: {clip (default: the idle loop), frames, H (picture height), view ("low" for lying down), wholeHead}
+    function renderAnimation(model, angle, standPose, o = {}) {
+      const clip = o.clip || model.clip;
+      const n = Math.max(2, Math.min(o.frames || ACTOR_ANIM_MAX, Math.round(clip.duration * ACTOR_ANIM_FPS)));
+      const act = clip === model.clip ? model.action : model.mixer.clipAction(clip);
+      model.mixer.stopAllAction();
+      act.reset().play();
       const shots = [];
       for (let i = 0; i < n; i++) {
         pose(model, standPose);                       // standing pose for the bones the animation doesn't move...
         model.mixer.setTime(clip.duration * i / n);   // ...then the animation on top
         model.root.updateMatrixWorld(true);
-        shots.push(shoot(model, angle, ACTOR_ANIM_H));
+        shots.push(shoot(model, angle, o.H || ACTOR_ANIM_H, o.view));
       }
       model.mixer.stopAllAction();
-      model.action.play();
+      if (model.action) model.action.play();
       model.mixer.setTime(0);
       const box = unionBox(shots);
       const frames = shots.map(c => cropTo(c, box));
       const first = makeSprite(frames[0], 0.36);
+      if (o.wholeHead) first.head = first.body.slice();   // lying down: the whole thing goes where the head would
       const sprites = frames.map((c, i) => (i === 0 ? first : makeSprite(c, 0.36, first)));
       return { frames: sprites, fps: n / clip.duration };
+    }
+    // a still picture, bigger than usual (the title screen close-up)
+    function renderBig(model, which, H) {
+      pose(model, which);
+      return trim(shoot(model, 0, H, "face"));
     }
 
     function dispose() { R.dispose(); R.forceContextLoss && R.forceContextLoss(); }
@@ -481,7 +520,7 @@ const Actors = {
       });
     }
 
-    return { loadModel, render, renderAnimation, renderScare, loadFaces, setFace, dispose };
+    return { loadModel, render, renderAnimation, renderBig, renderScare, loadFaces, setFace, dispose };
   },
 };
 
@@ -600,7 +639,7 @@ const EXTRA_SPOTS = {
 // custom night prizes that are characters (little plushies on the desk)
 const PLUSH_ROLE = { Sprite58: "bb", Sprite59: "wbonnie", Sprite60: "wchica", Sprite62: "foxy",
                      Sprite63: "wfreddy", Sprite64: "golden", Sprite66: "tbonnie" };
-const PLUSH_SPOT = { pin: [60, 85], box: [10, 10, 110, 165], mode: "body", shade: 0.3 };
+const PLUSH_SPOT = { pin: [60, 85], box: [10, 10, 110, 165], mode: "body", shade: 0.3, still: true };
 // custom night portraits
 const HEAD_SPOT = { pin: [40, 35], box: [4, 4, 76, 66], mode: "head", still: true };      // (no idle animation here)
 // title screen faces (Toy Eddy staring, and the old ones for a split second)

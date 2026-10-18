@@ -3,6 +3,8 @@ animate_toys.py
 The toys' animations, made on their skeleton in models/toys_rigged.blend:
 
   Idle   (2 s loop)  breathing, head tilting, arms swaying (Meyg twitches)
+  Crawl  (2 s loop)  lying on its front in a vent, head up, pulling itself along
+  Walk   (2 s loop)  a slow, lurching walk (coming down the hall)
   Scare  (jumpscare, played when a toy gets you)
          Toy Eddy    lunges at you while his head spins all the way round
          Toy Weddy   lunges chest-first into you (the chest wobbles on impact:
@@ -89,6 +91,22 @@ def finish(rig, act, start, end, cyclic=False):
     tr.mute = True                                # (only stored here; the game and engines pick them by name)
 
 
+def bust(rig, pose, t, kind):
+    """Toy Weddy's chest follows through (the lattice wobble, baked onto her Bust bone so it exports):
+    it lags behind the body and bounces. Returns the scale dict for key()."""
+    if 'Bust' not in rig.pose.bones:
+        return None
+    w = 2 * math.pi
+    if kind == 'idle':                       # breathing: a slow, lagging sway
+        r, sy = (5 * math.sin(w * t - 0.9), 0, 2 * math.sin(w * t - 0.6)), 0.03 * math.sin(w * t - 0.9)
+    elif kind == 'walk':                     # a bounce on every step (2 steps a loop)
+        r, sy = (9 * math.sin(2 * w * t - 1.1), 0, 4 * math.sin(w * t - 0.8)), 0.06 * math.sin(2 * w * t - 1.1)
+    else:                                    # crawl: swings side to side under her
+        r, sy = (4 * math.sin(w * t - 0.7), 0, 8 * math.sin(w * t - 0.9)), 0.04 * math.sin(w * t - 0.7)
+    pose['Bust'] = r
+    return {'Bust': (1 - sy * 0.6, 1 + sy, 1 - sy * 0.6)}
+
+
 def idle(rig, broken=False, phase=0.0):
     act = new_action(rig, 'Idle')
     base = BROKEN if broken else STAND
@@ -101,7 +119,46 @@ def idle(rig, broken=False, phase=0.0):
         if broken:   # Meyg twitches: a sharp jerk of the head now and then
             jerk = 12 if 0.45 < t < 0.5 else 0
             wob['Head'] = (wob['Head'][0] + jerk, wob['Head'][1] - jerk, wob['Head'][2])
-        key(rig, 1 + i, mix(base, wob))
+        p = mix(base, wob)
+        key(rig, 1 + i, p, None, bust(rig, p, t, 'idle'))
+    finish(rig, act, 1, 1 + n, cyclic=True)
+
+
+def crawl(rig, broken=False, phase=0.0):
+    """Lying down in a vent: on its belly, head up looking at you, pulling itself along (loop)."""
+    act = new_action(rig, 'Crawl')
+    n = 2 * FPS
+    x, y, z = HOME[rig.name]
+    for i in range(0, n + 1, 4):
+        t = (i / n + phase) % 1
+        s, c = math.sin(2 * math.pi * t), math.cos(2 * math.pi * t)
+        p = {'Root': (88, 0, 3 * s),                                    # tipped over onto its front (head toward you)
+             'Head': (-62 + 4 * c, 0, 8 * s),                           # looking up at you
+             'Chest': (4 * c, 0, 0),
+             'UpperArm.L': (68 + 18 * s, 0, -18 - 10 * s),              # arms out in front, pulling in turn
+             'UpperArm.R': (68 - 18 * s, 0, 18 - 10 * s),
+             'Leg.L': (12 * s, 0, 0), 'Leg.R': (-12 * s, 0, 0)}
+        if broken:
+            p['Head'] = (p['Head'][0] - 10, 25, 12 + (14 if 0.45 < t < 0.5 else 0))
+            p['Ear.L'], p['Ear.R'] = (0, -55, 0), (0, 70, 30)
+        key(rig, 1 + i, p, (x, y, z + 0.18), bust(rig, p, t, 'crawl'))  # (lifted a little: lying on its front)
+    finish(rig, act, 1, 1 + n, cyclic=True)
+
+
+def walk(rig, broken=False, phase=0.0):
+    """Coming down the hall: a slow, heavy, lurching walk on the spot (loop)."""
+    act = new_action(rig, 'Walk')
+    n = 2 * FPS
+    x, y, z = HOME[rig.name]
+    base = BROKEN if broken else STAND
+    for i in range(0, n + 1, 3):
+        t = (i / n + phase) % 1
+        s, c = math.sin(2 * math.pi * t), math.cos(2 * math.pi * t)
+        lurch = {'Leg.L': (24 * s, 0, 0), 'Leg.R': (-24 * s, 0, 0),
+                 'UpperArm.L': (-14 * s, 0, 0), 'UpperArm.R': (14 * s, 0, 0),
+                 'Chest': (-6, 0, 5 * s), 'Head': (-4 + 3 * abs(c), 0, -6 * s)}
+        p = mix(base, lurch)
+        key(rig, 1 + i, p, (x, y, z + 0.04 * abs(c)), bust(rig, p, t, 'walk'))
     finish(rig, act, 1, 1 + n, cyclic=True)
 
 
@@ -187,7 +244,7 @@ def add_bust_bone(rig, chest_obj):
 def main():
     bpy.ops.wm.open_mainfile(filepath=BLEND)
     bpy.context.scene.render.fps = FPS
-    for a in [a for a in bpy.data.actions if a.name.endswith((' Idle', ' Scare'))]:
+    for a in [a for a in bpy.data.actions if a.name.endswith((' Idle', ' Scare', ' Crawl', ' Walk'))]:
         bpy.data.actions.remove(a)
     toys = {'Toy Eddy': (scare_eddy, False, 0.0), 'Toy Weddy': (scare_weddy, False, 0.3),
             'Toy Cheddy': (scare_cheddy, False, 0.6), 'Toy Endo': (scare_meyg, True, 0.15)}
@@ -202,6 +259,10 @@ def main():
         HOME[rig.name] = home
         clear(rig)
         idle(rig, broken, phase)
+        clear(rig)
+        crawl(rig, broken, phase)
+        clear(rig)
+        walk(rig, broken, phase)
         clear(rig)
         scare(rig, home)
         clear(rig)

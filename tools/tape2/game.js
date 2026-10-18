@@ -440,7 +440,7 @@ class Game {
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 480, 360); ctx.clip();
     if (this.titleRiceria) draw(ctx, pic("Riceria", "crying"), 360, 185);      // the rainbow guy, crying
-    else drawActor(ctx, face.role, face.box, { mode: "head", kind: "creep", still: true, rot: face.rot, shade: face.shade });   // (no idle animation on the menu)
+    else drawActor(ctx, face.role, face.box, { mode: "head", kind: "title", still: true, rot: face.rot, shade: face.shade });   // (no idle animation on the menu)
     ctx.restore();
     const title = this.titleRiceria ? [W("Title menu", "Eddies"), W("Title menu", "Riceria")]
       : [W("Title menu", "Fried"), W("Title menu", "Rice"), W("Title menu", "at"), W("Title menu", "Eddie's"), W("Title menu", "2")];
@@ -1288,7 +1288,7 @@ class Game {
      ================================================================= */
   // A character standing with its feet at (x, y), `h` game pixels tall
   drawChar(ctx, who, x, y, h, o = {}) {
-    drawActor(ctx, who, [x - h, y - h, x + h, y], { mode: "body", alpha: o.alpha, shade: addShade(0, o.bright), rot: o.turn });
+    drawActor(ctx, who, [x - h, y - h, x + h, y], { mode: "body", still: true, alpha: o.alpha, shade: addShade(0, o.bright), rot: o.turn });
   }
   // Old newspaper paper with fake columns of text
   drawPaper(ctx, x, y, w, h, tilt) {
@@ -1573,12 +1573,13 @@ class Game {
     draw(ctx, room, ox, oy, { size: 150, bright: dim });
     // the new cast on the posters (darker when the hall light is off)
     inPicture(ctx, room, ox, oy, 150, () => {
-      for (const s of ROOM_COVERS.office || []) drawActor(ctx, s.role, s.box, { ...s, shade: addShade(s.shade + (base === "010" ? 0 : 0.5), dim) });
+      for (const s of ROOM_COVERS.office || []) drawActor(ctx, s.role, s.box, { ...s, still: true, shade: addShade(s.shade + (base === "010" ? 0 : 0.5), dim) });
     });
     // who is in the hall / at a vent (drawn by the game: see actors.js and poses.js)
     const pose = name => {
       const s = OFFICE_POSES[name];
-      if (s) inPicture(ctx, room, ox, oy, 150, () => drawActor(ctx, name.split("-")[1], s.box, { kind: "creep", ...s, shade: addShade(s.shade, flick) }));
+      const kind = name.startsWith("hall") ? "hall" : name.startsWith("vent") ? "vent" : "creep";
+      if (s) inPicture(ctx, room, ox, oy, 150, () => drawActor(ctx, name.split("-")[1], s.box, { kind, ...s, shade: addShade(s.shade, flick) }));
     };
     if (n.flash) {
       for (const [who, at] of Object.entries(n.at)) if (at === "hall") pose("hall-" + who);
@@ -1628,10 +1629,11 @@ class Game {
       if (!s) return;
       const shade = light || s.same ? s.shade : Math.max(0.86, s.shade);
       // calm on the stage, creepy everywhere else
-      inPicture(ctx, room, x, 180, 150, () => drawActor(ctx, s.role || name, s.box, { kind: c === 9 ? "stand" : "creep", ...s, shade }));
+      const kind = c === 9 ? "stand" : c === 5 || c === 6 ? "vent" : c === 7 ? "hall" : "creep";   // (lying down in the vents, walking in the hall)
+      inPicture(ctx, room, x, 180, 150, () => drawActor(ctx, s.role || name, s.box, { kind, ...s, shade }));
     };
     inPicture(ctx, room, x, 180, 150, () => {
-      for (const s of ROOM_COVERS[c] || []) drawActor(ctx, s.role, s.box, { ...s, shade: Math.min(0.95, s.shade + (light ? 0 : 0.5)) });
+      for (const s of ROOM_COVERS[c] || []) drawActor(ctx, s.role, s.box, { ...s, still: true, shade: Math.min(0.95, s.shade + (light ? 0 : 0.5)) });
     });
     for (const [who, at] of Object.entries(n.at)) if (at === c) pose(who);
     // the Puppet coming out of the box, and walking down the main hall
