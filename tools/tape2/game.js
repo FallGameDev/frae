@@ -1434,7 +1434,9 @@ class Game {
     const m = this.mouse;
     const preset = PRESETS[this.presetIndex];
     // hold an arrow: the number keeps changing every 0.12 s
+    const now = this.tick * TICK;
     if (m.down) {
+      if (!this.customDown) { this.customDown = true; this.customFresh = true; }      // a new press
       this.customHold -= TICK;
       if (this.customHold <= 0) {
         for (let i = 0; i < 10; i++) {
@@ -1443,12 +1445,19 @@ class Game {
           const delta = m.x > c.x && m.x < c.x + 22 ? -1 : m.x > c.x + c.w - 22 && m.x < c.x + c.w ? 1 : 0;
           if (!delta) continue;
           if (preset.ai) { this.presetIndex = 0; }          // touching a number goes back to Custom
-          this.customPick[i] = clamp(this.customPick[i] + delta, 0, 20);
+          // past the end wraps round (< on 0 -> 20, > on 20 -> 0), but only for one calm press:
+          // not while holding the button down, and not when it is being spammed
+          const next = this.customPick[i] + delta;
+          const calm = this.customFresh && now - (this.customLastPress ?? -9) > 0.4;
+          if ((next < 0 || next > 20) && calm) this.customPick[i] = next < 0 ? 20 : 0;
+          else this.customPick[i] = clamp(next, 0, 20);
+          this.customLastPress = now;
           this.customHold = 0.12;
           this.blip();
         }
+        this.customFresh = false;
       }
-    } else this.customHold = 0;
+    } else { this.customHold = 0; this.customDown = false; }
     this.backHover = m.x < 70 && m.y < 30;
     for (const c of this.clicks) {
       if (this.backHover) { this.blip(); return this.showTitle(); }
