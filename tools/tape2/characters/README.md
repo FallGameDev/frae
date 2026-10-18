@@ -1,6 +1,6 @@
 # Tape 2 character files
 
-Drop a character drawing here, named after the role it plays, then rebuild:
+Drop a character drawing here (.svg, or a see-through .png), named after the role it plays, then rebuild:
 
     python3 tools/build_game2.py path/to/unzipped_FNAF_2_sb3
 

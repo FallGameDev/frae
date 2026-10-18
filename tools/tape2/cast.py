@@ -224,9 +224,14 @@ class Char:
         own = os.path.join(CHAR_DIR, role + '.svg')
         rel = f'assets/characters/{role}.svg'
         dst = os.path.join(b.out_root, rel)
+        own_png = os.path.join(CHAR_DIR, role + '.png')
         if os.path.exists(own):
             shutil.copy(own, dst)
             self.stand_in = False
+        elif os.path.exists(own_png):
+            # a drawing saved as a picture (used as it is: 2 picture pixels per unit)
+            self._from_png(b, role, own_png)
+            return
         elif STAND_IN.get(role):
             shutil.copy(os.path.join(TAPE1_CHARS, STAND_IN[role]), dst)
             self.stand_in = True
@@ -252,6 +257,24 @@ class Char:
         x0, x1, y0, y1 = xs.min() / k, (xs.max() + 1) / k, ys.min() / k, (ys.max() + 1) / k
         self.body = (x0, y0, x1, y1)
         band = int(ys.min() + (ys.max() - ys.min()) * head_part)
+        hx = np.where(a[ys.min():band].any(axis=0))[0]
+        self.head = (hx.min() / k, y0, (hx.max() + 1) / k, band / k)
+
+    def _from_png(self, b, role, path):
+        self.stand_in = False
+        drawn = Image.open(path).convert('RGBA')
+        if role in WITHERED:
+            from withered import wither
+            drawn = wither(drawn, role)
+        self.src = f'assets/characters/{role}.png'
+        drawn.save(os.path.join(b.out_root, self.src))
+        k = 2.0
+        self.w, self.h = drawn.width / k, drawn.height / k
+        a = np.array(drawn)[:, :, 3] > 40
+        ys, xs = np.where(a)
+        x0, x1, y0, y1 = xs.min() / k, (xs.max() + 1) / k, ys.min() / k, (ys.max() + 1) / k
+        self.body = (x0, y0, x1, y1)
+        band = int(ys.min() + (ys.max() - ys.min()) * 0.40)
         hx = np.where(a[ys.min():band].any(axis=0))[0]
         self.head = (hx.min() / k, y0, (hx.max() + 1) / k, band / k)
 
@@ -522,6 +545,15 @@ def apply(b):
             a[:, :, 3] = np.where(a[:, :, 3] > 110, 255, 0)
             rgb = Image.fromarray(a[:, :, :3]).quantize(12).convert('RGB')
             out = np.dstack([np.array(rgb), a[:, :, 3]]).astype(np.uint8)
+            if r == 'puppet':
+                # the Puppet is black: a grey outline so it shows on the black minigame screens
+                pad = np.pad(out, ((1, 1), (1, 1), (0, 0)))
+                solid = pad[:, :, 3] > 0
+                grow = solid.copy()
+                grow[1:] |= solid[:-1]; grow[:-1] |= solid[1:]; grow[:, 1:] |= solid[:, :-1]; grow[:, :-1] |= solid[:, 1:]
+                ring = grow & ~solid
+                pad[ring] = [120, 120, 130, 255]
+                out = pad
             rel = save_img(b, Image.fromarray(out), f'pixel-{kind}-{r}')
             u = 3                                               # 1 pixel = 3 game units
             W, H = out.shape[1] * u, out.shape[0] * u
