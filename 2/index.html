@@ -1056,7 +1056,7 @@ const loadImage = url => new Promise((res, rej) => { const i = new Image(); i.on
 // and where its body and head are inside it (pixels: [left, top, right, bottom])
 function makeSprite(canvas, headPart, same) {
   const w = canvas.naturalWidth || canvas.width, h = canvas.naturalHeight || canvas.height;
-  if (same) return { img: canvas, black: blackCopy(canvas, w, h), w, h, body: same.body, head: same.head };   // animation frames share one box
+  if (same) return { img: canvas, black: blackCopy(canvas, w, h), w, h, body: same.body, head: same.head, face: canvas.face };   // animation frames share one box
   const k = Math.min(1, 220 / Math.max(w, h));         // measure on a small copy (fast)
   const sw = Math.max(1, Math.round(w * k)), sh = Math.max(1, Math.round(h * k));
   const m = document.createElement("canvas");
@@ -1076,7 +1076,7 @@ function makeSprite(canvas, headPart, same) {
     if (a[(y * sw + x) * 4 + 3] > 40) { if (x < hx0) hx0 = x; if (x > hx1) hx1 = x; }
   }
   if (hx1 < 0) { hx0 = x0; hx1 = x1; }
-  return { img: canvas, black: blackCopy(canvas, w, h), w, h,
+  return { img: canvas, black: blackCopy(canvas, w, h), w, h, face: canvas.face,
            body: [x0 / k, y0 / k, (x1 + 1) / k, (y1 + 1) / k],
            head: [hx0 / k, y0 / k, (hx1 + 1) / k, (band + 1) / k] };
 }
@@ -1258,6 +1258,7 @@ const Actors = {
       const bones = {};
       root.traverse(o => { if (o.isBone) { bones[norm(o.name)] = o; o.userData.rest = o.quaternion.clone(); o.userData.restPos = o.position.clone(); } });
       const model = { root, bones, baseRig: isBaseRig(bones) };
+      model.face = findFace(model);
       // not the base skeleton: find the set-rig parts in it
       if (!model.baseRig) model.rig = findSetRig(root);
       // a looping animation: the one called idle/loop, otherwise the first one (that isn't a jumpscare)
@@ -1278,6 +1279,57 @@ const Actors = {
       const scare = clips.find(isScare);
       if (usable(scare)) { model.scareClip = scare; model.scareAction = model.mixer.clipAction(scare); }
       return model;
+    }
+
+    // Where the face is: the front of the head material's shape, kept in the Head bone's own
+    // space so it follows the head through every animation (for FACE_OFF, Weddy's missing face plate)
+    function findFace(model) {
+      const bone = model.bones.head;
+      if (!bone) return null;
+      model.root.updateMatrixWorld(true);
+      const v = new THREE.Vector3(), box = new THREE.Box3();
+      let n = 0;
+      model.root.traverse(o => {
+        if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        const g = o.geometry, idx = g.index;
+        const groups = g.groups.length ? g.groups : [{ start: 0, count: idx ? idx.count : g.attributes.position.count, materialIndex: 0 }];
+        for (const grp of groups) {
+          const m = mats[grp.materialIndex || 0];
+          if (!m || !/head/i.test(m.name || "")) continue;
+          for (let i = grp.start; i < grp.start + grp.count; i += 3) {
+            o.getVertexPosition(idx ? idx.getX(i) : i, v);
+            box.expandByPoint(v.applyMatrix4(o.matrixWorld));
+            n++;
+          }
+        }
+      });
+      if (!n) return null;
+      const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+      const r = Math.max(size.x, size.y) / 2;
+      const front = new THREE.Vector3(c.x, c.y - 0.06 * r, box.max.z);        // the models look toward +z
+      const inv = new THREE.Quaternion();
+      bone.getWorldQuaternion(inv).invert();
+      return { bone, r, local: bone.worldToLocal(front.clone()),
+               fwd: new THREE.Vector3(0, 0, 1).applyQuaternion(inv), up: new THREE.Vector3(0, 1, 0).applyQuaternion(inv) };
+    }
+    // The face on a W x H picture seen by `cam`: its middle (x, y), the face's right and up
+    // directions in pixels (a, b), and how much it looks at the camera (1 = straight at it)
+    const _f = new THREE.Vector3(), _fn = new THREE.Vector3(), _fu = new THREE.Vector3(), _fr = new THREE.Vector3(), _fp = new THREE.Vector3();
+    function faceAt(model, cam, W, H) {
+      const F = model.face;
+      if (!F) return null;
+      F.bone.updateWorldMatrix(true, false);
+      const p = F.bone.localToWorld(_f.copy(F.local));
+      _fn.copy(F.fwd).transformDirection(F.bone.matrixWorld);
+      _fu.copy(F.up).transformDirection(F.bone.matrixWorld);
+      _fr.crossVectors(_fu, _fn).normalize();
+      const look = _fp.copy(cam.position).sub(p).normalize().dot(_fn);
+      const px = q => { const s = q.clone().project(cam); return [(s.x + 1) / 2 * W, (1 - s.y) / 2 * H]; };
+      const [x, y] = px(p);
+      const [rx, ry] = px(p.clone().addScaledVector(_fr, F.r));
+      const [ux, uy] = px(p.clone().addScaledVector(_fu, F.r));
+      return { x, y, ax: rx - x, ay: ry - y, bx: ux - x, by: uy - y, look };
     }
 
     const isAncestor = (a, b) => { for (let p = b.parent; p; p = p.parent) if (p === a) return true; return false; };
@@ -1361,6 +1413,7 @@ const Actors = {
       const c = document.createElement("canvas");
       c.width = W; c.height = H;
       c.getContext("2d", { willReadFrequently: true }).drawImage(R.domElement, 0, 0);
+      c.face = faceAt(model, camera, W, H);
       return c;
     }
     // the model's looping animation -> pictures (frames), all cut to the same box so it doesn't wobble
@@ -1409,6 +1462,7 @@ const Actors = {
       scareCam.lookAt(0, 1.42, 0);
       scene.add(model.root);
       R.render(scene, scareCam);
+      Actors.scareFace = faceAt(model, scareCam, SCARE_W, SCARE_H);
       scene.remove(model.root);
       model.scareAction.stop();
       if (model.action) model.action.play();
@@ -1476,8 +1530,10 @@ function cropTo(c, [x0, y0, x1, y1]) {
   const out = document.createElement("canvas");
   out.width = x1 - x0; out.height = y1 - y0;
   out.getContext("2d").drawImage(c, -x0, -y0);
+  out.face = shiftFace(c.face, x0, y0);
   return out;
 }
+const shiftFace = (f, x0, y0) => (f ? { ...f, x: f.x - x0, y: f.y - y0 } : null);
 // Cut the empty space around a picture away (keeps memory small)
 function trim(c) {
   const g = c.getContext("2d", { willReadFrequently: true });
@@ -1492,6 +1548,7 @@ function trim(c) {
   const out = document.createElement("canvas");
   out.width = x1 - x0; out.height = y1 - y0;
   out.getContext("2d").drawImage(c, -x0, -y0);
+  out.face = shiftFace(c.face, x0, y0);
   return out;
 }
 
@@ -1518,8 +1575,49 @@ function drawActor(ctx, role, box, o = {}) {
   ctx.scale(o.flip ? -k : k, k);
   ctx.translate(-ax, -ay);
   if (!o.tint) ctx.drawImage(s.img, 0, 0);
+  if (faceOff(role, o.kind)) drawRedaction(ctx, s.face);
   const shade = o.tint ? 1 : Math.min(0.95, o.shade || 0);
   if (shade > 0.01) { ctx.globalAlpha *= shade; ctx.drawImage(s.black, 0, 0); }
+  ctx.restore();
+}
+
+/* ---------------------------------------------------------------------
+   Weddy (Toy Chica's spot) takes her face plate off when she leaves the
+   stage, like Toy Chica: where her face was there is a glitching black
+   box, like Honcho's head in DOORS. FACE_OFF: role -> the kinds it shows on
+   ("scare" = her live 3D jumpscare). Needs a 3D model (it follows the head bone).
+   --------------------------------------------------------------------- */
+const FACE_OFF = { tchica: ["creep", "vent", "hall", "lunge", "scare"] };
+const faceOff = (role, kind) => !!(FACE_OFF[role] && FACE_OFF[role].includes(kind));
+// a small repeatable random number list (the same glitch for everything drawn in the same moment)
+function glitchRandom(seed) {
+  let t = seed >>> 0;
+  return () => { t = (t + 0x6D2B79F5) >>> 0; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
+}
+// The black box over the face. f: where the face is (from faceAt), in the picture's pixels.
+function drawRedaction(ctx, f) {
+  if (!f || f.look < 0.1) return;                       // her face is turned away
+  const rnd = glitchRandom(Math.floor(performance.now() / 70));   // a new glitch about 14 times a second
+  ctx.save();
+  // face space: x -1..1 = left..right of the face, y -1..1 = top..bottom
+  // (the whole face: eyes down to the chin, so a bit below the middle of the face)
+  ctx.transform(f.ax * 0.64, f.ay * 0.64, -f.bx * 0.6, -f.by * 0.6, f.x - f.bx * 0.22, f.y - f.by * 0.22);
+  const jump = rnd() < 0.3 ? (rnd() - 0.5) * 0.4 : 0;     // the whole box jumps sideways
+  ctx.fillStyle = "#000";
+  for (let i = 0; i < 4; i++) {                          // 4 slices, each can slip
+    const slip = rnd() < 0.3 ? (rnd() - 0.5) * 0.55 : 0;
+    const wide = rnd() < 0.12 ? 0.75 + rnd() * 0.2 : 1;
+    ctx.fillRect(-1 + jump + slip, -1 + i * 0.5, 2 * wide, 0.52);
+  }
+  if (rnd() < 0.25) {                                    // a faint second copy, a bit off
+    ctx.globalAlpha *= 0.45;
+    ctx.fillRect(-1 + jump + (rnd() - 0.5) * 0.9, -1 + (rnd() - 0.5) * 0.5, 2, 2);
+    ctx.globalAlpha /= 0.45;
+  }
+  if (rnd() < 0.55) {                                    // a thin static line through it
+    ctx.fillStyle = rnd() < 0.5 ? "#fff" : "#7a7a7a";
+    ctx.fillRect(-1.25 + (rnd() - 0.5) * 0.4, -1 + rnd() * 2, 0.5 + rnd() * 2, 0.07);
+  }
   ctx.restore();
 }
 
@@ -1589,6 +1687,7 @@ function drawScare3D(ctx, who, i) {
   const k = Math.min(1, t / Math.max(0.1, len)), sh = 2 + 9 * k * k;
   ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
   ctx.drawImage(Actors.scareFrame(who, t), -8, -6, 496, 372);
+  if (faceOff(who, "scare")) { ctx.translate(-8, -6); ctx.scale(496 / SCARE_W, 372 / SCARE_H); drawRedaction(ctx, Actors.scareFace); }
   ctx.restore();
 }
 
