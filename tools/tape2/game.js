@@ -74,7 +74,7 @@ const CAST = {
   tbonnie: { name: W("Characters", "Toy Cheddy") },     // the ids are the FNaF 2 spots: Cheddy takes Bonnie's,
   tchica:  { name: W("Characters", "Toy Weddy") },      // Weddy takes Chica's, Eddy takes Freddy's
   mangle:  { name: W("Characters", "Meyg") },
-  bb:      { name: W("Characters", "Balloon Kid") },
+  bb:      { name: W("Characters", "The Peepeepoopoo Monster") },   // Balloon Boy's spot (Aidan's picture, characters/bb.png)
   puppet:  { name: W("Characters", "The Puppet") },
   wfreddy: { name: W("Characters", "Withered Eddy") },
   wbonnie: { name: W("Characters", "Withered Cheddy") },
@@ -86,7 +86,7 @@ const CAST = {
 // Custom night: where each portrait's right eye is (as you look at it), in the 80 x 70 portrait,
 // and how big the star over it is (percent of the 48-wide star picture)
 const EYE_SPOT = {
-  wfreddy: [49.5, 45, 42], wbonnie: [48, 51, 40], wchica: [49, 46.5, 40], foxy: [43, 56, 40], bb: [49, 43, 36],
+  wfreddy: [49.5, 45, 42], wbonnie: [48, 51, 40], wchica: [49, 46.5, 40], foxy: [43, 56, 40], bb: [51, 21, 30],
   tfreddy: [47, 29, 42], tbonnie: [47, 28, 42], tchica: [47, 29, 42], mangle: [53, 41, 40], golden: [56, 54, 40],
 };
 // Which death minigame each character sends you to (anyone else: a random one)

@@ -157,6 +157,12 @@ function makeSprite(canvas, headPart, same) {
            head: [hx0 / k, y0 / k, (hx1 + 1) / k, (band + 1) / k] };
 }
 
+// 2D drawings whose head is not simply the top of the picture: where it is
+// (left, top, right, bottom as parts of the picture's width and height)
+const HEAD_FRACTION = {
+  bb: [0.17, 0.0, 0.52, 0.5],      // the Peepeepoopoo Monster: his face is on the left
+};
+
 const Actors = {
   sprites: new Map(),          // "role/kind" -> sprite
   models: {},                  // role -> the model file used (for the debug panel)
@@ -184,6 +190,8 @@ const Actors = {
     const p = pic("Chars", role);
     if (!p.img) return null;
     const s = makeSprite(p.img, 0.4);       // measured straight from the picture (no slow copy)
+    const hf = HEAD_FRACTION[role];
+    if (hf) s.head = [hf[0] * s.w, hf[1] * s.h, hf[2] * s.w, hf[3] * s.h];
     this.sprites.set(key, s);
     return s;
   },
@@ -640,7 +648,9 @@ function drawActor(ctx, role, box, o = {}) {
   if (!s) return;
   const head = o.mode === "head";
   const part = head ? s.head : s.body;
-  const k = (box[3] - box[1]) / Math.max(1, part[3] - part[1]);
+  let k = (box[3] - box[1]) / Math.max(1, part[3] - part[1]);
+  // a very wide character (the Peepeepoopoo Monster) in a spot made for a tall one: keep it near the spot's width
+  if (!head) k = Math.min(k, (box[2] - box[0]) * 1.6 / Math.max(1, part[2] - part[0]));
   const ax = (part[0] + part[2]) / 2, ay = head ? (part[1] + part[3]) / 2 : part[3];   // this point of the picture...
   const tx = (box[0] + box[2]) / 2, ty = head ? (box[1] + box[3]) / 2 : box[3];       // ...goes here
   ctx.save();
