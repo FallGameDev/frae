@@ -5,8 +5,8 @@ torn up (holes with the endoskeleton and wires showing, ripped edges,
 grime) and misconfigured (head knocked crooked, plus one thing each):
 
   wfreddy  Withered Eddy    an eye socket emptied out, torn ear
-  wbonnie  Withered Weddy   no face: a black hole with endoskeleton eyes and teeth
-  wchica   Withered Cheddy  jaw broken open and hanging
+  wbonnie  Withered Cheddy  no face: a black hole with endoskeleton eyes and teeth
+  wchica   Withered Weddy   jaw broken open and hanging
   foxy     Withered Endo    chest ripped open, a chunk bitten out of an ear
 
 Works on any full-body drawing (the game uses Aidan's 2D drawings for

@@ -45,14 +45,14 @@ const MODEL_TYPES = ["glb", "gltf", "fbx", "obj"];
 // pose: "broken" = bent and wrecked (Toy Endo's model standing in for Meyg)
 const ACTOR_FILES = {
   tfreddy: [{ file: "toy_eddy" }],
-  tbonnie: [{ file: "toy_weddy" }],
-  tchica:  [{ file: "toy_cheddy" }],
+  tbonnie: [{ file: "toy_cheddy" }],      // Bonnie's spot: Cheddy
+  tchica:  [{ file: "toy_weddy" }],       // Chica's spot: Weddy
   mangle:  [{ file: "meyg" }, { file: "mangled_endo" }, { file: "toy_endo", pose: "broken" }],
   bb:      [{ file: "balloon_kid" }],
   puppet:  [{ file: "the_puppet" }, { file: "puppet" }],
   wfreddy: [{ file: "withered_eddy" }],
-  wbonnie: [{ file: "withered_weddy" }],
-  wchica:  [{ file: "withered_cheddy" }],
+  wbonnie: [{ file: "withered_cheddy" }],
+  wchica:  [{ file: "withered_weddy" }],
   foxy:    [{ file: "withered_endo" }],
   golden:  [{ file: "golden_eddie" }, { file: "golden_eddy" }],
   endo:    [{ file: "endo" }, { file: "endoskeleton" }],

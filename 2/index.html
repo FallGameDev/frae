@@ -968,14 +968,14 @@ const MODEL_TYPES = ["glb", "gltf", "fbx", "obj"];
 // pose: "broken" = bent and wrecked (Toy Endo's model standing in for Meyg)
 const ACTOR_FILES = {
   tfreddy: [{ file: "toy_eddy" }],
-  tbonnie: [{ file: "toy_weddy" }],
-  tchica:  [{ file: "toy_cheddy" }],
+  tbonnie: [{ file: "toy_cheddy" }],      // Bonnie's spot: Cheddy
+  tchica:  [{ file: "toy_weddy" }],       // Chica's spot: Weddy
   mangle:  [{ file: "meyg" }, { file: "mangled_endo" }, { file: "toy_endo", pose: "broken" }],
   bb:      [{ file: "balloon_kid" }],
   puppet:  [{ file: "the_puppet" }, { file: "puppet" }],
   wfreddy: [{ file: "withered_eddy" }],
-  wbonnie: [{ file: "withered_weddy" }],
-  wchica:  [{ file: "withered_cheddy" }],
+  wbonnie: [{ file: "withered_cheddy" }],
+  wchica:  [{ file: "withered_weddy" }],
   foxy:    [{ file: "withered_endo" }],
   golden:  [{ file: "golden_eddie" }, { file: "golden_eddy" }],
   endo:    [{ file: "endo" }, { file: "endoskeleton" }],
@@ -1684,14 +1684,14 @@ class Scripts {
    --------------------------------------------------------------------- */
 const CAST = {
   tfreddy: { name: W("Characters", "Toy Eddy") },
-  tbonnie: { name: W("Characters", "Toy Weddy") },
-  tchica:  { name: W("Characters", "Toy Cheddy") },
+  tbonnie: { name: W("Characters", "Toy Cheddy") },     // the ids are the FNaF 2 spots: Cheddy takes Bonnie's,
+  tchica:  { name: W("Characters", "Toy Weddy") },      // Weddy takes Chica's, Eddy takes Freddy's
   mangle:  { name: W("Characters", "Meyg") },
   bb:      { name: W("Characters", "Balloon Kid") },
   puppet:  { name: W("Characters", "The Puppet") },
   wfreddy: { name: W("Characters", "Withered Eddy") },
-  wbonnie: { name: W("Characters", "Withered Weddy") },
-  wchica:  { name: W("Characters", "Withered Cheddy") },
+  wbonnie: { name: W("Characters", "Withered Cheddy") },
+  wchica:  { name: W("Characters", "Withered Weddy") },
   foxy:    { name: W("Characters", "Withered Endo") },
   golden:  { name: W("Characters", "Golden Eddie") },
 };
@@ -2151,7 +2151,7 @@ class Game {
       phone: "off", callTime: 0,
       halluc: null,
       endo: false, shadow: false,
-      slide: 0,                  // Toy Weddy sliding past the mask
+      slide: 0,                  // Toy Cheddy sliding past the mask
       jumpscare: null,
       frozen: false,
       camsSeen: new Set(),
@@ -2677,7 +2677,7 @@ class Game {
     n.switchFx = Math.max(0, n.switchFx - 0.08);
     n.maskTime = n.maskUp ? n.maskTime + TICK : 0;
 
-    // Toy Weddy slides past while the mask is on
+    // Toy Cheddy slides past while the mask is on
     if (n.visit && n.visit.who === "tbonnie" && n.visit.started && n.maskUp) n.slide = Math.min(1, n.slide + TICK / 2.5);
     else n.slide = 0;
 
@@ -3218,7 +3218,7 @@ class Game {
     if (n.golden === "office") drawSpot(ctx, EXTRA_SPOTS.golden, SX(pan - 20), SY(-42), 75);
     if (n.shadow && !n.flash) drawSpot(ctx, EXTRA_SPOTS.shadow, SX(pan - 170), SY(0), 100, { alpha: 0.85 });
     if (v && v.who === "tbonnie") {
-      // Toy Weddy right in front of you; with the mask on he runs off across the room
+      // Toy Cheddy right in front of you; with the mask on Cheddy runs off across the room
       if (!n.maskUp) pose("in-tbonnie");
       else drawSpot(ctx, EXTRA_SPOTS.tbonnie, 620 - n.slide * 820, SY(25), 160, { shade: addShade(EXTRA_SPOTS.tbonnie.shade, flick) });
     }

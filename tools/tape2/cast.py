@@ -41,8 +41,8 @@ TAPE1_CHARS = os.path.join(os.path.dirname(HERE), 'characters')        # the Tap
 # Who is who. Until Aidan's files arrive, these stand in.
 # ---------------------------------------------------------------------------
 STAND_IN = {
-    'tfreddy': 'Eddy.svg', 'tbonnie': 'Weddy.svg', 'tchica': 'Cheddy.svg',
-    'wfreddy': 'Eddy.svg', 'wbonnie': 'Weddy.svg', 'wchica': 'Cheddy.svg',
+    'tfreddy': 'Eddy.svg', 'tbonnie': 'Cheddy.svg', 'tchica': 'Weddy.svg',      # Bonnie's spot = Cheddy, Chica's = Weddy
+    'wfreddy': 'Eddy.svg', 'wbonnie': 'Cheddy.svg', 'wchica': 'Weddy.svg',
     'foxy': 'Endo.svg', 'mangle': 'Endo.svg', 'golden': 'Golden.svg', 'endo': 'Endo.svg', 'shadow': 'Eddy.svg',
     'bb': None, 'puppet': None,        # drawn below
 }
