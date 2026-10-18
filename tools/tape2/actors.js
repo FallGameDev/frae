@@ -74,8 +74,9 @@ const MODEL_POSES = {
                  "Ear.L": [0, -55, 0], "Ear.R": [0, 70, 30], "Leg.L": [20, 20, 0] },
 };
 const ACTOR_RENDER_H = 760;            // how tall (in pixels) each 3D character picture is made
-const ACTOR_ANIM_H = 520;              // ...and each frame of an animation (smaller: there are many)
-const ACTOR_ANIM_FPS = 12, ACTOR_ANIM_MAX = 30;
+const ACTOR_ANIM_H = 440;              // ...and each frame of an animation (smaller: there are many)
+const ACTOR_ANIM_FPS = 12, ACTOR_ANIM_MAX = 10;   // at most 10 frames per loop (memory)
+const SCARE_W = 640, SCARE_H = 480;    // jumpscares are drawn live, this big
 
 /* ---------------------------------------------------------------------
    THE SET RIG: models that don't use the base model's skeleton
@@ -234,22 +235,36 @@ const Actors = {
         const faces = await three.loadFaces(f.file);
         // standing: its own looping animation if it has one, otherwise the standing pose (calm face)
         three.setFace(model, null);
-        if (model.mixer) this.sprites.set(role + "/stand", three.renderAnimation(model, 8, poses[0]));
+        const animate = model.clip && role !== "shadow";      // (the all-black shadow doesn't need to move)
+        if (animate) this.sprites.set(role + "/stand", three.renderAnimation(model, 8, poses[0]));
         else this.sprites.set(role + "/stand", makeSprite(three.render(model, poses[0], 8), 0.36));
         // creeping around (cameras, hall, vents): standing, creepy face
         if (faces[2]) {
           three.setFace(model, faces[2]);
-          this.sprites.set(role + "/creep", model.mixer ? three.renderAnimation(model, 8, poses[0]) : makeSprite(three.render(model, poses[0], 8), 0.36));
+          this.sprites.set(role + "/creep", animate ? three.renderAnimation(model, 8, poses[0]) : makeSprite(three.render(model, poses[0], 8), 0.36));
         }
         // reaching for you (in the office, jumpscares): scary face
         three.setFace(model, faces[3] || faces[2] || null);
         this.sprites.set(role + "/lunge", makeSprite(three.render(model, poses[1], 0), 0.36));
         three.setFace(model, null);
+        if (model.scareClip && role !== "shadow") this.scares[role] = { model, face: faces[3] || faces[2] || null };
         this.models[role] = f.url;
       } catch (e) { console.warn("Could not use the 3D model", f.url, e); }
       if (onProgress) onProgress(++done / roles.length);
     }
-    three.dispose();
+    // keep three.js only if a jumpscare needs it
+    if (Object.keys(this.scares).length) this.three = three;
+    else three.dispose();
+  },
+
+  // ---- live 3D jumpscares ----
+  scares: {},                  // role -> {model, face}
+  hasScare(role) { return !!(this.three && this.scares[role]); },
+  scareLength(role) { return this.hasScare(role) ? this.scares[role].model.scareClip.duration : 0; },
+  scareFrame(role, t) {
+    const s = this.scares[role];
+    this.three.setFace(s.model, s.face);
+    return this.three.renderScare(s.model, t);
   },
 
   // three.js (lib/three, loaded only when there is a model to show)
@@ -305,14 +320,19 @@ const Actors = {
       const model = { root, bones, baseRig: isBaseRig(bones) };
       // not the base skeleton: find the set-rig parts in it
       if (!model.baseRig) model.rig = findSetRig(root);
-      // a looping animation: the one called idle/loop, otherwise the first one
-      const clip = clips.find(c => /idle|loop/i.test(c.name)) || clips[0];
-      if (clip && clip.duration > 0.05 && clip.tracks.length) {
-        model.mixer = new THREE.AnimationMixer(root);
+      // a looping animation: the one called idle/loop, otherwise the first one (that isn't a jumpscare)
+      const isScare = c => /scare|jump|death|kill/i.test(c.name);
+      const clip = clips.find(c => /idle|loop/i.test(c.name)) || clips.find(c => !isScare(c));
+      const usable = c => c && c.duration > 0.05 && c.tracks.length;
+      if (usable(clip) || usable(clips.find(isScare))) model.mixer = new THREE.AnimationMixer(root);
+      if (usable(clip)) {
         model.action = model.mixer.clipAction(clip);
         model.action.play();
         model.clip = clip;
       }
+      // a jumpscare animation (Scare / Jumpscare / Death): played live when this character gets you
+      const scare = clips.find(isScare);
+      if (usable(scare)) { model.scareClip = scare; model.scareAction = model.mixer.clipAction(scare); }
       return model;
     }
 
@@ -411,6 +431,25 @@ const Actors = {
     }
 
     function dispose() { R.dispose(); R.forceContextLoss && R.forceContextLoss(); }
+
+    // One moment of a jumpscare, from where you sit (live: only while a jumpscare plays)
+    const scareCam = new THREE.PerspectiveCamera(55, SCARE_W / SCARE_H, 0.01, 1000);
+    function renderScare(model, t) {
+      for (const b of Object.values(model.bones)) { b.quaternion.copy(b.userData.rest); b.position.copy(b.userData.restPos); }
+      model.mixer.stopAllAction();
+      model.scareAction.reset().play();
+      model.mixer.setTime(Math.min(t, model.scareClip.duration - 0.001));
+      model.root.updateMatrixWorld(true);
+      R.setSize(SCARE_W, SCARE_H, false);
+      scareCam.position.set(0, 1.62, 3.15);
+      scareCam.lookAt(0, 1.42, 0);
+      scene.add(model.root);
+      R.render(scene, scareCam);
+      scene.remove(model.root);
+      model.scareAction.stop();
+      if (model.action) model.action.play();
+      return R.domElement;
+    }
     // A toy's other faces: head textures painted by tools/face_toys.py (a mod can bring its own)
     const texLoader = new THREE.TextureLoader();
     async function loadFaces(file) {
@@ -441,7 +480,7 @@ const Actors = {
       });
     }
 
-    return { loadModel, render, renderAnimation, loadFaces, setFace, dispose };
+    return { loadModel, render, renderAnimation, renderScare, loadFaces, setFace, dispose };
   },
 };
 
@@ -571,10 +610,27 @@ const TITLE_FACES = [
   { role: "wchica", box: [240, 20, 530, 340], shade: 0.45, rot: -6 },
 ];
 // jumpscares: how many steps the lunge takes
-const SCARE_FRAMES = who => (who === "golden" ? 1 : 9);
+const SCARE_FRAMES = who => (Actors.hasScare(who) ? Math.ceil(Actors.scareLength(who) * 15) + 6
+  : who === "golden" ? 1 : 9);
+
+// A 3D jumpscare (the model's own Scare animation), drawn live over the dark office
+function drawScare3D(ctx, who, i) {
+  const t = i / 15, len = Actors.scareLength(who);
+  ctx.save();
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
+  const office = pic("Office", "000");
+  if (office && office.img) ctx.drawImage(office.img, -60, 0, 600, 360);
+  ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.fillRect(0, 0, 480, 360);
+  // the screen shakes harder as it reaches you
+  const k = Math.min(1, t / Math.max(0.1, len)), sh = 2 + 9 * k * k;
+  ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
+  ctx.drawImage(Actors.scareFrame(who, t), -8, -6, 496, 372);
+  ctx.restore();
+}
 
 // One jumpscare step: the character lunging at you in the dark office
 function drawScare(ctx, who, i) {
+  if (Actors.hasScare(who)) return drawScare3D(ctx, who, i);
   const frames = SCARE_FRAMES(who);
   const k = Math.min(1, i / Math.max(1, frames - 1));
   const u = k * k * (3 - 2 * k);                       // smooth start and stop

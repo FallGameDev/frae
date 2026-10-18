@@ -123,9 +123,11 @@ def main():
             o.hide_set(False)
             o.select_set(True)
         bpy.ops.export_scene.gltf(filepath=os.path.join(MODELS, toy + '.glb'), export_format='GLB', use_selection=True,
-                                  export_skins=True, export_animations=False)
+                                  export_skins=True, export_animations=True, export_animation_mode='NLA_TRACKS',
+                                  export_force_sampling=True, export_frame_range=False)
         bpy.ops.export_scene.fbx(filepath=os.path.join(MODELS, toy + '.fbx'), use_selection=True, add_leaf_bones=False,
-                                 path_mode='COPY', embed_textures=True, bake_anim=False)
+                                 path_mode='COPY', embed_textures=True, bake_anim=True,
+                                 bake_anim_use_nla_strips=True, bake_anim_use_all_actions=False, bake_anim_force_startend_keying=True)
         print('exported', toy)
 
 

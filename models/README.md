@@ -46,6 +46,10 @@ model ends up in the same poses.
 
 **Animations:** if the model has a looping animation (one named idle or
 loop, otherwise its first one), it plays whenever the character stands.
+An animation named Scare (or Jumpscare / Death) is played as the jumpscare,
+filmed from where the player sits (the character starts about 3 units in
+front of the camera and should come at it). The toys' animations are made by
+`tools/animate_toys.py`.
 
 ## What's here
 - `basemodel.blend`: Aidan's original base model (no skeleton).
