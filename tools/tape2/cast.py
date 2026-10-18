@@ -523,6 +523,10 @@ def apply(b):
     cw_ = ch_ * cry.width / cry.height
     art['Riceria'] = {'crying': dict(w=cw_, h=ch_, cx=cw_ / 2, cy=ch_ / 2,
                                      layers=[dict(img=save_img(b, cry, 'riceria-crying'), x=0, y=0, w=cw_, h=ch_)])}
+    # the newspaper ad at the start of a new game (Aidan's picture, 1280 x 720)
+    paper = Image.open(os.path.join(HERE, 'newspaper.png')).convert('RGB')
+    art['Newspaper'] = {'page': dict(w=480, h=270, cx=240, cy=135,
+                                     layers=[dict(img=save_img(b, paper, 'newspaper'), x=0, y=0, w=480, h=270)])}
     art['Loading'] = {'icon': dict(w=40, h=40, cx=20, cy=20, spin=True,
                                    layers=[dict(img='assets/loading-rice.webp', x=-3, y=4.85, w=46, h=34.85)])}
 

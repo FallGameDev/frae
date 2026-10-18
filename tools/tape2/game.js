@@ -1306,6 +1306,12 @@ class Game {
     ctx.restore();
   }
   drawNewspaper(ctx) {
+    // Aidan's newspaper ad, on paper of the same grey
+    ctx.fillStyle = "#cacaca"; ctx.fillRect(0, 0, 480, 360);
+    draw(ctx, pic("Newspaper", "page"), 240, 180);
+  }
+  // (the old drawn newspaper, not used any more)
+  drawOldNewspaper(ctx) {
     this.drawPaper(ctx, -20, -20, 520, 400, 0);
     this.drawPaper(ctx, 70, 30, 340, 320, -0.02);
     const C = { font: "Courier Prime" };

@@ -44,6 +44,7 @@ const PICTURE_NAMES = {
   "Plush": ["Sprite61", "Sprite65"],
   "Custom": ["star"],
   "Riceria": ["crying"],
+  "Newspaper": ["page"],
   "Loading": ["icon"],
   "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy", "runner"],
   "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],

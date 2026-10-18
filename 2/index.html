@@ -316,6 +316,7 @@ const PICTURE_NAMES = {
   "Plush": ["Sprite61", "Sprite65"],
   "Custom": ["star"],
   "Riceria": ["crying"],
+  "Newspaper": ["page"],
   "Loading": ["icon"],
   "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy", "runner"],
   "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],
@@ -2918,6 +2919,12 @@ class Game {
     ctx.restore();
   }
   drawNewspaper(ctx) {
+    // Aidan's newspaper ad, on paper of the same grey
+    ctx.fillStyle = "#cacaca"; ctx.fillRect(0, 0, 480, 360);
+    draw(ctx, pic("Newspaper", "page"), 240, 180);
+  }
+  // (the old drawn newspaper, not used any more)
+  drawOldNewspaper(ctx) {
     this.drawPaper(ctx, -20, -20, 520, 400, 0);
     this.drawPaper(ctx, 70, 30, 340, 320, -0.02);
     const C = { font: "Courier Prime" };
