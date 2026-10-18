@@ -7,9 +7,10 @@ The toys' animations, made on their skeleton in models/toys_rigged.blend:
   Walk   (2 s loop)  a slow, lurching walk (coming down the hall)
   Scare  (jumpscare, played when a toy gets you)
          Toy Eddy    lunges at you while his head spins all the way round
-         Toy Weddy   lunges chest-first into you (the chest wobbles on impact:
-                     a "Bust" bone, so it works in the game and other engines;
-                     the soft body lattice still works on top in Blender)
+         Toy Weddy   lunges chest-first into you. Her chest has NO keyframes: in
+                     Blender the soft body lattice does all the wobbling; the
+                     game runs its own spring physics on her "Bust" bone
+                     (actors.js, jiggle) the same way
          Toy Cheddy  comes up from below and strangles you (hands at your neck, shaking)
          Meyg        twisted and broken, she reaches up and covers the camera with her hand
 
@@ -28,6 +29,7 @@ BLEND = os.path.join(os.path.dirname(HERE), 'models', 'toys_rigged.blend')
 FPS = 24
 HOME = {}                  # each rig's own spot (moves are measured from here)
 R = math.radians
+FREE = {'Bust'}            # bones that never get keyframes (moved by physics instead)
 
 STAND = {'UpperArm.L': (-78, 0, 0), 'UpperArm.R': (-78, 0, 0), 'Head': (0, 6, 0)}
 BROKEN = {'UpperArm.L': (40, 0, 30), 'UpperArm.R': (-88, 0, 0), 'Head': (12, 14, 12), 'Chest': (8, 10, 6),
@@ -46,6 +48,8 @@ def clear(rig):
 def key(rig, frame, pose, loc=None, scale=None):
     """Keyframe a whole pose ({bone: (x, y, z) degrees}) at a frame; loc = where the toy stands (x, y, z)."""
     for b in rig.pose.bones:
+        if b.name in FREE:                    # left to physics (the lattice / the game's jiggle)
+            continue
         x, y, z = pose.get(b.name, (0, 0, 0))
         b.rotation_euler = (R(x), R(y), R(z))
         b.keyframe_insert('rotation_euler', frame=frame)
@@ -92,19 +96,9 @@ def finish(rig, act, start, end, cyclic=False):
 
 
 def bust(rig, pose, t, kind):
-    """Toy Weddy's chest follows through (the lattice wobble, baked onto her Bust bone so it exports):
-    it lags behind the body and bounces. Returns the scale dict for key()."""
-    if 'Bust' not in rig.pose.bones:
-        return None
-    w = 2 * math.pi
-    if kind == 'idle':                       # breathing: a slow, lagging sway
-        r, sy = (5 * math.sin(w * t - 0.9), 0, 2 * math.sin(w * t - 0.6)), 0.03 * math.sin(w * t - 0.9)
-    elif kind == 'walk':                     # a bounce on every step (2 steps a loop)
-        r, sy = (9 * math.sin(2 * w * t - 1.1), 0, 4 * math.sin(w * t - 0.8)), 0.06 * math.sin(2 * w * t - 1.1)
-    else:                                    # crawl: swings side to side under her
-        r, sy = (4 * math.sin(w * t - 0.7), 0, 8 * math.sin(w * t - 0.9)), 0.04 * math.sin(w * t - 0.7)
-    pose['Bust'] = r
-    return {'Bust': (1 - sy * 0.6, 1 + sy, 1 - sy * 0.6)}
+    """(Toy Weddy's chest used to get a hand-made wobble here. Now physics does it: the soft body
+    lattice in Blender, spring physics on the Bust bone in the game. Kept so the calls still work.)"""
+    return None
 
 
 def idle(rig, broken=False, phase=0.0):
@@ -178,12 +172,12 @@ def scare_weddy(rig, home):
     act = new_action(rig, 'Scare')
     x, y, z = home
     back = {'UpperArm.L': (-60, 0, 35), 'UpperArm.R': (-60, 0, -35)}                  # arms swung back
-    key(rig, 1, mix(STAND, {}), (x, y, z), {'Bust': (1, 1, 1)})
-    key(rig, 6, mix(back, {'Chest': (12, 0, 0), 'Head': (8, 0, 0)}), (x, y + 0.1, z), {'Bust': (1, 1, 1)})
-    key(rig, 14, mix(back, {'Chest': (16, 0, 0), 'Head': (-6, 0, 0)}), (x, y - 1.9, z), {'Bust': (1.05, 0.9, 1.05)})
-    # impact: the chest squashes, then wobbles
-    for f, sy, sx in ((16, 0.78, 1.12), (18, 1.12, 0.95), (20, 0.9, 1.05), (22, 1.06, 0.98), (24, 0.97, 1.01), (27, 1.0, 1.0)):
-        key(rig, f, mix(back, {'Chest': (14, 0, 0), 'Head': (-8, 0, 4)}), (x, y - 2.05, z), {'Bust': (sx, sy, sx)})
+    key(rig, 1, mix(STAND, {}), (x, y, z))
+    key(rig, 6, mix(back, {'Chest': (12, 0, 0), 'Head': (8, 0, 0)}), (x, y + 0.1, z))
+    key(rig, 14, mix(back, {'Chest': (16, 0, 0), 'Head': (-6, 0, 0)}), (x, y - 1.9, z))
+    # impact: she stops dead (the chest's wobble comes from the physics)
+    key(rig, 16, mix(back, {'Chest': (14, 0, 0), 'Head': (-8, 0, 4)}), (x, y - 2.05, z))
+    key(rig, 27, mix(back, {'Chest': (14, 0, 0), 'Head': (-8, 0, 4)}), (x, y - 2.05, z))
     finish(rig, act, 1, 27)
 
 

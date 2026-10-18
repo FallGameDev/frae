@@ -1000,7 +1000,12 @@ const MODEL_POSES = {
 const ACTOR_RENDER_H = 760;            // how tall (in pixels) each 3D character picture is made
 const ACTOR_ANIM_H = 440;              // ...and each frame of an animation (smaller: there are many)
 const ACTOR_ANIM_FPS = 12, ACTOR_ANIM_MAX = 10;   // at most 10 frames per loop (memory)
-const SCARE_W = 640, SCARE_H = 480;    // jumpscares are drawn live, this big
+const SCARE_W = 640, SCARE_H = 480;
+// Jiggle bones (any bone named Bust / Jiggle / Breast): spring physics in the game instead of keyframes.
+//   stiff: spring strength, damp: how fast it settles, reach: how far the tip may lag (x its length),
+//   squash: how much it may stretch / squash (0.2 = 20%), length: the tip's distance (bone units)
+const JIGGLE_BONE = /^(bust|jiggle|breast)/;
+const JIGGLE = { stiff: 170, damp: 7, reach: 0.6, squash: 0.18, length: 0.3 };    // jumpscares are drawn live, this big
 
 /* ---------------------------------------------------------------------
    THE SET RIG: models that don't use the base model's skeleton
@@ -1267,6 +1272,8 @@ const Actors = {
       root.traverse(o => { if (o.isBone) { bones[norm(o.name)] = o; o.userData.rest = o.quaternion.clone(); o.userData.restPos = o.position.clone(); } });
       const model = { root, bones, baseRig: isBaseRig(bones) };
       model.face = findFace(model);
+      // bones that wobble by themselves (Weddy's Bust): spring physics, never keyframes
+      model.jiggles = Object.entries(bones).filter(([n]) => JIGGLE_BONE.test(n)).map(([, bone]) => ({ bone }));
       // not the base skeleton: find the set-rig parts in it
       if (!model.baseRig) model.rig = findSetRig(root);
       // a looping animation: the one called idle/loop, otherwise the first one (that isn't a jumpscare)
@@ -1338,6 +1345,42 @@ const Actors = {
       const [rx, ry] = px(p.clone().addScaledVector(_fr, F.r));
       const [ux, uy] = px(p.clone().addScaledVector(_fu, F.r));
       return { x, y, ax: rx - x, ay: ry - y, bx: ux - x, by: uy - y, look };
+    }
+
+    /* Jiggle physics (in place of Blender's soft body lattice, which a .glb can't carry):
+       the bone's tip is a weight on a spring. Where the tip WOULD be (the animated body
+       carrying it) pulls the weight; the bone then points at the weight and stretches or
+       squashes with it. So the chest lags, bounces and settles on its own. */
+    const _jh = new THREE.Vector3(), _jt = new THREE.Vector3(), _jd = new THREE.Vector3(), _jq = new THREE.Quaternion(),
+          _jw = new THREE.Quaternion(), _jp = new THREE.Quaternion(), _ja = new THREE.Vector3(), _jb = new THREE.Vector3();
+    function jiggleReset(model) { for (const J of model.jiggles || []) J.p = null; }
+    function jiggleStep(model, dt) {
+      for (const J of model.jiggles || []) {
+        const b = J.bone;
+        b.scale.set(1, 1, 1);
+        b.updateWorldMatrix(true, false);
+        b.getWorldPosition(_jh);
+        _jt.set(0, JIGGLE.length, 0); b.localToWorld(_jt);           // where the tip would be (bones point along +y)
+        if (!J.p) { J.p = _jt.clone(); J.v = new THREE.Vector3(); J.rest = _jt.distanceTo(_jh); }
+        // spring toward the target, with damping
+        _jd.copy(_jt).sub(J.p).multiplyScalar(JIGGLE.stiff).addScaledVector(J.v, -JIGGLE.damp);
+        J.v.addScaledVector(_jd, dt);
+        J.p.addScaledVector(J.v, dt);
+        // don't let it fly off (a big lunge)
+        const off = J.p.distanceTo(_jt), max = J.rest * JIGGLE.reach;
+        if (off > max) J.p.sub(_jt).multiplyScalar(max / off).add(_jt);
+        // point the bone at the weight
+        _ja.copy(_jt).sub(_jh).normalize();
+        _jb.copy(J.p).sub(_jh);
+        const stretch = Math.min(1 + JIGGLE.squash, Math.max(1 - JIGGLE.squash, _jb.length() / J.rest));
+        _jq.setFromUnitVectors(_ja, _jb.normalize());
+        b.getWorldQuaternion(_jw);
+        b.parent.getWorldQuaternion(_jp);
+        b.quaternion.copy(_jp.invert().multiply(_jq.multiply(_jw)));
+        b.scale.set(1 / Math.sqrt(stretch), stretch, 1 / Math.sqrt(stretch));
+        b.updateMatrixWorld(true);
+        J.stretch = stretch; J.bend = _ja.angleTo(_jb) * 180 / Math.PI; J.off = J.p.distanceTo(_jt); J.speed = J.v.length();   // (for the debug panel)
+      }
     }
 
     const isAncestor = (a, b) => { for (let p = b.parent; p; p = p.parent) if (p === a) return true; return false; };
@@ -1433,11 +1476,28 @@ const Actors = {
       model.mixer.stopAllAction();
       act.reset().play();
       const shots = [];
-      for (let i = 0; i < n; i++) {
+      const at = t => {
         pose(model, standPose);                       // standing pose for the bones the animation doesn't move...
-        model.mixer.setTime(clip.duration * i / n);   // ...then the animation on top
+        model.mixer.stopAllAction();
+        act.reset().play();                           // (restarted each time: see renderScare)
+        model.mixer.setTime(t);                       // ...then the animation on top
         model.root.updateMatrixWorld(true);
-        shots.push(shoot(model, angle, o.H || ACTOR_ANIM_H, o.view));
+      };
+      if (model.jiggles && model.jiggles.length) {
+        // with jiggle bones: play the loop twice (the first time lets the wobble settle into its rhythm)
+        jiggleReset(model);
+        const dt = 1 / 60, D = clip.duration;
+        let next = 0;
+        for (let t = 0; next < n; t += dt) {
+          at(t % D);
+          jiggleStep(model, dt);
+          if (t >= D + next * D / n - 1e-6) { shots.push(shoot(model, angle, o.H || ACTOR_ANIM_H, o.view)); next++; }
+        }
+      } else {
+        for (let i = 0; i < n; i++) {
+          at(clip.duration * i / n);
+          shots.push(shoot(model, angle, o.H || ACTOR_ANIM_H, o.view));
+        }
       }
       model.mixer.stopAllAction();
       if (model.action) model.action.play();
@@ -1460,10 +1520,31 @@ const Actors = {
     // One moment of a jumpscare, from where you sit (live: only while a jumpscare plays)
     const scareCam = new THREE.PerspectiveCamera(55, SCARE_W / SCARE_H, 0.01, 1000);
     function renderScare(model, t) {
-      for (const b of Object.values(model.bones)) { b.quaternion.copy(b.userData.rest); b.position.copy(b.userData.restPos); }
-      model.mixer.stopAllAction();
-      model.scareAction.reset().play();
-      model.mixer.setTime(Math.min(t, model.scareClip.duration - 0.001));
+      const end = model.scareClip.duration - 0.001;
+      // the jumpscare's pose at time tt (the clip is restarted every time: setting the time again
+      // and again on a running clip loses the pose after a while)
+      const scareAt = tt => {
+        for (const b of Object.values(model.bones)) { b.quaternion.copy(b.userData.rest); b.position.copy(b.userData.restPos); }
+        model.mixer.stopAllAction();
+        model.scareAction.reset().play();
+        model.mixer.setTime(Math.min(tt, end));
+      };
+      if (model.jiggles && model.jiggles.length) {
+        // the jiggle bones catch up from the last frame shown, in small steps
+        if (model.scareT === undefined || t < model.scareT) { jiggleReset(model); model.scareT = 0; }
+        for (let tt = model.scareT; tt < t; tt += 1 / 60) {
+          scareAt(tt);
+          model.root.updateMatrixWorld(true);
+          jiggleStep(model, 1 / 60);
+        }
+        model.scareT = t;
+        // (the jiggle bones keep where the physics put them; everything else is set for exactly t)
+        const keep = model.jiggles.map(J => [J.bone, J.bone.quaternion.clone(), J.bone.scale.clone()]);
+        scareAt(t);
+        for (const [b, q, sc] of keep) { b.quaternion.copy(q); b.scale.copy(sc); }
+      } else {
+        scareAt(t);
+      }
       model.root.updateMatrixWorld(true);
       R.setSize(SCARE_W, SCARE_H, false);
       scareCam.position.set(0, 1.62, 3.15);
