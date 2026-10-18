@@ -34,13 +34,13 @@ function showWarning(then) {
     then();
   };
   const onBtn = el("button", { class: "on" }, T("SENSITIVE ON"), el("small", {}, T("jumpscares on, everything shown")));
-  const offBtn = el("button", { class: "off" }, T("SENSITIVE OFF"), el("small", {}, T("jumpscares off, the suggestive part is hidden")));
+  const offBtn = el("button", { class: "off" }, T("SENSITIVE OFF"), el("small", {}, T("jumpscares off, toned down")));
   onBtn.onclick = () => choose(true, onBtn);
   offBtn.onclick = () => choose(false, offBtn);
   box.append(
     el("h2", {}, T("WARNING")),
-    el("p", {}, T("This tape has jumpscares, loud sounds, flashing lights, creepy broken animatronics and some suggestive stuff (one of the animatronics has a jiggly chest).")),
-    el("p", {}, T("Turn sensitive content off if you'd rather skip the jumpscares and the suggestive part. You can change it any time in Settings (Jumpscares).")),
+    el("p", {}, T("This tape has jumpscares, loud sounds, flashing lights and creepy broken animatronics.")),
+    el("p", {}, T("Turn sensitive content off if you'd rather skip the jumpscares. You can change it any time in Settings (Jumpscares).")),
     el("div", { class: "warnBtns" }, onBtn, offBtn),
     el("label", {}, keep, T("Don't show this again on this file")));
   box.hidden = false;
