@@ -317,6 +317,7 @@ const PICTURE_NAMES = {
   "Custom": ["star"],
   "Riceria": ["crying"],
   "Newspaper": ["page"],
+  "Stare": ["ring", "ring-red", "head"],
   "Loading": ["icon"],
   "Pixel": ["wfreddy", "head-wfreddy", "foxy", "head-foxy", "puppet", "head-puppet", "wbonnie", "head-wbonnie", "wchica", "head-wchica", "tfreddy", "head-tfreddy", "runner"],
   "Map": ["map", "lit1", "lit2", "lit3", "lit4", "lit5", "lit6", "lit7", "lit8", "lit9", "lit10", "lit11", "lit12"],
@@ -2454,7 +2455,7 @@ class Game {
     if (f.timer <= 0) {
       if (n.flash && !n.maskUp && !n.camsUp) { f.timer = 1; return; }   // he will not lunge into the light
       if (n.camsUp) this.forceMonitorDown();
-      this.jumpscare("foxy");
+      this.startStare();                       // he does not kill you right away: the stare minigame
     }
   }
   // Called when the hallway light turns on
@@ -2464,6 +2465,87 @@ class Game {
     f.flashes++;
     f.timer = Math.max(f.timer, 3);
     if (f.flashes >= f.need) { f.retreat = randFloat(1, 2.5); this.unlock("flash"); }
+  }
+
+  /* --------------------------------------------------------------
+     WITHERED ENDO'S STARE (like Alma in DOORS)
+     When he lunges, his head (Aidan's drawing, tools/tape2/endo_stare.png)
+     fills the screen inside its outline. The head keeps shrinking; every
+     tap (click, Space, any game key) pumps it bigger. Keep the head inside
+     the outline: not so small it slips away, not so big it bursts out.
+     Too long outside and he gets you. Hold on long enough and he leaves.
+     The night (clock, everyone else) waits while this happens.
+     -------------------------------------------------------------- */
+  startStare() {
+    const n = this.n, ai = n.ai.foxy;
+    n.maskUp = false; n.maskFrame = 0;
+    n.flash = n.ventL = n.ventR = false;
+    n.stare = {
+      t: 0,                        // seconds so far
+      need: 6 + ai * 0.2,          // seconds to hold on (6 s on level 0, 10 s on level 20)
+      s: 1.04, v: 0,               // head size (1 = just fills the outline) and how fast it is changing
+      pull: 0.13 + ai * 0.007,     // how fast it shrinks by itself (size per second)
+      wobble: ai / 20,             // harder levels: the outline breathes and the head gets shoved around
+      ring: 1,                     // outline size (it breathes on harder levels)
+      danger: 0,                   // 0..1: fills while the head is outside, he gets you at 1
+      out: false, pump: 0, won: 0, // pump = a little flash on each tap; won counts up after you make it
+    };
+    this.sp.flicker.setVolume(100);
+    this.sp.flicker.play("Light Left", "ComputerInteriorLong_EVL02_2");
+  }
+  updateStare() {
+    const n = this.n, st = n.stare, f = n.foxy;
+    // he gives up: the head shrinks away, then the night goes on
+    if (st.won) {
+      st.won += TICK;
+      st.s = Math.max(0, st.s - TICK * 2.2);
+      if (st.won > 0.7) {
+        n.stare = null;
+        f.hall = false; f.retreat = 0; n.at.foxy = 8; n.wait.foxy = randFloat(10, 16);
+      }
+      return;
+    }
+    st.t += TICK;
+    const taps = this.clicks.length + this.keys.length;
+    if (taps) { st.v += 0.3 * Math.min(taps, 2); st.pump = 1; }   // each tap: about +0.065 size
+    if (st.wobble && chance(20)) st.v += randFloat(-0.25, 0.25) * st.wobble;   // a shove now and then
+    st.v *= 0.85;                                             // a pump fades out in about a quarter second
+    st.s = clamp(st.s + (st.v - st.pull) * TICK, 0.55, 1.45); // always shrinking
+    st.ring = 1 + Math.sin(st.t * 1.3) * 0.05 * st.wobble;
+    const rel = st.s / st.ring;
+    st.out = rel < 0.93 || rel > 1.14;                        // 1.14 = the head touches the outline's outer edge
+    st.danger = clamp(st.danger + (st.out ? TICK / 1.1 : -TICK / 2), 0, 1);
+    st.pump = Math.max(0, st.pump - TICK * 5);
+    this.sp.breath.setVolume(40 + st.danger * 60);
+    if (st.danger >= 1) { n.stare = null; this.jumpscare("foxy"); return; }
+    if (st.t >= st.need) { st.won = TICK; this.sp.flicker.stopAll(); }
+  }
+  drawStare(ctx) {
+    const st = this.n.stare;
+    // the office goes almost black
+    ctx.fillStyle = "rgba(0,0,0," + (st.won ? 0.88 * (1 - st.won / 0.7) : 0.88) + ")";
+    ctx.fillRect(0, 0, VIEW_W, 360);
+    const shake = st.won ? 0 : 1.5 + st.danger * 5;
+    const x = 240 + randFloat(-shake, shake), y = 180 + randFloat(-shake, shake);
+    // the outline: it turns red when the head is out of it, and blinks bright on each tap
+    draw(ctx, pic("Stare", st.out && !st.won ? "ring-red" : "ring"), x, y,
+      { size: st.ring * 100, alpha: st.won ? 1 - st.won / 0.7 : 1, bright: st.pump * 25 });
+    draw(ctx, pic("Stare", "head"), x, y, { size: st.s * 100, bright: -st.danger * 20 });
+    if (st.won) return;
+    // red closing in as he gets closer to getting you
+    if (st.danger > 0) {
+      const g = ctx.createRadialGradient(240, 180, 90, 240, 180, 300);
+      g.addColorStop(0, "rgba(200,0,0,0)");
+      g.addColorStop(1, "rgba(200,0,0," + (0.75 * st.danger) + ")");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, 360);
+    }
+    // how long is left (a bar filling up along the bottom)
+    ctx.fillStyle = "#300"; ctx.fillRect(140, 322, 200, 6);
+    ctx.fillStyle = "#e00"; ctx.fillRect(140, 322, 200 * Math.min(1, st.t / st.need), 6);
+    if (st.t < 1.6 || st.out) {
+      const msg = st.out ? (st.s / st.ring < 1 ? W("Stare", "TAP!") : W("Stare", "TOO BIG!")) : W("Stare", "TAP TO KEEP HIM IN THE SHAPE");
+      this.text(ctx, msg, 240, 30, { size: 16, align: "center", font: "Press Start 2P", color: st.out ? "#ff3030" : "#fff", shadow: "#000" });
+    }
   }
 
   /* --------------------------------------------------------------
@@ -2653,6 +2735,7 @@ class Game {
     const n = this.n, m = this.mouse;
     if (n.frozen) return;
     if (n.jumpscare) return this.updateJumpscare();
+    if (n.stare) return this.updateStare();          // Withered Endo's stare: the night waits
     this.updateClock();
     if (n.frozen || this.screen !== "night") return;
 
@@ -3169,6 +3252,7 @@ class Game {
       if (n.halluc === "bbEyes") drawSpot(ctx, EXTRA_SPOTS.bbEyes, SX(pan + 100), SY(-150), 50);
       else draw(ctx, pic("Sprite67", "costume1"), 240, 180);
     }
+    if (n.stare) this.drawStare(ctx);
   }
 
   drawOffice(ctx, pan, a) {

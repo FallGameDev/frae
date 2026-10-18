@@ -213,6 +213,41 @@ def save_img(b, im, label):
     return rel
 
 
+def split_stare(im):
+    """Aidan's stare drawing -> (outline, head). The outline is the grey + white band
+    around the head (grey pixels and anything grey/white touching them); the head is
+    everything else (the black shape, the red eye and its white). Both stay centered
+    the same way as the drawing (its middle is the outline's middle)."""
+    from scipy import ndimage as nd
+    a = np.asarray(im).astype(int)
+    r, g, bl, al = a[..., 0], a[..., 1], a[..., 2], a[..., 3]
+    solid = al > 0
+    greyish = solid & (abs(r - g) < 6) & (abs(g - bl) < 6) & (r >= 68)
+    lab, _ = nd.label(greyish)
+    grey = solid & (abs(r - 135) < 4) & (abs(g - 135) < 4) & (abs(bl - 135) < 4)
+    keep = list(set(np.unique(lab[grey])) - {0})
+    ring_mask = np.isin(lab, keep)
+    # center both on the outline's middle
+    ys, xs = np.nonzero(ring_mask)
+    cx, cy = (xs.min() + xs.max()) / 2, (ys.min() + ys.max()) / 2
+    side = int(max(xs.max() - xs.min(), ys.max() - ys.min()) * 1.06)
+    box = (int(cx - side / 2), int(cy - side / 2), int(cx - side / 2) + side, int(cy - side / 2) + side)
+    out = []
+    for m in (ring_mask, solid & ~ring_mask):
+        b = a.copy()
+        b[..., 3] = np.where(m, al, 0)
+        out.append(Image.fromarray(b.astype(np.uint8), 'RGBA').crop(box))
+    return out
+
+
+def red_version(im):
+    """The same picture with its colors turned red (light parts bright red, grey parts dark red)."""
+    a = np.asarray(im).astype(float)
+    v = a[..., :3].mean(2) / 255
+    out = np.stack([60 + v * 195, v * 40, v * 40, a[..., 3]], 2)
+    return Image.fromarray(out.clip(0, 255).astype(np.uint8), 'RGBA')
+
+
 def slug(s):
     return re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-')
 
@@ -527,6 +562,13 @@ def apply(b):
     paper = Image.open(os.path.join(HERE, 'newspaper.png')).convert('RGB')
     art['Newspaper'] = {'page': dict(w=480, h=270, cx=240, cy=135,
                                      layers=[dict(img=save_img(b, paper, 'newspaper'), x=0, y=0, w=480, h=270)])}
+    # Withered Endo's stare minigame (Aidan's drawing tools/tape2/endo_stare.png):
+    # split into the outline (the target, holds still) and the head + eye (grows and shrinks)
+    ring, head = split_stare(Image.open(os.path.join(HERE, 'endo_stare.png')).convert('RGBA'))
+    art['Stare'] = {name: dict(w=260, h=260, cx=130, cy=130,
+                               layers=[dict(img=save_img(b, im.resize((520, 520), Image.LANCZOS), 'stare-' + name),
+                                            x=0, y=0, w=260, h=260)])
+                    for name, im in (('ring', ring), ('ring-red', red_version(ring)), ('head', head))}
     art['Loading'] = {'icon': dict(w=40, h=40, cx=20, cy=20, spin=True,
                                    layers=[dict(img='assets/loading-rice.webp', x=-3, y=4.85, w=46, h=34.85)])}
 

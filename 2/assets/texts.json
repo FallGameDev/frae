@@ -94,6 +94,11 @@
   "Fred": "Fred",
   "incoming call...": "incoming call..."
  },
+ "Stare": {
+  "TAP!": "TAP!",
+  "TOO BIG!": "TOO BIG!",
+  "TAP TO KEEP HIM IN THE SHAPE": "TAP TO KEEP HIM IN THE SHAPE"
+ },
  "Game over": {
   "You were caught by": "You were caught by",
   "GAME OVER": "GAME OVER"
