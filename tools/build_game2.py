@@ -243,6 +243,12 @@ def main():
     # the office fan: Aidan's fan noise with rain, mixed into one loop (tools/tape2/fan.mp3)
     shutil.copy(os.path.join(TAPE, 'fan.mp3'), os.path.join(ASSETS, 'snd', 'fan.mp3'))
     sounds['Fansound']['fansound'] = {'src': 'assets/snd/fan.mp3', 'music': 0}
+    # night 1's phone call: Aidan's own voiceline (tools/tape2/call1.mp3)
+    shutil.copy(os.path.join(TAPE, 'call1.mp3'), os.path.join(ASSETS, 'snd', 'call1.mp3'))
+    sounds['Sprite11']['call 1b'] = {'src': 'assets/snd/call1.mp3', 'music': 0}
+    # the Puppet's music box tune (CAM 11): the FNaF 1 song instrumental, turned down 18 dB (tools/tape2/musicbox.mp3)
+    shutil.copy(os.path.join(TAPE, 'musicbox.mp3'), os.path.join(ASSETS, 'snd', 'musicbox.mp3'))
+    sounds['Sprite6']['Music_Box_Melody_Playful'] = {'src': 'assets/snd/musicbox.mp3', 'music': 1}
     shutil.copy(TITLE_SONG, os.path.join(ASSETS, 'snd', 'title.mp3'))
     sounds['Title'] = {'title': {'src': 'assets/snd/title.mp3', 'music': 1}}
     shutil.copy(os.path.join(HERE, 'calls', 'ringtone.mp3'), os.path.join(ASSETS, 'snd', 'ringtone.mp3'))
