@@ -987,7 +987,7 @@ class Game {
     const secondsToEmpty = 150 - ai * 5;
     n.musicBox -= TICK / secondsToEmpty;
     // the tune plays only while you watch camera 11
-    this.sp.musicbox.setVolume(n.camsUp && n.cam === 11 ? 35 : 0);
+    this.sp.musicbox.setVolume(n.camsUp && n.cam === 11 ? 55 : 0);
     if (n.musicBox <= 0) { n.musicBox = 0; this.puppetComes(); }
   }
   windMusicBox() {
