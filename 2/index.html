@@ -261,11 +261,11 @@
     </div>
     <div class="pane" id="paneUnpacked">
       <button id="pickFolder">PICK MOD FOLDER</button>
-      <button id="pickZip">PICK .ZIP</button>
+      <button id="pickZip">PICK .ZIP / MOD IMAGE</button>
       <button id="tplBtn" style="margin-left:auto">DOWNLOAD TEMPLATE</button>
       <div class="hint">Pick a mod folder from your computer. New to modding? Download the template, change some files, then pick that folder.</div>
       <input type="file" id="folderInput" webkitdirectory directory multiple hidden>
-      <input type="file" id="zipInput" accept=".zip" hidden>
+      <input type="file" id="zipInput" accept=".zip,.png" hidden>
     </div>
     <div class="pane" id="panePacked" hidden>
       <input id="ghInput" placeholder="github.com/user/repo" autocomplete="off" spellcheck="false">
@@ -477,6 +477,117 @@ async function readZip(blob) {
   }
   return out;
 }
+
+/* =====================================================================
+   MOD IMAGES: a whole mod packed into the pixels of one PNG
+   Every pixel holds 3 bytes of the file (red, green, blue; alpha is
+   always 255), 2048 pixels wide, read left to right, top to bottom.
+   The bytes are:
+     "BFC1"                 magic (4 bytes)
+     version                1 byte (1), then 3 empty bytes
+     name length            4 bytes, big-endian
+     type length            4 bytes, big-endian
+     data length            4 bytes, big-endian
+     name, type, data       (like "my-mod.zip", "application/zip", the zip)
+     0xFF                   fills the rest of the last row
+   Uploads to Supabase storage are these images; loading turns the
+   pixels back into the original file. The PNG is written and read here
+   in plain JS (no canvas), so no browser can shift a color or hit a
+   canvas size limit.
+   ===================================================================== */
+const ModImage = {
+  WIDTH: 2048,
+
+  // file Blob -> PNG Blob
+  async encode(blob, name = "mod.zip", mime = blob.type || "application/zip") {
+    const enc = new TextEncoder();
+    const nameB = enc.encode(name), mimeB = enc.encode(mime);
+    const data = new Uint8Array(await blob.arrayBuffer());
+    const total = 20 + nameB.length + mimeB.length + data.length;
+    const w = this.WIDTH, h = Math.max(1, Math.ceil(total / 3 / w));
+    // the byte stream (3 per pixel), padded with 0xFF
+    const bytes = new Uint8Array(w * h * 3).fill(0xFF);
+    const dv = new DataView(bytes.buffer);
+    bytes.set([0x42, 0x46, 0x43, 0x31, 1, 0, 0, 0]);          // "BFC1", version 1, 3 empty bytes
+    dv.setUint32(8, nameB.length); dv.setUint32(12, mimeB.length); dv.setUint32(16, data.length);
+    bytes.set(nameB, 20); bytes.set(mimeB, 20 + nameB.length); bytes.set(data, 20 + nameB.length + mimeB.length);
+    // PNG rows: filter byte 0, then RGBA pixels
+    const raw = new Uint8Array(h * (1 + w * 4));
+    for (let y = 0, i = 0, o = 0; y < h; y++) {
+      raw[o++] = 0;
+      for (let x = 0; x < w; x++) { raw[o++] = bytes[i++]; raw[o++] = bytes[i++]; raw[o++] = bytes[i++]; raw[o++] = 255; }
+    }
+    const zlib = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream("deflate"))).arrayBuffer());
+    const ihdr = new Uint8Array(13), hv = new DataView(ihdr.buffer);
+    hv.setUint32(0, w); hv.setUint32(4, h); ihdr.set([8, 6, 0, 0, 0], 8);   // 8-bit RGBA, no interlace
+    return new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+                     this.chunk("IHDR", ihdr), this.chunk("IDAT", zlib), this.chunk("IEND", new Uint8Array(0))], { type: "image/png" });
+  },
+  chunk(type, data) {
+    const out = new Uint8Array(12 + data.length), dv = new DataView(out.buffer);
+    dv.setUint32(0, data.length);
+    out.set(new TextEncoder().encode(type), 4);
+    out.set(data, 8);
+    dv.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length)));
+    return out;
+  },
+
+  // is this a mod image? (a PNG; the header is checked when decoding)
+  async isImage(blob) {
+    const head = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
+    return head[0] === 137 && head[1] === 80 && head[2] === 78 && head[3] === 71;
+  },
+
+  // PNG Blob -> { name, mime, blob } (the original file)
+  async decode(png) {
+    const buf = new Uint8Array(await png.arrayBuffer()), dv = new DataView(buf.buffer);
+    if (!(buf[0] === 137 && buf[1] === 80 && buf[2] === 78 && buf[3] === 71)) throw new Error("That file is not a PNG.");
+    let p = 8, w = 0, h = 0, depth = 0, type = 0, interlace = 0;
+    const idat = [];
+    while (p < buf.length) {
+      const len = dv.getUint32(p), kind = String.fromCharCode(...buf.subarray(p + 4, p + 8));
+      const body = buf.subarray(p + 8, p + 8 + len);
+      if (kind === "IHDR") { w = dv.getUint32(p + 8); h = dv.getUint32(p + 12); depth = body[8]; type = body[9]; interlace = body[12]; }
+      else if (kind === "IDAT") idat.push(body);
+      else if (kind === "IEND") break;
+      p += 12 + len;
+    }
+    if (depth !== 8 || (type !== 6 && type !== 2) || interlace) throw new Error("This image isn't a mod image (it must be an 8-bit RGB/RGBA PNG).");
+    const bpp = type === 6 ? 4 : 3, stride = w * bpp;
+    const raw = new Uint8Array(await new Response(new Blob(idat).stream().pipeThrough(new DecompressionStream("deflate"))).arrayBuffer());
+    // undo the PNG row filters, keeping only R, G, B of each pixel
+    const bytes = new Uint8Array(w * h * 3);
+    let prev = new Uint8Array(stride), cur = new Uint8Array(stride), o = 0;
+    for (let y = 0, i = 0; y < h; y++) {
+      const f = raw[i++];
+      for (let x = 0; x < stride; x++) {
+        const a = x >= bpp ? cur[x - bpp] : 0, b = prev[x], c = x >= bpp ? prev[x - bpp] : 0;
+        let v = raw[i++];
+        if (f === 1) v += a;
+        else if (f === 2) v += b;
+        else if (f === 3) v += (a + b) >> 1;
+        else if (f === 4) { const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
+        cur[x] = v & 255;
+      }
+      for (let x = 0; x < stride; x += bpp) { bytes[o++] = cur[x]; bytes[o++] = cur[x + 1]; bytes[o++] = cur[x + 2]; }
+      [prev, cur] = [cur, prev];
+    }
+    // read the header and cut the original file out
+    if (!(bytes[0] === 0x42 && bytes[1] === 0x46 && bytes[2] === 0x43 && bytes[3] === 0x31)) throw new Error("This picture doesn't have a mod packed inside it.");
+    const hv = new DataView(bytes.buffer);
+    const nl = hv.getUint32(8), ml = hv.getUint32(12), dl = hv.getUint32(16);
+    if (20 + nl + ml + dl > bytes.length) throw new Error("This mod image is cut off (part of it is missing).");
+    const dec = new TextDecoder();
+    const name = dec.decode(bytes.subarray(20, 20 + nl)), mime = dec.decode(bytes.subarray(20 + nl, 20 + nl + ml));
+    const start = 20 + nl + ml;
+    return { name, mime, blob: new Blob([bytes.subarray(start, start + dl)], { type: mime }) };
+  },
+
+  // whatever was downloaded (a mod image, or an old plain .zip) -> the zip
+  async toZip(blob) {
+    return (await this.isImage(blob)) ? (await this.decode(blob)).blob : blob;
+  }
+};
 
 /* =====================================================================
    A TAPE'S MODS, read and written from outside the game
@@ -807,20 +918,23 @@ const Cloud = {
     const store = TapeMods(tape.key);
     const info = store.list().find(m => m.id === id);
     const zip = await store.pack(id);
-    const path = this.uid() + "/" + tape.tape + "-" + id + ".zip";
+    const png = await ModImage.encode(zip, (info.name || id) + ".zip");      // the whole mod as one picture
+    const path = this.uid() + "/" + tape.tape + "-" + id + ".png";
     await this.call("/storage/v1/object/" + CLOUD_CONFIG.modBucket + "/" + path, {
-      method: "POST", headers: { "x-upsert": "true", "Content-Type": "application/zip" }, body: zip
+      method: "POST", headers: { "x-upsert": "true", "Content-Type": "image/png" }, body: png
     });
+    const old = (await this.cloudMods().catch(() => [])).find(r => r.id === id && r.path !== path);
+    if (old) this.call("/storage/v1/object/" + CLOUD_CONFIG.modBucket + "/" + old.path, { method: "DELETE" }).catch(() => {});
     await this.call("/rest/v1/mods?on_conflict=user_id,id", {
       method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
       json: { user_id: this.uid(), id, tape: tape.tape, name: info.name, author: info.author || "", version: info.version || "",
-              kind: this.modKind(info), size: zip.size, path, updated_at: new Date().toISOString() }
+              kind: this.modKind(info), size: png.size, path, updated_at: new Date().toISOString() }
     });
   },
   async installMod(row) {
     const tape = TAPES.find(t => t.tape === row.tape);
     const res = await this.call("/storage/v1/object/authenticated/" + CLOUD_CONFIG.modBucket + "/" + row.path, { raw: true });
-    return await TapeMods(tape.key).unpack(await res.blob());
+    return await TapeMods(tape.key).unpack(await ModImage.toZip(await res.blob()));    // picture -> original zip
   },
   async deleteMod(row) {
     await this.call("/storage/v1/object/" + CLOUD_CONFIG.modBucket + "/" + row.path, { method: "DELETE" }).catch(() => {});
@@ -859,12 +973,14 @@ const Cloud = {
     const author = this.profile && this.profile.username || "player";
     const id = row ? row.id : crypto.randomUUID();
     const zip = await store.pack(localId, { name: details.name, description: details.description, version: details.version, author });
-    const path = this.uid() + "/" + id + ".zip";
+    const png = await ModImage.encode(zip, details.name + ".zip");          // the whole mod as one picture
+    const path = this.uid() + "/" + id + ".png";
     await this.call("/storage/v1/object/workshop/" + path, {
-      method: "POST", headers: { "x-upsert": "true", "Content-Type": "application/zip" }, body: zip
+      method: "POST", headers: { "x-upsert": "true", "Content-Type": "image/png" }, body: png
     });
+    if (row && row.path !== path) this.call("/storage/v1/object/workshop/" + row.path, { method: "DELETE" }).catch(() => {});
     const data = { name: details.name, description: details.description, version: details.version, mature: !!details.mature,
-                   tape: tape.tape, has_code: !!(info.scripts && info.scripts.length), size: zip.size, path,
+                   tape: tape.tape, has_code: !!(info.scripts && info.scripts.length), size: png.size, path,
                    source_mod: localId, updated_at: new Date().toISOString() };
     if (row) await this.call("/rest/v1/workshop?id=eq." + id, { method: "PATCH", json: data });
     else await this.call("/rest/v1/workshop", { method: "POST", headers: { Prefer: "return=minimal" }, json: { id, user_id: this.uid(), ...data } });
@@ -886,7 +1002,7 @@ const Cloud = {
     if (!tape) throw new Error("That tape isn't out yet.");
     const res = await fetch(CLOUD_CONFIG.url.replace(/\/$/, "") + "/storage/v1/object/public/workshop/" + row.path + "?v=" + Date.parse(row.updated_at));
     if (!res.ok) throw new Error("Could not download that mod (" + res.status + ").");
-    const info = await TapeMods(tape.key).unpack(await res.blob(), {
+    const info = await TapeMods(tape.key).unpack(await ModImage.toZip(await res.blob()), {     // picture -> original zip
       id: "ws-" + row.id, name: row.name, author: row.author, version: row.version, description: row.description,
       source: { type: "workshop", id: row.id, updated: row.updated_at }
     }, check);
@@ -5983,9 +6099,17 @@ async function loadUnpacked(fileList, fromZip) {
   try {
     let files, name;
     if (fromZip) {
+      // a .zip, or a mod image (.png with the whole mod packed in its pixels: ModImage in tools/global.js)
+      let zip = fileList[0];
+      name = zip.name.replace(/\.(zip|png)$/i, "");
+      if (await ModImage.isImage(zip)) {
+        modStatus("Unpacking mod image...");
+        const out = await ModImage.decode(zip);
+        zip = out.blob;
+        name = out.name.replace(/\.zip$/i, "") || name;
+      }
       modStatus("Opening zip...");
-      files = await readZip(fileList[0]);
-      name = fileList[0].name.replace(/\.zip$/i, "");
+      files = await readZip(zip);
     } else {
       files = [...fileList].map(f => ({ path: f.webkitRelativePath || f.name, blob: f }));
       name = (files[0].path.split("/")[0]) || "Mod";

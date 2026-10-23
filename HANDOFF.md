@@ -105,3 +105,9 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Supabase: table `workshop` + bucket `workshop` (public, 50 MB per file), WORKSHOP section at the end of supabase/setup.sql (already run on the frae project). `Cloud.workshop*` / `publish` / `editWorkshop` / `unpublish` / `installWorkshop` in global.js; `TapeMods.pack(id, extra)` / `unpack(zip, overrides, check)`.
 - The menu opens Settings on the Account tab with `?account` (the workshop's SIGN IN button).
 
+## Mod images (BFC1): a whole mod in one PNG
+- Every upload of a mod (account backups in the `mods` bucket, workshop in the `workshop` bucket) is a PNG made by `ModImage.encode` in global.js; loading runs `ModImage.toZip` (old plain .zip uploads still load).
+- Format (matches Aidan's example exactly, byte for byte): RGBA PNG 2048 wide, alpha always 255, each pixel = 3 bytes (R, G, B), left to right, top to bottom. Bytes: "BFC1", version 1 + 3 empty bytes, name length / type length / data length (4 bytes each, big-endian), name, type, data (the mod zip), then 0xFF to the end of the last row.
+- The PNG is written and read in plain JS (CompressionStream/DecompressionStream + PNG row filters), not a canvas, so colors are never changed and there's no canvas size limit. Decoding a 33 MB mod takes about a second.
+- In the games, PICK .ZIP / MOD IMAGE (`#zipInput`, accepts .zip and .png) unpacks a mod image straight into a mod.
+

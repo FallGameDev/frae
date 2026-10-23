@@ -973,9 +973,17 @@ async function loadUnpacked(fileList, fromZip) {
   try {
     let files, name;
     if (fromZip) {
+      // a .zip, or a mod image (.png with the whole mod packed in its pixels: ModImage in tools/global.js)
+      let zip = fileList[0];
+      name = zip.name.replace(/\.(zip|png)$/i, "");
+      if (await ModImage.isImage(zip)) {
+        modStatus("Unpacking mod image...");
+        const out = await ModImage.decode(zip);
+        zip = out.blob;
+        name = out.name.replace(/\.zip$/i, "") || name;
+      }
       modStatus("Opening zip...");
-      files = await readZip(fileList[0]);
-      name = fileList[0].name.replace(/\.zip$/i, "");
+      files = await readZip(zip);
     } else {
       files = [...fileList].map(f => ({ path: f.webkitRelativePath || f.name, blob: f }));
       name = (files[0].path.split("/")[0]) || "Mod";
