@@ -203,16 +203,23 @@
     draw();
   }
 
+  // This device's mods for each tape. They live in the browser's file database (async),
+  // so draw() reads them into LOCAL first and the cards just look them up.
+  const LOCAL = {};
+  async function refreshLocal() {
+    for (const t of TAPES) LOCAL[t.key] = await TapeMods(t.key).list().catch(() => []);
+  }
+  const localList = key => LOCAL[key] || [];
   // Is this workshop mod on this device? ("ws-<id>" in its tape's mod list)
   function installed(row) {
     const t = tapeOf(row.tape);
     if (!t) return null;
-    return TapeMods(t.key).list().find(m => m.id === "ws-" + row.id) || null;
+    return localList(t.key).find(m => m.id === "ws-" + row.id) || null;
   }
   // Local mods that came from LOAD UNPACKED (a folder or a zip), from every tape
   function unpackedMods() {
     const out = [];
-    for (const t of TAPES) for (const m of TapeMods(t.key).list()) {
+    for (const t of TAPES) for (const m of localList(t.key)) {
       const type = m.source && m.source.type;
       if (type === "github" || type === "workshop") continue;
       out.push({ tape: t, mod: m });
@@ -252,7 +259,8 @@
     draw();
   }
 
-  function draw() {
+  async function draw() {
+    await refreshLocal();
     drawTop();
     view.innerHTML = "";
     if (!Cloud.ready()) { view.append(note("The workshop needs accounts set up (CLOUD_CONFIG in tools/global.js).", "bad")); return; }
@@ -412,7 +420,7 @@
   // step 2: the details (filled from the mod, all changeable except author and tape)
   function drawForm() {
     const { tape, localId, row } = editing;
-    const local = localId ? TapeMods(tape.key).list().find(m => m.id === localId) : null;
+    const local = localId ? localList(tape.key).find(m => m.id === localId) : null;
     const start = row || local || {};
     const name = h("input", { type: "text", maxlength: 60, value: start.name || "" });
     const version = h("input", { type: "text", maxlength: 20, value: start.version || "", placeholder: "1.0" });
@@ -430,7 +438,7 @@
     let fileFrom = localId;
     const filePick = row ? h("select", {},
       h("option", { value: "" }, "Keep the files that are published"),
-      ...TapeMods(tape.key).list().filter(m => !["github", "workshop"].includes(m.source && m.source.type))
+      ...localList(tape.key).filter(m => !["github", "workshop"].includes(m.source && m.source.type))
         .map(m => h("option", { value: m.id, selected: m.id === localId }, "Upload files from: " + m.name))) : null;
     if (filePick) { if (!localId) filePick.value = ""; filePick.onchange = () => fileFrom = filePick.value || null; }
 

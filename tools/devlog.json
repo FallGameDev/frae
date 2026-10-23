@@ -68,5 +68,7 @@
  {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."},
  {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."},
  {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."},
- {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}
+ {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."},
+ {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."},
+ {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."}
 ]

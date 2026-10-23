@@ -572,44 +572,105 @@ const ModImage = {
 };
 
 /* =====================================================================
-   A TAPE'S MODS, read and written from outside the game
-   (the same layout as ModDB / ModFiles in tools/ui.js:
-    localStorage "<tape>-mods" + "<tape>-mods-state",
-    IndexedDB "<tape>-mods-files", store "files", key "<mod id>/<path>")
+   A TAPE'S MODS: NO SIZE LIMIT
+   Everything about a tape's mods lives in the browser's file database
+   (IndexedDB "<tape>-mods-files"), never in localStorage (which only
+   holds a few MB in total):
+     store "files"  key "<mod id>/<path>" -> Blob (pictures, sounds, models, code...)
+     store "meta"   key "list"  -> every mod's details (name, author, texts, file names...)
+                    key "state" -> { downloaded: [ids], inUse: [ids] } (inUse[0] = top = wins)
+   IndexedDB can use as much of the disk as the browser allows (usually
+   gigabytes), and the page asks the browser to keep it (persistent storage).
+   Mod lists saved by older versions in localStorage ("<tape>-mods",
+   "<tape>-mods-state") move over by themselves the first time, and are
+   then removed from localStorage to free it up.
+   Used by the games (ModDB in tools/ui.js), the menu and the workshop.
    ===================================================================== */
 const TAPES = [
   { tape: 1, key: "frae1", name: "Tape 1" },
   { tape: 2, key: "frae2", name: "Tape 2" }
 ];
+const TAPE_MODS = {};        // one store object per tape (shares the open database)
 function TapeMods(key) {
+  if (TAPE_MODS[key]) return TAPE_MODS[key];
   const listKey = key + "-mods", stateKey = key + "-mods-state";
-  let db = null;
+  let db = null, moved = null;
+
+  // open the database (version 2 added the "meta" store)
   const open = () => db || (db = new Promise((res, rej) => {
-    const r = indexedDB.open(listKey + "-files", 1);
-    r.onupgradeneeded = () => r.result.createObjectStore("files");
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
+    const r = indexedDB.open(listKey + "-files", 2);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains("files")) d.createObjectStore("files");
+      if (!d.objectStoreNames.contains("meta")) d.createObjectStore("meta");
+    };
+    r.onsuccess = () => {
+      clearTimeout(waited);
+      const d = r.result;
+      d.onversionchange = () => { d.close(); db = null; };      // let a newer page upgrade it
+      res(d);
+    };
+    // another tab still has the old version open: wait a little, then say so instead of hanging
+    let waited = null;
+    r.onblocked = () => {
+      waited = setTimeout(() => { db = null; rej(new Error("Close the other Fried Rice at Eddie's tabs, then try again (mod storage is updating).")); }, 5000);
+    };
+    r.onerror = () => { clearTimeout(waited); db = null; rej(r.error); };
   }));
-  const run = async (mode, fn) => {
+  // one transaction on one store; fn gets the store and returns a request (its result is returned)
+  const run = async (store, mode, fn) => {
     const d = await open();
     return new Promise((res, rej) => {
-      const t = d.transaction("files", mode);
-      const req = fn(t.objectStore("files"));
+      const t = d.transaction(store, mode);
+      const req = fn(t.objectStore(store));
       t.oncomplete = () => res(req ? req.result : undefined);
       t.onerror = t.onabort = () => rej(t.error || new Error("storage error"));
     });
   };
-  return {
-    list() { try { return JSON.parse(localStorage.getItem(listKey) || "[]"); } catch (e) { return []; } },
-    state() { try { return JSON.parse(localStorage.getItem(stateKey)) || { downloaded: [], inUse: [] }; } catch (e) { return { downloaded: [], inUse: [] }; } },
-    // one mod as a .zip: mod.json (its details + file types) and files/<path>
+  const getMeta = k => run("meta", "readonly", st => st.get(k));
+  const setMeta = (k, v) => run("meta", "readwrite", st => st.put(v, k));
+
+  // first use: bring an old localStorage list over, then free localStorage
+  const moveFromLocalStorage = () => moved || (moved = (async () => {
+    let oldList = null, oldState = null;
+    try { oldList = localStorage.getItem(listKey); oldState = localStorage.getItem(stateKey); } catch (e) {}
+    if (oldList !== null && (await getMeta("list")) === undefined) {
+      try { await setMeta("list", JSON.parse(oldList) || []); } catch (e) { await setMeta("list", []); }
+    }
+    if (oldState !== null && (await getMeta("state")) === undefined) {
+      try { await setMeta("state", JSON.parse(oldState) || { downloaded: [], inUse: [] }); } catch (e) {}
+    }
+    try { localStorage.removeItem(listKey); localStorage.removeItem(stateKey); } catch (e) {}
+  })());
+
+  const store = TAPE_MODS[key] = {
+    /* ----- the list and the order (async: they live in IndexedDB) ----- */
+    async list() { await moveFromLocalStorage(); return (await getMeta("list")) || []; },
+    async putList(list) { await moveFromLocalStorage(); await setMeta("list", list); },
+    async state() {
+      await moveFromLocalStorage();
+      const st = await getMeta("state");
+      return st && Array.isArray(st.downloaded) && Array.isArray(st.inUse) ? st : { downloaded: [], inUse: [] };
+    },
+    async putState(st) { await moveFromLocalStorage(); await setMeta("state", { downloaded: st.downloaded, inUse: st.inUse }); },
+    // was there an old localStorage list? (ui.js checks this for even older saves)
+    hadOldList() { try { return localStorage.getItem(listKey) !== null; } catch (e) { return false; } },
+
+    /* ----- files ----- */
+    getFile(k) { return run("files", "readonly", st => st.get(k)); },
+    putFile(k, blob) { return run("files", "readwrite", st => st.put(blob, k)); },
+    removeFiles(id) { return run("files", "readwrite", st => st.delete(IDBKeyRange.bound(id + "/", id + "/\uffff"))); },
+    // ask the browser to keep our files (so it doesn't clear them when space is low)
+    persist() { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); },
+
+    /* ----- one mod as a .zip: mod.json (its details + file types) and files/<path> ----- */
     // extra: details to change in mod.json (the workshop sets author/name/version...)
     async pack(id, extra = {}) {
-      const info = this.list().find(m => m.id === id);
+      const info = (await this.list()).find(m => m.id === id);
       if (!info) throw new Error("That mod is not on this device");
       const entries = [], types = {};
       for (const path of info.fileList || []) {
-        const blob = await run("readonly", st => st.get(id + "/" + path)).catch(() => null);
+        const blob = await this.getFile(id + "/" + path).catch(() => null);
         if (!blob) continue;
         types[path] = blob.type || "";
         entries.push({ path: "files/" + path, bytes: new Uint8Array(await blob.arrayBuffer()) });
@@ -627,24 +688,34 @@ function TapeMods(key) {
       const { types = {}, ...saved } = JSON.parse(await metaFile.blob.text());
       const info = { ...saved, ...overrides };
       if (check) await check(info);
-      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-      await run("readwrite", st => st.delete(IDBKeyRange.bound(info.id + "/", info.id + "/￿")));
+      this.persist();
+      await this.removeFiles(info.id);
       const fileList = [];
       for (const f of items) {
         if (!f.path.startsWith("files/")) continue;
         const path = f.path.slice(6);
-        await run("readwrite", st => st.put(new Blob([f.blob], { type: types[path] || "" }), info.id + "/" + path));
+        await this.putFile(info.id + "/" + path, new Blob([f.blob], { type: types[path] || "" }));
         fileList.push(path);
       }
-      const list = this.list().filter(m => m.id !== info.id);
+      const list = (await this.list()).filter(m => m.id !== info.id);
       list.push({ ...info, fileList });
-      localStorage.setItem(listKey, JSON.stringify(list));
-      const st = this.state();
+      await this.putList(list);
+      const st = await this.state();
       if (!st.downloaded.includes(info.id) && !st.inUse.includes(info.id)) st.downloaded.unshift(info.id);
-      localStorage.setItem(stateKey, JSON.stringify(st));
+      await this.putState(st);
       return info;
     }
   };
+  return store;
+}
+
+// How much space this site can use, for the Mods screen ("12 MB used of 2.1 GB")
+async function storageText() {
+  try {
+    const est = await navigator.storage.estimate();
+    const t = b => b > 1073741824 ? (b / 1073741824).toFixed(1) + " GB" : b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.round(b / 1024) + " KB";
+    return t(est.usage || 0) + " used of " + t(est.quota || 0);
+  } catch (e) { return ""; }
 }
 
 /* =====================================================================
@@ -898,7 +969,7 @@ const Cloud = {
   },
   async uploadMod(tape, id) {
     const store = TapeMods(tape.key);
-    const info = store.list().find(m => m.id === id);
+    const info = (await store.list()).find(m => m.id === id);
     const zip = await store.pack(id);
     const png = await ModImage.encode(zip, (info.name || id) + ".zip");      // the whole mod as one picture
     const path = this.uid() + "/" + tape.tape + "-" + id + ".png";
@@ -950,7 +1021,7 @@ const Cloud = {
   // details: { name, description, version, mature }. The author is always your username.
   async publish(tape, localId, details, row) {
     const store = TapeMods(tape.key);
-    const info = store.list().find(m => m.id === localId);
+    const info = (await store.list()).find(m => m.id === localId);
     if (!info) throw new Error("That mod is not on this device any more.");
     const author = this.profile && this.profile.username || "player";
     const id = row ? row.id : crypto.randomUUID();
@@ -1009,7 +1080,7 @@ function friendlyError(msg) {
 }
 
 
-const DEVLOG = [{"date": "2026-10-14", "tapes": [1], "text": "Fried Rice at Eddie's is playable in the browser, with a game select menu."}, {"date": "2026-10-14", "tapes": [1], "text": "The title music stops when a night starts, and the bottom button bar is gone."}, {"date": "2026-10-14", "tapes": [1], "text": "Spinning rice bowl loading screen that starts by itself."}, {"date": "2026-10-14", "tapes": [1], "text": "Mods, a new Settings screen, a new menu font and real text on the custom night."}, {"date": "2026-10-14", "tapes": [1], "text": "Full character drawings everywhere, with the faces as their own files."}, {"date": "2026-10-14", "tapes": [1], "text": "Mod template: every picture as a PNG, and mods can use any image type."}, {"date": "2026-10-14", "tapes": [1], "text": "The fan-made cast is used everywhere, and the animation is smoother."}, {"date": "2026-10-14", "tapes": [1], "text": "Smooth movement, turning, resizing and fading (like TurboWarp)."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole game was rewritten by hand as a real browser game (no Scratch converter)."}, {"date": "2026-10-15", "tapes": [1], "text": "New tab icons: the rice bowl for the menu, Eddie for this tape."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole box around SETTINGS can be clicked."}, {"date": "2026-10-15", "tapes": [1], "text": "Three save files, picked on the menu. Mods are saved in the browser."}, {"date": "2026-10-15", "tapes": [1], "text": "New phone calls for nights 1 to 4, with a ringtone before each call."}, {"date": "2026-10-15", "tapes": [1], "text": "iPhone-style call banner with a green caller circle."}, {"date": "2026-10-15", "tapes": [1], "text": "Steam-style achievements (saved per file), and the camera name shows on the monitor."}, {"date": "2026-10-15", "tapes": [1], "text": "Child's Play achievement (custom night with everyone on 3 or lower) and a BACK button on the custom night."}, {"date": "2026-10-15", "tapes": [1], "text": "Debug mode: no saving and no achievements while it is on."}, {"date": "2026-10-15", "tapes": [1], "text": "The custom night is always on the title menu. Night 6 still needs nights 1 to 5 beaten."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}];
+const DEVLOG = [{"date": "2026-10-14", "tapes": [1], "text": "Fried Rice at Eddie's is playable in the browser, with a game select menu."}, {"date": "2026-10-14", "tapes": [1], "text": "The title music stops when a night starts, and the bottom button bar is gone."}, {"date": "2026-10-14", "tapes": [1], "text": "Spinning rice bowl loading screen that starts by itself."}, {"date": "2026-10-14", "tapes": [1], "text": "Mods, a new Settings screen, a new menu font and real text on the custom night."}, {"date": "2026-10-14", "tapes": [1], "text": "Full character drawings everywhere, with the faces as their own files."}, {"date": "2026-10-14", "tapes": [1], "text": "Mod template: every picture as a PNG, and mods can use any image type."}, {"date": "2026-10-14", "tapes": [1], "text": "The fan-made cast is used everywhere, and the animation is smoother."}, {"date": "2026-10-14", "tapes": [1], "text": "Smooth movement, turning, resizing and fading (like TurboWarp)."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole game was rewritten by hand as a real browser game (no Scratch converter)."}, {"date": "2026-10-15", "tapes": [1], "text": "New tab icons: the rice bowl for the menu, Eddie for this tape."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole box around SETTINGS can be clicked."}, {"date": "2026-10-15", "tapes": [1], "text": "Three save files, picked on the menu. Mods are saved in the browser."}, {"date": "2026-10-15", "tapes": [1], "text": "New phone calls for nights 1 to 4, with a ringtone before each call."}, {"date": "2026-10-15", "tapes": [1], "text": "iPhone-style call banner with a green caller circle."}, {"date": "2026-10-15", "tapes": [1], "text": "Steam-style achievements (saved per file), and the camera name shows on the monitor."}, {"date": "2026-10-15", "tapes": [1], "text": "Child's Play achievement (custom night with everyone on 3 or lower) and a BACK button on the custom night."}, {"date": "2026-10-15", "tapes": [1], "text": "Debug mode: no saving and no achievements while it is on."}, {"date": "2026-10-15", "tapes": [1], "text": "The custom night is always on the title menu. Night 6 still needs nights 1 to 5 beaten."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}];
 
 /* =====================================================================
    PICTURES AND SOUNDS
@@ -4356,8 +4427,8 @@ function closeAchievements() {
    - Mods: load a mod folder (or .zip), load a mod from a GitHub repo,
      download a template mod, and drag mods between "Downloaded" and
      "In use". In use mods replace game files; the top one wins.
-   Mods are saved in this browser (the list in localStorage, the files in
-   the browser's file database: no size limit) and applied when the game
+   Mods are saved in this browser (the files AND the list in the browser's
+   file database, IndexedDB: no size limit) and applied when the game
    loads, so the page reloads after mods change.
    ===================================================================== */
 
@@ -4473,61 +4544,36 @@ function sizeText(bytes) {
 
 /* ---------------------------------------------------------------------
    Mod storage: NO SIZE LIMIT
-   The list of mods (names, which are in use) lives in localStorage:
-     "<game>-mods"        every mod's details, and the names of its files
-     "<game>-mods-state"  { downloaded: [ids], inUse: [ids] }  (inUse[0] = top = wins)
-   The files themselves (pictures, sounds, models, code...) live in the
-   browser's file database (IndexedDB "<game>-mods-files"), which can hold
-   as much as the device has room for (localStorage only holds about 5 MB).
+   Everything (the files AND the list of mods / which are in use) lives
+   in the browser's file database, IndexedDB "<game>-mods-files", which
+   can hold as much as the device and browser allow (usually gigabytes).
+   Nothing about mods is kept in localStorage (it only holds a few MB).
+   The store itself is TapeMods() in tools/global.js (shared with the
+   tape menu and the workshop).
    --------------------------------------------------------------------- */
-const MODS_KEY = GI.key + "-mods", MODS_STATE_KEY = GI.key + "-mods-state";
+const MODS_KEY = GI.key + "-mods";
+const ModStore = TapeMods(GI.key);
 const blobToDataUrl = blob => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(r.result);
   r.onerror = () => rej(r.error);
   r.readAsDataURL(blob);
 });
-// The file database: key "<mod id>/<path>" -> Blob
-const ModFiles = {
-  db: null,
-  open() {
-    if (!this.db) this.db = new Promise((res, rej) => {
-      const r = indexedDB.open(MODS_KEY + "-files", 1);
-      r.onupgradeneeded = () => r.result.createObjectStore("files");
-      r.onsuccess = () => res(r.result);
-      r.onerror = () => rej(r.error);
-    });
-    return this.db;
-  },
-  // one transaction; fn gets the store and returns a request (its result is returned)
-  async run(mode, fn) {
-    const db = await this.open();
-    return new Promise((res, rej) => {
-      const t = db.transaction("files", mode);
-      const req = fn(t.objectStore("files"));
-      t.oncomplete = () => res(req ? req.result : undefined);
-      t.onerror = t.onabort = () => rej(t.error || new Error("storage error"));
-    });
-  },
-  put(key, blob) { return this.run("readwrite", st => st.put(blob, key)); },
-  get(key) { return this.run("readonly", st => st.get(key)); },
-  removeMod(id) { return this.run("readwrite", st => st.delete(IDBKeyRange.bound(id + "/", id + "/\uffff"))); },
-};
 
 const ModDB = {
-  read() { try { return JSON.parse(localStorage.getItem(MODS_KEY) || "[]"); } catch (e) { return []; } },
-  write(list) {
-    try { localStorage.setItem(MODS_KEY, JSON.stringify(list)); }
-    catch (e) { throw new Error("Could not save the mod list (browser storage is full)."); }
+  read() { return ModStore.list(); },             // (async) every mod's details, no files
+  async write(list) {
+    try { await ModStore.putList(list); }
+    catch (e) { throw new Error("Could not save the mod list (this device is out of space)."); }
   },
   // every mod, with its files as Blobs
   async allMods() {
     await this.upgrade();
-    const list = this.read();
+    const list = await this.read();
     for (const m of list) {
       const files = {};
       for (const path of m.fileList || []) {
-        const blob = await ModFiles.get(m.id + "/" + path).catch(() => null);
+        const blob = await ModStore.getFile(m.id + "/" + path).catch(() => null);
         if (blob) files[path] = blob;
       }
       m.files = files;
@@ -4535,30 +4581,26 @@ const ModDB = {
     return list;
   },
   async putMod(m) {
-    // ask the browser to keep our files (so it doesn't clear them when space is low)
-    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    ModStore.persist();
     try {
-      await ModFiles.removeMod(m.id);
-      for (const [path, blob] of Object.entries(m.files)) await ModFiles.put(m.id + "/" + path, blob);
+      await ModStore.removeFiles(m.id);
+      for (const [path, blob] of Object.entries(m.files)) await ModStore.putFile(m.id + "/" + path, blob);
     } catch (e) {
-      await ModFiles.removeMod(m.id).catch(() => {});
+      await ModStore.removeFiles(m.id).catch(() => {});
       throw new Error("Not enough free space on this device for that mod (" + sizeText(m.size || 0) + "). Free some space or delete a mod.");
     }
     const { files, ...info } = m;
-    this.write([...this.read().filter(x => x.id !== m.id), { ...info, fileList: Object.keys(files) }]);
+    await this.write([...(await this.read()).filter(x => x.id !== m.id), { ...info, fileList: Object.keys(files) }]);
   },
   async deleteMod(id) {
-    this.write(this.read().filter(x => x.id !== id));
-    await ModFiles.removeMod(id).catch(() => {});
+    await this.write((await this.read()).filter(x => x.id !== id));
+    await ModStore.removeFiles(id).catch(() => {});
   },
-  async getState() {
-    try { return JSON.parse(localStorage.getItem(MODS_STATE_KEY)) || { downloaded: [], inUse: [] }; }
-    catch (e) { return { downloaded: [], inUse: [] }; }
-  },
-  async putState(st) { localStorage.setItem(MODS_STATE_KEY, JSON.stringify(st)); },
-  // mods saved by the 5 MB version (files as data: URLs inside localStorage) move to the file database once
+  getState() { return ModStore.state(); },
+  putState(st) { return ModStore.putState(st); },
+  // mods saved by the 5 MB version (files as data: URLs inside the list) move to the file database once
   async upgrade() {
-    const list = this.read();
+    const list = await this.read();
     if (!list.some(m => m.files && !m.fileList)) return;
     for (const m of list) {
       if (!m.files || m.fileList) continue;
@@ -4568,9 +4610,9 @@ const ModDB = {
     }
   },
 
-  // Mods saved by the older version (IndexedDB) move over to localStorage once
+  // Mods saved by the very first version (IndexedDB "<game>-mods") move over once
   async moveOldMods() {
-    if (localStorage.getItem(MODS_KEY) !== null || !window.indexedDB || !indexedDB.databases) return;
+    if (!window.indexedDB || !indexedDB.databases) return;
     const dbs = await indexedDB.databases();
     if (!dbs.some(d => d.name === MODS_KEY)) return;
     const db = await new Promise((res, rej) => { const r = indexedDB.open(MODS_KEY); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
@@ -4581,10 +4623,13 @@ const ModDB = {
     const mods = (await get("mods", s => s.getAll())) || [];
     const state = (await get("meta", s => s.get("state"))) || { downloaded: [], inUse: [] };
     db.close();
-    this.write([]);
-    for (const m of mods) { try { await this.putMod(m); } catch (e) { console.warn("Old mod too big to move", m.name); } }
-    const kept = new Set(this.read().map(m => m.id));
-    await this.putState({ downloaded: state.downloaded.filter(id => kept.has(id)), inUse: state.inUse.filter(id => kept.has(id)) });
+    const before = new Set((await this.read()).map(m => m.id));
+    for (const m of mods) { if (!before.has(m.id)) { try { await this.putMod(m); } catch (e) { console.warn("Old mod too big to move", m.name); } } }
+    const kept = new Set((await this.read()).map(m => m.id));
+    const st = await this.getState();
+    for (const id of state.downloaded || []) if (kept.has(id) && !st.downloaded.includes(id) && !st.inUse.includes(id)) st.downloaded.push(id);
+    for (const id of state.inUse || []) if (kept.has(id) && !st.downloaded.includes(id) && !st.inUse.includes(id)) st.inUse.push(id);
+    await this.putState(st);
     indexedDB.deleteDatabase(MODS_KEY);
   }
 };
@@ -5199,6 +5244,8 @@ async function openMods() {
   modState.inUse = modState.inUse.filter(id => ids.has(id));
   for (const m of modList) if (!modState.downloaded.includes(m.id) && !modState.inUse.includes(m.id)) modState.downloaded.push(m.id);
   renderMods();
+  // no mod limit: show how much room the browser gives this site (usually gigabytes)
+  storageText().then(t => { if (t && !$("#modStatus").textContent) modStatus(T("Mod storage") + ": " + t); });
 }
 async function closeMods() {
   $("#modsPanel").hidden = true;

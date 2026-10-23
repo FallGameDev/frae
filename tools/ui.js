@@ -4,8 +4,8 @@
    - Mods: load a mod folder (or .zip), load a mod from a GitHub repo,
      download a template mod, and drag mods between "Downloaded" and
      "In use". In use mods replace game files; the top one wins.
-   Mods are saved in this browser (the list in localStorage, the files in
-   the browser's file database: no size limit) and applied when the game
+   Mods are saved in this browser (the files AND the list in the browser's
+   file database, IndexedDB: no size limit) and applied when the game
    loads, so the page reloads after mods change.
    ===================================================================== */
 
@@ -121,61 +121,36 @@ function sizeText(bytes) {
 
 /* ---------------------------------------------------------------------
    Mod storage: NO SIZE LIMIT
-   The list of mods (names, which are in use) lives in localStorage:
-     "<game>-mods"        every mod's details, and the names of its files
-     "<game>-mods-state"  { downloaded: [ids], inUse: [ids] }  (inUse[0] = top = wins)
-   The files themselves (pictures, sounds, models, code...) live in the
-   browser's file database (IndexedDB "<game>-mods-files"), which can hold
-   as much as the device has room for (localStorage only holds about 5 MB).
+   Everything (the files AND the list of mods / which are in use) lives
+   in the browser's file database, IndexedDB "<game>-mods-files", which
+   can hold as much as the device and browser allow (usually gigabytes).
+   Nothing about mods is kept in localStorage (it only holds a few MB).
+   The store itself is TapeMods() in tools/global.js (shared with the
+   tape menu and the workshop).
    --------------------------------------------------------------------- */
-const MODS_KEY = GI.key + "-mods", MODS_STATE_KEY = GI.key + "-mods-state";
+const MODS_KEY = GI.key + "-mods";
+const ModStore = TapeMods(GI.key);
 const blobToDataUrl = blob => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(r.result);
   r.onerror = () => rej(r.error);
   r.readAsDataURL(blob);
 });
-// The file database: key "<mod id>/<path>" -> Blob
-const ModFiles = {
-  db: null,
-  open() {
-    if (!this.db) this.db = new Promise((res, rej) => {
-      const r = indexedDB.open(MODS_KEY + "-files", 1);
-      r.onupgradeneeded = () => r.result.createObjectStore("files");
-      r.onsuccess = () => res(r.result);
-      r.onerror = () => rej(r.error);
-    });
-    return this.db;
-  },
-  // one transaction; fn gets the store and returns a request (its result is returned)
-  async run(mode, fn) {
-    const db = await this.open();
-    return new Promise((res, rej) => {
-      const t = db.transaction("files", mode);
-      const req = fn(t.objectStore("files"));
-      t.oncomplete = () => res(req ? req.result : undefined);
-      t.onerror = t.onabort = () => rej(t.error || new Error("storage error"));
-    });
-  },
-  put(key, blob) { return this.run("readwrite", st => st.put(blob, key)); },
-  get(key) { return this.run("readonly", st => st.get(key)); },
-  removeMod(id) { return this.run("readwrite", st => st.delete(IDBKeyRange.bound(id + "/", id + "/\uffff"))); },
-};
 
 const ModDB = {
-  read() { try { return JSON.parse(localStorage.getItem(MODS_KEY) || "[]"); } catch (e) { return []; } },
-  write(list) {
-    try { localStorage.setItem(MODS_KEY, JSON.stringify(list)); }
-    catch (e) { throw new Error("Could not save the mod list (browser storage is full)."); }
+  read() { return ModStore.list(); },             // (async) every mod's details, no files
+  async write(list) {
+    try { await ModStore.putList(list); }
+    catch (e) { throw new Error("Could not save the mod list (this device is out of space)."); }
   },
   // every mod, with its files as Blobs
   async allMods() {
     await this.upgrade();
-    const list = this.read();
+    const list = await this.read();
     for (const m of list) {
       const files = {};
       for (const path of m.fileList || []) {
-        const blob = await ModFiles.get(m.id + "/" + path).catch(() => null);
+        const blob = await ModStore.getFile(m.id + "/" + path).catch(() => null);
         if (blob) files[path] = blob;
       }
       m.files = files;
@@ -183,30 +158,26 @@ const ModDB = {
     return list;
   },
   async putMod(m) {
-    // ask the browser to keep our files (so it doesn't clear them when space is low)
-    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    ModStore.persist();
     try {
-      await ModFiles.removeMod(m.id);
-      for (const [path, blob] of Object.entries(m.files)) await ModFiles.put(m.id + "/" + path, blob);
+      await ModStore.removeFiles(m.id);
+      for (const [path, blob] of Object.entries(m.files)) await ModStore.putFile(m.id + "/" + path, blob);
     } catch (e) {
-      await ModFiles.removeMod(m.id).catch(() => {});
+      await ModStore.removeFiles(m.id).catch(() => {});
       throw new Error("Not enough free space on this device for that mod (" + sizeText(m.size || 0) + "). Free some space or delete a mod.");
     }
     const { files, ...info } = m;
-    this.write([...this.read().filter(x => x.id !== m.id), { ...info, fileList: Object.keys(files) }]);
+    await this.write([...(await this.read()).filter(x => x.id !== m.id), { ...info, fileList: Object.keys(files) }]);
   },
   async deleteMod(id) {
-    this.write(this.read().filter(x => x.id !== id));
-    await ModFiles.removeMod(id).catch(() => {});
+    await this.write((await this.read()).filter(x => x.id !== id));
+    await ModStore.removeFiles(id).catch(() => {});
   },
-  async getState() {
-    try { return JSON.parse(localStorage.getItem(MODS_STATE_KEY)) || { downloaded: [], inUse: [] }; }
-    catch (e) { return { downloaded: [], inUse: [] }; }
-  },
-  async putState(st) { localStorage.setItem(MODS_STATE_KEY, JSON.stringify(st)); },
-  // mods saved by the 5 MB version (files as data: URLs inside localStorage) move to the file database once
+  getState() { return ModStore.state(); },
+  putState(st) { return ModStore.putState(st); },
+  // mods saved by the 5 MB version (files as data: URLs inside the list) move to the file database once
   async upgrade() {
-    const list = this.read();
+    const list = await this.read();
     if (!list.some(m => m.files && !m.fileList)) return;
     for (const m of list) {
       if (!m.files || m.fileList) continue;
@@ -216,9 +187,9 @@ const ModDB = {
     }
   },
 
-  // Mods saved by the older version (IndexedDB) move over to localStorage once
+  // Mods saved by the very first version (IndexedDB "<game>-mods") move over once
   async moveOldMods() {
-    if (localStorage.getItem(MODS_KEY) !== null || !window.indexedDB || !indexedDB.databases) return;
+    if (!window.indexedDB || !indexedDB.databases) return;
     const dbs = await indexedDB.databases();
     if (!dbs.some(d => d.name === MODS_KEY)) return;
     const db = await new Promise((res, rej) => { const r = indexedDB.open(MODS_KEY); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
@@ -229,10 +200,13 @@ const ModDB = {
     const mods = (await get("mods", s => s.getAll())) || [];
     const state = (await get("meta", s => s.get("state"))) || { downloaded: [], inUse: [] };
     db.close();
-    this.write([]);
-    for (const m of mods) { try { await this.putMod(m); } catch (e) { console.warn("Old mod too big to move", m.name); } }
-    const kept = new Set(this.read().map(m => m.id));
-    await this.putState({ downloaded: state.downloaded.filter(id => kept.has(id)), inUse: state.inUse.filter(id => kept.has(id)) });
+    const before = new Set((await this.read()).map(m => m.id));
+    for (const m of mods) { if (!before.has(m.id)) { try { await this.putMod(m); } catch (e) { console.warn("Old mod too big to move", m.name); } } }
+    const kept = new Set((await this.read()).map(m => m.id));
+    const st = await this.getState();
+    for (const id of state.downloaded || []) if (kept.has(id) && !st.downloaded.includes(id) && !st.inUse.includes(id)) st.downloaded.push(id);
+    for (const id of state.inUse || []) if (kept.has(id) && !st.downloaded.includes(id) && !st.inUse.includes(id)) st.inUse.push(id);
+    await this.putState(st);
     indexedDB.deleteDatabase(MODS_KEY);
   }
 };
@@ -847,6 +821,8 @@ async function openMods() {
   modState.inUse = modState.inUse.filter(id => ids.has(id));
   for (const m of modList) if (!modState.downloaded.includes(m.id) && !modState.inUse.includes(m.id)) modState.downloaded.push(m.id);
   renderMods();
+  // no mod limit: show how much room the browser gives this site (usually gigabytes)
+  storageText().then(t => { if (t && !$("#modStatus").textContent) modStatus(T("Mod storage") + ": " + t); });
 }
 async function closeMods() {
   $("#modsPanel").hidden = true;

@@ -1105,8 +1105,11 @@
     catch (e) { box.replaceChildren(note("Could not load your mods: " + e.message, "bad")); return; }
     const items = [];
     const sizeText = b => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
+    // this device's mods for each tape (from the browser's file database)
+    const local = {};
+    for (const t of TAPES) local[t.key] = await TapeMods(t.key).list().catch(() => []);
     for (const t of TAPES) {
-      for (const m of TapeMods(t.key).list()) {
+      for (const m of local[t.key]) {
         const up = cloudModRows.find(r => r.id === m.id && r.tape === t.tape);
         const kind = Cloud.modKind(m);
         items.push(h("div", { class: "sitem" },
@@ -1120,7 +1123,7 @@
     // on the account but not on this device
     for (const r of cloudModRows) {
       const t = TAPES.find(x => x.tape === r.tape);
-      if (!t || TapeMods(t.key).list().some(m => m.id === r.id)) continue;
+      if (!t || (local[t.key] || []).some(m => m.id === r.id)) continue;
       items.push(h("div", { class: "sitem" },
         h("span", { class: "nm" }, `${t.name} · ${r.name}${r.author ? " by " + r.author : ""} (${sizeText(r.size || 0)})`),
         h("span", { class: "tg" + (r.kind === "created" ? " created" : "") }, (r.kind || "installed").toUpperCase()),

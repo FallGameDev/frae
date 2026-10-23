@@ -286,44 +286,105 @@ const ModImage = {
 };
 
 /* =====================================================================
-   A TAPE'S MODS, read and written from outside the game
-   (the same layout as ModDB / ModFiles in tools/ui.js:
-    localStorage "<tape>-mods" + "<tape>-mods-state",
-    IndexedDB "<tape>-mods-files", store "files", key "<mod id>/<path>")
+   A TAPE'S MODS: NO SIZE LIMIT
+   Everything about a tape's mods lives in the browser's file database
+   (IndexedDB "<tape>-mods-files"), never in localStorage (which only
+   holds a few MB in total):
+     store "files"  key "<mod id>/<path>" -> Blob (pictures, sounds, models, code...)
+     store "meta"   key "list"  -> every mod's details (name, author, texts, file names...)
+                    key "state" -> { downloaded: [ids], inUse: [ids] } (inUse[0] = top = wins)
+   IndexedDB can use as much of the disk as the browser allows (usually
+   gigabytes), and the page asks the browser to keep it (persistent storage).
+   Mod lists saved by older versions in localStorage ("<tape>-mods",
+   "<tape>-mods-state") move over by themselves the first time, and are
+   then removed from localStorage to free it up.
+   Used by the games (ModDB in tools/ui.js), the menu and the workshop.
    ===================================================================== */
 const TAPES = [
   { tape: 1, key: "frae1", name: "Tape 1" },
   { tape: 2, key: "frae2", name: "Tape 2" }
 ];
+const TAPE_MODS = {};        // one store object per tape (shares the open database)
 function TapeMods(key) {
+  if (TAPE_MODS[key]) return TAPE_MODS[key];
   const listKey = key + "-mods", stateKey = key + "-mods-state";
-  let db = null;
+  let db = null, moved = null;
+
+  // open the database (version 2 added the "meta" store)
   const open = () => db || (db = new Promise((res, rej) => {
-    const r = indexedDB.open(listKey + "-files", 1);
-    r.onupgradeneeded = () => r.result.createObjectStore("files");
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
+    const r = indexedDB.open(listKey + "-files", 2);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains("files")) d.createObjectStore("files");
+      if (!d.objectStoreNames.contains("meta")) d.createObjectStore("meta");
+    };
+    r.onsuccess = () => {
+      clearTimeout(waited);
+      const d = r.result;
+      d.onversionchange = () => { d.close(); db = null; };      // let a newer page upgrade it
+      res(d);
+    };
+    // another tab still has the old version open: wait a little, then say so instead of hanging
+    let waited = null;
+    r.onblocked = () => {
+      waited = setTimeout(() => { db = null; rej(new Error("Close the other Fried Rice at Eddie's tabs, then try again (mod storage is updating).")); }, 5000);
+    };
+    r.onerror = () => { clearTimeout(waited); db = null; rej(r.error); };
   }));
-  const run = async (mode, fn) => {
+  // one transaction on one store; fn gets the store and returns a request (its result is returned)
+  const run = async (store, mode, fn) => {
     const d = await open();
     return new Promise((res, rej) => {
-      const t = d.transaction("files", mode);
-      const req = fn(t.objectStore("files"));
+      const t = d.transaction(store, mode);
+      const req = fn(t.objectStore(store));
       t.oncomplete = () => res(req ? req.result : undefined);
       t.onerror = t.onabort = () => rej(t.error || new Error("storage error"));
     });
   };
-  return {
-    list() { try { return JSON.parse(localStorage.getItem(listKey) || "[]"); } catch (e) { return []; } },
-    state() { try { return JSON.parse(localStorage.getItem(stateKey)) || { downloaded: [], inUse: [] }; } catch (e) { return { downloaded: [], inUse: [] }; } },
-    // one mod as a .zip: mod.json (its details + file types) and files/<path>
+  const getMeta = k => run("meta", "readonly", st => st.get(k));
+  const setMeta = (k, v) => run("meta", "readwrite", st => st.put(v, k));
+
+  // first use: bring an old localStorage list over, then free localStorage
+  const moveFromLocalStorage = () => moved || (moved = (async () => {
+    let oldList = null, oldState = null;
+    try { oldList = localStorage.getItem(listKey); oldState = localStorage.getItem(stateKey); } catch (e) {}
+    if (oldList !== null && (await getMeta("list")) === undefined) {
+      try { await setMeta("list", JSON.parse(oldList) || []); } catch (e) { await setMeta("list", []); }
+    }
+    if (oldState !== null && (await getMeta("state")) === undefined) {
+      try { await setMeta("state", JSON.parse(oldState) || { downloaded: [], inUse: [] }); } catch (e) {}
+    }
+    try { localStorage.removeItem(listKey); localStorage.removeItem(stateKey); } catch (e) {}
+  })());
+
+  const store = TAPE_MODS[key] = {
+    /* ----- the list and the order (async: they live in IndexedDB) ----- */
+    async list() { await moveFromLocalStorage(); return (await getMeta("list")) || []; },
+    async putList(list) { await moveFromLocalStorage(); await setMeta("list", list); },
+    async state() {
+      await moveFromLocalStorage();
+      const st = await getMeta("state");
+      return st && Array.isArray(st.downloaded) && Array.isArray(st.inUse) ? st : { downloaded: [], inUse: [] };
+    },
+    async putState(st) { await moveFromLocalStorage(); await setMeta("state", { downloaded: st.downloaded, inUse: st.inUse }); },
+    // was there an old localStorage list? (ui.js checks this for even older saves)
+    hadOldList() { try { return localStorage.getItem(listKey) !== null; } catch (e) { return false; } },
+
+    /* ----- files ----- */
+    getFile(k) { return run("files", "readonly", st => st.get(k)); },
+    putFile(k, blob) { return run("files", "readwrite", st => st.put(blob, k)); },
+    removeFiles(id) { return run("files", "readwrite", st => st.delete(IDBKeyRange.bound(id + "/", id + "/\uffff"))); },
+    // ask the browser to keep our files (so it doesn't clear them when space is low)
+    persist() { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); },
+
+    /* ----- one mod as a .zip: mod.json (its details + file types) and files/<path> ----- */
     // extra: details to change in mod.json (the workshop sets author/name/version...)
     async pack(id, extra = {}) {
-      const info = this.list().find(m => m.id === id);
+      const info = (await this.list()).find(m => m.id === id);
       if (!info) throw new Error("That mod is not on this device");
       const entries = [], types = {};
       for (const path of info.fileList || []) {
-        const blob = await run("readonly", st => st.get(id + "/" + path)).catch(() => null);
+        const blob = await this.getFile(id + "/" + path).catch(() => null);
         if (!blob) continue;
         types[path] = blob.type || "";
         entries.push({ path: "files/" + path, bytes: new Uint8Array(await blob.arrayBuffer()) });
@@ -341,24 +402,34 @@ function TapeMods(key) {
       const { types = {}, ...saved } = JSON.parse(await metaFile.blob.text());
       const info = { ...saved, ...overrides };
       if (check) await check(info);
-      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-      await run("readwrite", st => st.delete(IDBKeyRange.bound(info.id + "/", info.id + "/￿")));
+      this.persist();
+      await this.removeFiles(info.id);
       const fileList = [];
       for (const f of items) {
         if (!f.path.startsWith("files/")) continue;
         const path = f.path.slice(6);
-        await run("readwrite", st => st.put(new Blob([f.blob], { type: types[path] || "" }), info.id + "/" + path));
+        await this.putFile(info.id + "/" + path, new Blob([f.blob], { type: types[path] || "" }));
         fileList.push(path);
       }
-      const list = this.list().filter(m => m.id !== info.id);
+      const list = (await this.list()).filter(m => m.id !== info.id);
       list.push({ ...info, fileList });
-      localStorage.setItem(listKey, JSON.stringify(list));
-      const st = this.state();
+      await this.putList(list);
+      const st = await this.state();
       if (!st.downloaded.includes(info.id) && !st.inUse.includes(info.id)) st.downloaded.unshift(info.id);
-      localStorage.setItem(stateKey, JSON.stringify(st));
+      await this.putState(st);
       return info;
     }
   };
+  return store;
+}
+
+// How much space this site can use, for the Mods screen ("12 MB used of 2.1 GB")
+async function storageText() {
+  try {
+    const est = await navigator.storage.estimate();
+    const t = b => b > 1073741824 ? (b / 1073741824).toFixed(1) + " GB" : b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.round(b / 1024) + " KB";
+    return t(est.usage || 0) + " used of " + t(est.quota || 0);
+  } catch (e) { return ""; }
 }
 
 /* =====================================================================
@@ -612,7 +683,7 @@ const Cloud = {
   },
   async uploadMod(tape, id) {
     const store = TapeMods(tape.key);
-    const info = store.list().find(m => m.id === id);
+    const info = (await store.list()).find(m => m.id === id);
     const zip = await store.pack(id);
     const png = await ModImage.encode(zip, (info.name || id) + ".zip");      // the whole mod as one picture
     const path = this.uid() + "/" + tape.tape + "-" + id + ".png";
@@ -664,7 +735,7 @@ const Cloud = {
   // details: { name, description, version, mature }. The author is always your username.
   async publish(tape, localId, details, row) {
     const store = TapeMods(tape.key);
-    const info = store.list().find(m => m.id === localId);
+    const info = (await store.list()).find(m => m.id === localId);
     if (!info) throw new Error("That mod is not on this device any more.");
     const author = this.profile && this.profile.username || "player";
     const id = row ? row.id : crypto.randomUUID();
