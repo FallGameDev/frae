@@ -111,3 +111,13 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - The PNG is written and read in plain JS (CompressionStream/DecompressionStream + PNG row filters), not a canvas, so colors are never changed and there's no canvas size limit. Decoding a 33 MB mod takes about a second.
 - In the games, PICK .ZIP / MOD IMAGE (`#zipInput`, accepts .zip and .png) unpacks a mod image straight into a mod.
 
+## Font setting (menu Settings > Visuals + each tape's Settings > Font)
+- `Global.data.visuals.font`: "original" | "dyslexic" | "mario" (label "whoo hoo super mario on the ps4", lowercase on purpose). One setting shared by the menu, the workshop and both tapes (and synced with the account).
+- Changes TEXT only, never pictures. `Fonts` in tools/global.js (starts itself when global.js loads):
+  - Canvas: `CanvasRenderingContext2D.prototype.fillText / strokeText / measureText` are wrapped. Dyslexic swaps the font family to OpenDyslexic for that call (then puts `ctx.font` back); mario runs the words through `Meme.say`. So every word either tape or a mod draws follows it.
+  - Page HTML: class `frae-dyslexic` on <html> sets OpenDyslexic on everything (!important); mario starts `MemeDOM`, a MutationObserver that swaps every text node for its meme version and puts the real words back when switched off. Skips script/style/inputs/textareas and anything inside `[data-nomeme]` (the Font buttons).
+  - Tape 1's word boxes (`drawText` in tools/game/pictures.js): the ink cache key includes `Fonts.version`, and when `Fonts.reflow()` (any non-original font) words keep their own letter size instead of being stretched into the original box.
+- Font files: fonts/opendyslexic-latin-400/700-normal.woff2 (from @fontsource/opendyslexic, SIL OFL, fonts/OpenDyslexic-LICENSE.txt). Loaded by an @font-face with `size-adjust: 76%` so layouts mostly fit; the path is relative to the page (`FONT_ROOT`: "../" inside /1/, /2/, /workshop/).
+- Meme mode = `MEME_PHRASES` (whole phrases the player sees, kid-friendly) + `MEME_WORDS` (word swaps, keeps ALL CAPS / Capitalized) + sometimes a lowercase ending on sentences of 4+ words (" lol", " (real)", " fr fr"...). Same text always gives the same result (cached).
+- Tape Settings panel: rows are tighter, it scrolls if something is ever too tall, and in Dyslexic labels stay on one line.
+

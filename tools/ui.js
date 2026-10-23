@@ -717,6 +717,12 @@ function buildSettings() {
     input.addEventListener("input", () => { settings[key] = +input.value; out.textContent = input.value + "%"; applyVolumes(); saveSettings(); });
     return [input, out];
   };
+  // Font (shared with the tape menu's Settings > Visuals): changes words only, never pictures.
+  // data-nomeme keeps the button names as they are in "whoo hoo" mode.
+  const fontBtn = (label, val) => el("button", {
+    class: "pick fontPick" + ((Global.data.visuals.font || "original") === val ? " on" : ""), "data-nomeme": true,
+    onclick: () => { Global.data.visuals.font = val; Global.save(); Fonts.apply(); buildSettings(); blip(); }
+  }, label);
   box.append(
     el("h2", {}, T("Settings")),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Jumpscares")),
@@ -736,6 +742,9 @@ function buildSettings() {
          history.replaceState(null, "", location.pathname);
          showFiles();
        } }, T("CHANGE"))),
+    el("div", { class: "row" }, el("span", { class: "label" }, T("Font")),
+       el("div", { class: "pair" }, fontBtn("Original", "original"), fontBtn("Dyslexic", "dyslexic"),
+          fontBtn("whoo hoo super mario on the ps4", "mario"))),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Music")), ...slider("music")),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Sound")), ...slider("sound")),
     el("div", { class: "row" }, el("span", { class: "label" }, ""),

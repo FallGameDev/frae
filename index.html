@@ -788,9 +788,9 @@
   const row = (label, note, ...right) => h("div", { class: "srow" },
     h("div", { class: "slabel" }, label, note ? h("small", {}, note) : null), ...right);
   // a group of buttons where one is picked
-  function choice(options, now, onPick, locked) {
+  function choice(options, now, onPick, locked, attrs = {}) {
     return h("div", { class: "spair" }, ...options.map(([label, val]) =>
-      h("button", { class: "sbtn" + (now === val ? " on" : ""), disabled: !!locked,
+      h("button", { ...attrs, class: "sbtn" + (now === val ? " on" : ""), disabled: !!locked,
                     onclick: () => { onPick(val); beep(660, .05); drawSettings(); } }, label)));
   }
   function slider(get, set, min = 0, max = 100, step = 5) {
@@ -844,6 +844,11 @@
         choice([["ON", true], ["OFF", false]], v.vhs, x => { v.vhs = x; Global.save(); applyVisuals(); })),
       row("Calm menu", "no flicker or bouncing",
         choice([["ON", true], ["OFF", false]], v.calm, x => { v.calm = x; Global.save(); applyVisuals(); })),
+      // Font: words only (never pictures), on this menu, the workshop and every tape.
+      // data-nomeme keeps these button names as they are in "whoo hoo" mode.
+      row("Font", "changes the words, not the pictures",
+        choice([["Original", "original"], ["Dyslexic", "dyslexic"], ["whoo hoo super mario on the ps4", "mario"]],
+          v.font || "original", x => { v.font = x; Global.save(); Fonts.apply(); }, false, { "data-nomeme": true })),
       note("These work in every tape. Each tape still has its own Settings for jumpscares and mods.")
     );
   }

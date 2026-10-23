@@ -136,7 +136,7 @@ const inkCache = new Map();
 
 // The size of the actual letters (not the line box) at 100px
 function measureInk(ctx, text, font) {
-  const key = font + "|" + text;
+  const key = Fonts.version + "|" + font + "|" + text;         // (the Font setting changes how words measure)
   if (!inkCache.has(key)) {
     ctx.font = `100px "${font}"`;
     const m = ctx.measureText(text);
@@ -168,7 +168,7 @@ function drawText(ctx, L) {
     const orig = measureInk(ctx, L.text, L.font);
     if (orig.w > 0 && orig.h > 0) {
       ctx.font = `100px "${L.font}"`;
-      if (shown === L.text && !L.like) {
+      if (shown === L.text && !L.like && !Fonts.reflow()) {
         // stretch the letters so they fill the box exactly where the old picture had them
         ctx.translate(x, y);
         ctx.scale(w / orig.w, h / orig.h);

@@ -100,8 +100,14 @@
   #debug .warn { margin-top: calc(var(--u) * 2); color: #ff6b6b; }
   #debug .keys { margin-top: calc(var(--u) * 3); color: #888; }
   /* settings */
-  #settingsPanel h2 { font-size: calc(var(--u) * 22); font-weight: normal; margin-bottom: calc(var(--u) * 16); }
-  #settingsPanel .row { display: flex; align-items: center; gap: calc(var(--u) * 12); margin: calc(var(--u) * 9) 0 calc(var(--u) * 9) calc(var(--u) * 40); }
+  /* (scrolls if a big font or a mod's long words make it taller than the screen) */
+  #settingsPanel { overflow-y: auto; }
+  #settingsPanel h2 { font-size: calc(var(--u) * 22); font-weight: normal; margin-bottom: calc(var(--u) * 8); }
+  #settingsPanel .row { display: flex; align-items: center; gap: calc(var(--u) * 12); margin: calc(var(--u) * 5) 0 calc(var(--u) * 5) calc(var(--u) * 40); flex-shrink: 0; }
+  #settingsPanel .confirm { flex-shrink: 0; }
+  /* Dyslexic font (wider letters): labels stay on one line, rows a little closer */
+  html.frae-dyslexic #settingsPanel .label { width: auto; min-width: calc(var(--u) * 110); white-space: nowrap; }
+  html.frae-dyslexic #settingsPanel .row { margin-top: calc(var(--u) * 3); margin-bottom: calc(var(--u) * 3); }
   #settingsPanel .label { width: calc(var(--u) * 110); font-size: calc(var(--u) * 15); }
   #settingsPanel .pair { display: flex; gap: calc(var(--u) * 8); }
   /* jumpscare buttons: orange when picked, gray when not (like the old pictures) */
@@ -110,6 +116,8 @@
   #settingsPanel .pick:hover { border-color: #fff; background: #777; }
   #settingsPanel .pick.on { background: #f7931e; border-color: #f7931e; }
   #settingsPanel .pick.on:hover { border-color: #fff; }
+  /* Font buttons: smaller, so the long one fits */
+  #settingsPanel .pick.fontPick { min-width: 0; font-size: calc(var(--u) * 11); padding: calc(var(--u) * 3) calc(var(--u) * 7); }
   #settingsPanel input[type=range] { width: calc(var(--u) * 170); accent-color: #f7931e; }
   #settingsPanel .val { width: calc(var(--u) * 40); color: #aaa; }
   #settingsPanel .big { font-size: calc(var(--u) * 15); padding: calc(var(--u) * 4) calc(var(--u) * 22); }

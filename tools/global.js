@@ -5,7 +5,7 @@
 
    - Global: settings for EVERY tape, changed on the menu's Settings
      button. Saved in localStorage "frae-global".
-       visuals:  brightness, picture quality, VHS effects, calm menu
+       visuals:  brightness, picture quality, VHS effects, calm menu, font
        sound:    master, music and sound effect volume (they multiply
                  each tape's own Music / Sound sliders)
        parental: optional PIN lock, no mods, no jumpscares,
@@ -39,7 +39,8 @@ const GLOBAL_DEFAULTS = {
     brightness: 100,   // 50-150 (%), a CSS filter on the game picture
     quality: "fast",   // "pixel" (no smoothing), "fast" (low smoothing), "pretty" (high smoothing, slower)
     vhs: true,         // menu scanlines, static and tracking bar
-    calm: false        // menu: no flicker or bouncing (reduced motion)
+    calm: false,       // menu: no flicker or bouncing (reduced motion)
+    font: "original"   // "original", "dyslexic" or "mario" (whoo hoo super mario on the ps4): see FONT SETTING
   },
   sound: { master: 100, music: 100, sfx: 100 },
   parental: {
@@ -108,6 +109,256 @@ const Global = {
   async checkPin(pin) { return !this.data.parental.pin || (await this.hashPin(pin)) === this.data.parental.pin; }
 };
 Global.load();
+
+/* =====================================================================
+   FONT SETTING (menu Settings > Visuals, and each tape's Settings)
+   Global.data.visuals.font:
+     "original"  nothing changes
+     "dyslexic"  every word uses OpenDyslexic (fonts/, SIL Open Font License)
+     "mario"     "whoo hoo super mario on the ps4": the same fonts, but every
+                 word is memified / badly translated (Meme.say below)
+   It changes TEXT only, never pictures:
+     - page text (<p>, buttons, panels...): a CSS class for the font, and a
+       watcher that swaps each text node for its meme version (and back)
+     - game text drawn on the canvas: fillText / strokeText / measureText are
+       wrapped, so every word a tape (or a mod) draws follows the setting
+   ===================================================================== */
+const FONT_ROOT = /\/(?:[1-9]|workshop)\/(?:index\.html)?$/.test(location.pathname) ? "../" : "./";
+const DYS_FAMILY = '"OpenDyslexic", sans-serif';
+
+/* ---------------------------------------------------------------------
+   MEME TRANSLATOR: "whoo hoo super mario on the ps4"
+   1) whole phrases the player sees a lot get their own meme version
+   2) everything else goes word by word through MEME_WORDS
+   3) longer sentences sometimes get a little ending (" lol", " (real)"...)
+   Always the same result for the same text (so nothing flickers).
+   --------------------------------------------------------------------- */
+const MEME_PHRASES = {
+  // menu + title screens
+  "fried rice at eddie's": "frid rais at eddie's", "fried rice at eddies": "frid rais at eddies",
+  "fried rice at eddie's!": "frid rais at eddie's!!1", "fried rice at eddie's is closing": "frid rais at eddie's iz closin (sad)",
+  "start": "go go go", "locked": "nope", "save file": "memory card", "settings": "teh knobs", "play": "play (pls)",
+  "episode 1": "episod 1: rais awakens", "episode 2": "episod 2: electric boogaloo", "coming soon": "soon™",
+  "this tape has not been recorded yet.": "dis tape iz still in teh microwave.", "no signal": "no wifi",
+  "here studios": "here studios (we r here)", "new game": "new gaem", "continue": "keep goin", "dine in": "eat here???",
+  "custom night": "make ur own nitemare", "customize night": "build-a-nitemare", "6th night": "nite 6 (the sequel)",
+  "it's already dark.": "is already dark bro.", "it's still dark.": "still dark. sun is on vacation.",
+  "spooky": "spoopy", "spooky night": "spoopy nite", "custom": "custom (fancy)", "ready": "lets gooo",
+  // settings
+  "jumpscares": "boo moments", "debug mode": "hacker mode 1337", "music": "jamz", "sound": "noize", "mods": "modz",
+  "devlog": "dev diary", "confirm": "ok fine", "on": "yes", "off": "nah", "back": "go back", "< back": "< go back",
+  "change": "swap", "erase": "yeet", "empty": "nothin here", "file": "card", "select a file": "pick a memory card pls",
+  "visuals": "looky stuff", "parental": "grown up stuff", "account": "u", "brightness": "how bright",
+  "picture quality": "how pretty", "vhs effects": "old tv mode", "calm menu": "chill menu", "font": "letterz",
+  "master": "big boss volume", "sound effects": "boops n beeps", "x close": "x bye",
+  "sign in": "log in pls", "create account": "make a u", "sign out": "log out (bye)", "forgot password?": "forgor password? 💀",
+  "chicken mode": "bawk bawk mode", "story mode only": "just da story", "pin lock": "secret code",
+  "allowed": "ok", "blocked": "nuh uh", "workshop": "mod mall", "browse": "look around", "publish": "send it",
+  "install": "gimme", "installed": "got it", "my mods": "my modz", "copy link": "steal link", "more": "moar",
+  "load unpacked": "load (open box)", "load packed": "load (closed box)", "download template": "get teh starter pack",
+  "downloaded": "got it", "in use": "doin stuff",
+  // in the games
+  "night": "nite", "achievements": "trophees", "achievement unlocked!": "u did a thing!!",
+  "hidden achievement": "secret trophee (shhh)", "keep playing to find it.": "keep playin 2 find it, ez.",
+  "unlocked": "gotted", "game over": "game over (skill issue)", "you're fired.": "ur yeeted.", "you're fired": "ur yeeted",
+  "the end.": "teh end. roll credits.", "the end": "teh end", "power left:": "juice left:", "usage:": "how much ur usin:",
+  "door": "dor", "light": "lite", "incoming call...": "some1 is callin u...", "hello? hello?": "ello? ello? is dis thing on",
+  "what could go wrong?": "wat could go wrong? (everything)", "f*ck no!": "heck nah!", "golden freddy rate?": "golden eddie chance???",
+  "mike wazowski": "mike wazowski (real)", "the peepeepoopoo monster": "teh peepeepoopoo monster (very scary)",
+  "warning": "hey listen!", "help wanted": "pls help", "pink slip": "pink paper of doom", "great!!": "gr8!!!",
+  "nice try!": "nice try lol", "too big!": "2 big!", "a.i. level": "how smart", "name": "naem", "kitchen": "cookin room",
+  "restrooms": "potty", "show stage": "da stage", "pirate cove": "pirate zone", "the puppet": "teh puppet (tall)",
+  "loading": "loadin", "loading...": "loadin..."
+};
+const MEME_WORDS = {
+  you: "u", your: "ur", "you're": "ur", youre: "ur", are: "r", the: "teh", night: "nite", nights: "nites",
+  please: "pls", okay: "k", really: "rly", because: "bc", with: "wif", this: "dis", that: "dat", what: "wat",
+  cool: "kewl", great: "gr8", food: "noms", eat: "nom", scary: "spoopy", power: "juice", camera: "cam", cameras: "cams",
+  light: "lite", lights: "lites", door: "dor", doors: "dors", animatronic: "robo dude", animatronics: "robo dudes",
+  characters: "guys", flashlight: "flashy stick", mask: "face hat", music: "jamz", sound: "noize",
+  achievement: "trophee", achievements: "trophees", survive: "dont die on", beat: "destroy", my: "mah", and: "n",
+  to: "2", for: "4", too: "2", be: "b", see: "c", oh: "o", hello: "ello", friend: "fren", friends: "frens",
+  children: "smol humans", child: "smol human", kid: "smol human", kids: "smol humans", money: "moneyz", dollars: "dollarz",
+  fired: "yeeted", closing: "closin", working: "workin", nothing: "nothin", something: "somethin", going: "goin",
+  cooking: "cookin", frying: "fryin", playing: "playin", everyone: "every1", someone: "some1", anyone: "any1",
+  before: "b4", later: "l8r", wait: "w8", new: "nu", very: "v", love: "luv", enough: "enuf", thanks: "thx",
+  people: "ppl", is: "iz", easy: "ez", hard: "hard (cri)", extreme: "EXTREEEME", file: "card", files: "cards",
+  save: "sav", saving: "savin", loading: "loadin", load: "lod", settings: "knobs", sensitive: "spicy",
+  jumpscare: "boo moment", jumpscares: "boo moments", mod: "mod", account: "acc", password: "passwrd",
+  username: "naem", delete: "yeet", deleted: "yeeted", remove: "yeet", hold: "hold (tight)", press: "smash",
+  click: "clicky", yes: "ye", no: "nah", isn: "iz", "don't": "dont", "can't": "cant", "won't": "wont",
+  empty: "nothin", fried: "frid", rice: "rais", shift: "shift (ugh)", job: "jerb", manager: "boss man", call: "ring ring", phone: "phon", prize: "prize (shiny)"
+};
+const MEME_ENDINGS = ["", "", "", " lol", " (real)", " fr fr", "!!1", " (trust)", " no cap", "™", " xD", ""];
+
+const Meme = {
+  cache: new Map(),
+  hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; },
+  // make "result" look like "like" (ALL CAPS, Capitalized or as it is)
+  caseLike(result, like) {
+    const letters = like.replace(/[^A-Za-z]/g, "");
+    if (letters.length > 1 && letters === letters.toUpperCase()) return result.toUpperCase();
+    if (/^[^A-Za-z]*[A-Z]/.test(like)) return result.replace(/[a-z]/, c => c.toUpperCase());
+    return result;
+  },
+  say(text) {
+    if (typeof text !== "string") text = String(text);
+    if (!/[A-Za-z]{2}/.test(text)) return text;                 // numbers, "1A", "%"... stay
+    const hit = this.cache.get(text);
+    if (hit !== undefined) return hit;
+    // keep the spaces around the words where they were
+    const m = text.match(/^(\s*)([\s\S]*?)(\s*)$/);
+    const core = m[2];
+    let out;
+    const phrase = MEME_PHRASES[core.toLowerCase().replace(/\s+/g, " ")];
+    if (phrase !== undefined) out = this.caseLike(phrase, core);
+    else {
+      out = core.replace(/[A-Za-z][A-Za-z']*/g, w => {
+        const rep = MEME_WORDS[w.toLowerCase()];
+        return rep === undefined ? w : this.caseLike(rep, w);
+      });
+      // sentences sometimes get an ending (never after a number or a colon)
+      if (core.split(/\s+/).length >= 4 && !/[\d:]$/.test(core)) {
+        const end = MEME_ENDINGS[this.hash(core) % MEME_ENDINGS.length];
+        const caps = core.replace(/[^A-Za-z]/g, "") === core.replace(/[^A-Za-z]/g, "").toUpperCase();
+        out = out.replace(/[.!?]*$/, p => (caps ? end.toUpperCase() : end) + (p || ""));      // (lowercase unless ALL CAPS)
+      }
+    }
+    out = m[1] + out + m[3];
+    if (this.cache.size > 5000) this.cache.clear();
+    this.cache.set(text, out);
+    return out;
+  }
+};
+
+/* ---------------------------------------------------------------------
+   Page text: a watcher swaps each text node for its meme version and
+   remembers the real words, so switching back puts them back.
+   Not touched: <script>, <style>, text boxes, and [data-nomeme] (the
+   Font buttons themselves).
+   --------------------------------------------------------------------- */
+const MemeDOM = {
+  real: new WeakMap(),       // text node -> the real words
+  shown: new WeakMap(),      // text node -> the meme words we put there
+  watcher: null,
+  skip(node) {
+    const p = node.parentElement;
+    return !p || !!p.closest("script, style, textarea, input, select, option, [data-nomeme], [contenteditable]");
+  },
+  fix(node) {
+    if (this.skip(node)) return;
+    const now = node.data;
+    if (this.shown.get(node) === now) return;                   // it already shows our version
+    this.real.set(node, now);                                   // (new words from the page)
+    const meme = Meme.say(now);
+    this.shown.set(node, meme);
+    if (meme !== now) node.data = meme;
+  },
+  walk(root, fn) {
+    if (!root) return;
+    if (root.nodeType === 3) { fn(root); return; }
+    const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = tw.nextNode(); n; n = tw.nextNode()) fn(n);
+  },
+  start() {
+    if (this.watcher || !document.body) return;
+    this.walk(document.body, n => this.fix(n));
+    this.watcher = new MutationObserver(list => {
+      for (const m of list) {
+        if (m.type === "characterData") this.fix(m.target);
+        else for (const n of m.addedNodes) this.walk(n, t => this.fix(t));
+      }
+    });
+    this.watcher.observe(document.body, { subtree: true, childList: true, characterData: true });
+  },
+  stop() {
+    if (!this.watcher) return;
+    this.watcher.disconnect();
+    this.watcher = null;
+    // put the real words back
+    this.walk(document.body, n => {
+      if (this.real.has(n) && this.shown.get(n) === n.data) n.data = this.real.get(n);
+    });
+    this.real = new WeakMap();
+    this.shown = new WeakMap();
+  }
+};
+
+/* ---------------------------------------------------------------------
+   Canvas text (the games): wrap fillText / strokeText / measureText
+   --------------------------------------------------------------------- */
+const Fonts = {
+  mode: "original",
+  version: 0,                  // goes up when the mode changes (text caches use it)
+  fontCache: new Map(),
+  // '600 11px "Sans Serif"' -> '600 11px "OpenDyslexic", sans-serif'
+  dysFont(f) {
+    let out = this.fontCache.get(f);
+    if (out === undefined) {
+      const m = f.match(/^(.*?)(\d+(?:\.\d+)?)px(\s*\/\s*\S+)?\s+(.+)$/);
+      out = m ? m[1] + m[2] + "px" + (m[3] || "") + " " + DYS_FAMILY : f;
+      this.fontCache.set(f, out);
+    }
+    return out;
+  },
+  // is text drawn differently than the game was made for? (Tape 1 then lets words keep their own width)
+  reflow() { return this.mode !== "original"; },
+
+  // load the font + set things up for the current setting
+  apply() {
+    this.mode = ["dyslexic", "mario"].includes(Global.data.visuals.font) ? Global.data.visuals.font : "original";
+    this.version++;
+    document.documentElement.classList.toggle("frae-dyslexic", this.mode === "dyslexic");
+    document.documentElement.classList.toggle("frae-mario", this.mode === "mario");
+    if (this.mode === "dyslexic" && document.fonts) {
+      document.fonts.load('16px "OpenDyslexic"').catch(() => {});
+      document.fonts.load('bold 16px "OpenDyslexic"').catch(() => {});
+    }
+    if (this.mode === "mario") MemeDOM.start(); else MemeDOM.stop();
+  },
+
+  // the @font-face rules + "every page word uses OpenDyslexic" (only while the class is on)
+  addStyles() {
+    if (document.getElementById("frae-fonts")) return;
+    const url = n => new URL(FONT_ROOT + "fonts/" + n, location.href).href;
+    const st = document.createElement("style");
+    st.id = "frae-fonts";
+    st.textContent = `
+      @font-face { font-family: "OpenDyslexic"; src: url("${url("opendyslexic-latin-400-normal.woff2")}") format("woff2");
+                   font-weight: 100 600; font-display: swap; size-adjust: 76%; }
+      @font-face { font-family: "OpenDyslexic"; src: url("${url("opendyslexic-latin-700-normal.woff2")}") format("woff2");
+                   font-weight: 700 900; font-display: swap; size-adjust: 76%; }
+      html.frae-dyslexic body, html.frae-dyslexic body *:not(svg):not(svg *) { font-family: ${DYS_FAMILY} !important; }`;
+    (document.head || document.documentElement).appendChild(st);
+  },
+
+  hookCanvas() {
+    for (const C of [window.CanvasRenderingContext2D, window.OffscreenCanvasRenderingContext2D]) {
+      if (!C || C.prototype.__fraeFonts) continue;
+      const P = C.prototype, fill = P.fillText, stroke = P.strokeText, measure = P.measureText;
+      P.__fraeFonts = true;
+      // run one call with the swapped font + words, then put the font back (so code reading ctx.font sees its own)
+      const wrap = original => function (text, ...rest) {
+        if (Fonts.mode === "original") return original.call(this, text, ...rest);
+        const f = this.font;
+        if (Fonts.mode === "dyslexic") this.font = Fonts.dysFont(f);
+        try { return original.call(this, Fonts.mode === "mario" ? Meme.say(text) : text, ...rest); }
+        finally { if (Fonts.mode === "dyslexic") this.font = f; }
+      };
+      P.fillText = wrap(fill);
+      P.strokeText = wrap(stroke);
+      P.measureText = wrap(measure);
+    }
+  },
+
+  start() {
+    this.hookCanvas();
+    this.addStyles();
+    const go = () => this.apply();
+    if (document.body) go(); else document.addEventListener("DOMContentLoaded", go, { once: true });
+  }
+};
+Fonts.start();
 
 /* =====================================================================
    ZIP (stored, not compressed: fast, and pictures/sounds are already small)
@@ -619,7 +870,7 @@ const Cloud = {
     const t = this.times();
     t[key] = { local: ms, synced: ms };
     this.setTimes(t);
-    if (key === GLOBAL_KEY) Global.load();
+    if (key === GLOBAL_KEY) { Global.load(); Fonts.apply(); }
   },
   async cloudRows() {
     return await this.call("/rest/v1/saves?select=key,data,updated_at&user_id=eq." + this.uid());
