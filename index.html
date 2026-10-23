@@ -210,6 +210,17 @@
     font-size: clamp(20px, 1.8vw, 26px);
     margin-bottom: 10px;
   }
+  /* The tape's own name, under the episode tag. Hover it for the pronunciation (if it has one). */
+  .right .subtitle {
+    text-align: center;
+    color: #ffe14a;
+    font-style: italic;
+    font-size: clamp(15px, 1.4vw, 20px);
+    margin-top: -4px;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+  .right .subtitle span[title] { cursor: help; border-bottom: 1px dashed var(--dim); }
   .right p {
     font-size: clamp(20px, 1.9vw, 28px);
     line-height: 1.15;
@@ -359,6 +370,8 @@
     {
       title: "FRIED RICE AT EDDIE'S",
       tag: "Episode 1",
+      subtitle: "Eddie's Riceria",
+      pronounce: "rye-sir-ee-ah",
       desc: "Welcome to Eddie's. The rice is hot, the orders are piling up, and something is not quite right after closing time.",
       color: "#7fdc5a",
       thumb: "img/game1.png",
@@ -369,6 +382,7 @@
     {
       title: "FRIED RICE AT EDDIE'S 2",
       tag: "Episode 2",
+      subtitle: "Outcome Memories",
       desc: "Eddie's is back, bigger and shinier than ever. No doors this time: just a mask, a flashlight and a music box that must never stop.",
       color: "#ffcf3f",
       thumb: "img/game2.png",
@@ -428,6 +442,7 @@
       <div class="right">
         <h2>${title}</h2>
         <div class="tag">${game.unlocked ? game.tag : "NO SIGNAL"}</div>
+        ${game.unlocked && game.subtitle ? `<div class="subtitle"><span${game.pronounce ? ` title="${game.pronounce}"` : ""}>"${game.subtitle}"</span></div>` : ""}
         <p>${game.unlocked ? game.desc : "This tape has not been recorded yet."}</p>
       </div>
     `;
