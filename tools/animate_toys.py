@@ -214,23 +214,28 @@ def scare_meyg(rig, home):
     finish(rig, act, 1, 26)
 
 
-def add_bust_bone(rig, chest_obj):
-    """Toy Weddy: a Bust bone in front of the Chest, and the chest mesh follows it (so it can wobble anywhere)."""
-    if 'Bust' in rig.data.bones:
-        return
+BUST_HEAD = (0.0, -0.04, 1.18)    # small and low on the chest (was (0, -0.05, 1.3): bigger, higher up)
+BUST_TAIL = (0.0, -0.26, 1.18)
+
+
+def add_bust_bone(rig, chest_obj, source_group='Chest'):
+    """A Bust bone in front of the Chest; chest_obj's own chest-area mesh follows it (so it can wobble
+    anywhere). Used for Toy Weddy's chest-blob mesh and for Meyg (Toy Endo), whose Body mesh already
+    has a 100%-weighted "Chest" group for everything above the waist (rig_toys.py) that this takes over."""
     bpy.context.view_layer.objects.active = rig
     for o in bpy.context.selected_objects:
         o.select_set(False)
     rig.select_set(True)
     bpy.ops.object.mode_set(mode='EDIT')
-    eb = rig.data.edit_bones.new('Bust')
-    eb.head = (0.0, -0.05, 1.3)
-    eb.tail = (0.0, -0.42, 1.3)
-    eb.roll = 0
-    eb.parent = rig.data.edit_bones['Chest']
-    eb.use_deform = True
+    eb = rig.data.edit_bones.get('Bust')
+    if eb is None:
+        eb = rig.data.edit_bones.new('Bust')
+        eb.parent = rig.data.edit_bones['Chest']
+        eb.use_deform = True
+        eb.roll = 0
+    eb.head, eb.tail = BUST_HEAD, BUST_TAIL
     bpy.ops.object.mode_set(mode='OBJECT')
-    g = chest_obj.vertex_groups.get('Chest')
+    g = chest_obj.vertex_groups.get(source_group)
     if g:
         g.name = 'Bust'
 
@@ -249,6 +254,8 @@ def main():
                 rig.animation_data.nla_tracks.remove(tr)
         if name == 'Toy Weddy':
             add_bust_bone(rig, bpy.data.objects['Toy Weddy Chest'])
+        elif name == 'Toy Endo':
+            add_bust_bone(rig, bpy.data.objects['Toy Endo Body'])
         home = tuple(rig.location)
         HOME[rig.name] = home
         clear(rig)
