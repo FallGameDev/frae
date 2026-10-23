@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop · Fried Rice at Eddie's</title>
+<link rel="icon" type="image/png" href="../favicon.png">
+<link rel="icon" href="../favicon.ico" sizes="any">
+<!-- Same pixel fonts as the tape menu -->
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     WORKSHOP
+     Everyone can browse and install published mods.
+     With an account (tape menu > Settings > Account) you can
+     publish a mod you loaded with LOAD UNPACKED, edit it later,
+     and mark it mature (then it only opens from its link).
+     Logic for talking to Supabase: Cloud.* in ../tools/global.js
+     ========================================================= */
+  :root {
+    --line: #fff; --text: #fff; --dim: #8a8a99;
+    --purple: #5b16ec; --purple-hi: #8a4dff; --soul: #ff2a3c; --gold: #ffe14a; --cyan: #46e0ff; --green: #7fdc5a;
+    --glow-r: rgba(255, 0, 60, .55); --glow-b: rgba(0, 200, 255, .55);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #000; color: var(--text); font-family: 'VT323', monospace; font-size: 22px; min-height: 100vh; }
+
+  /* VHS scanlines + vignette over everything (clicks pass through) */
+  .fx { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+  .scan { background: repeating-linear-gradient(to bottom, rgba(255,255,255,.035) 0 1px, transparent 2px 4px); }
+  .vig { background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,.8) 100%); }
+  body.novhs .fx { display: none; }
+
+  .wrap { width: min(1180px, 100%); margin: 0 auto; padding: 22px 18px 60px; }
+
+  /* ----- Top bar ----- */
+  .top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .top h1 { font-family: 'Press Start 2P', monospace; font-size: clamp(18px, 2.6vw, 30px); letter-spacing: 4px;
+            text-shadow: 3px 0 var(--glow-r), -3px 0 var(--glow-b); }
+  .me { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--dim); }
+  .me b { color: var(--green); font-weight: normal; }
+
+  /* ----- Buttons ----- */
+  .btn {
+    font-family: 'VT323', monospace; font-size: 22px; color: #fff; background: #000; text-decoration: none;
+    border: 4px solid #555; box-shadow: 4px 4px 0 #1d1d2b; padding: 2px 14px; cursor: pointer; display: inline-block;
+    transition: border-color .12s, transform .08s;
+  }
+  .btn:hover { border-color: #fff; }
+  .btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #1d1d2b; }
+  .btn.on, .btn.go { background: var(--purple); border-color: #fff; }
+  .btn.go:hover { background: var(--purple-hi); }
+  .btn.bad { border-color: #7a1d26; color: #ff8a95; }
+  .btn.bad:hover { border-color: var(--soul); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn.small { font-size: 18px; padding: 0 10px; }
+
+  /* ----- Tabs (red heart on the open one, like the menu) ----- */
+  .tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tab { position: relative; font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: 2px; color: var(--dim);
+         background: #000; border: 4px solid #333342; padding: 11px 14px 11px 32px; cursor: pointer; }
+  .tab:hover { color: #fff; border-color: #777; }
+  .tab.on { color: #fff; border-color: #fff; background: #12121c; }
+  .tab svg { position: absolute; left: 10px; top: 50%; translate: 0 -50%; width: 12px; height: 12px; fill: var(--soul); display: none; }
+  .tab.on svg { display: block; }
+
+  /* ----- Filters ----- */
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  .filters .gap { flex: 1; }
+  input[type=text], input[type=search], textarea, select {
+    font-family: 'VT323', monospace; font-size: 22px; color: #fff; background: #0b0b12;
+    border: 4px solid #555; padding: 3px 10px; outline: none;
+  }
+  input:focus, textarea:focus { border-color: #fff; }
+  input[readonly] { color: var(--dim); border-style: dashed; }
+  #search { width: min(320px, 100%); }
+
+  /* ----- Mod cards ----- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .card { border: 5px solid var(--line); background: #000; box-shadow: 0 0 0 3px #000, 8px 8px 0 3px #1d1d2b;
+          padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .card h3 { font-family: 'Press Start 2P', monospace; font-size: 14px; line-height: 1.4; word-break: break-word; }
+  .card .by { color: var(--dim); }
+  .card .by b { color: var(--gold); font-weight: normal; }
+  .desc { white-space: pre-wrap; word-break: break-word; line-height: 1.05; }
+  .card .desc { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; color: #d8d8e4; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-family: 'Press Start 2P', monospace; font-size: 9px; padding: 4px 6px; border: 2px solid #555; color: var(--dim); }
+  .tag.tape { color: var(--cyan); border-color: var(--cyan); }
+  .tag.code { color: var(--gold); border-color: var(--gold); }
+  .tag.mature { color: #ff8a95; border-color: var(--soul); }
+  .tag.got { color: var(--green); border-color: var(--green); }
+  .card .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
+  .card.big { max-width: 760px; }
+  .card.big h3 { font-size: 20px; }
+
+  /* ----- Notes + messages ----- */
+  .note { color: var(--dim); line-height: 1.1; }
+  .note::before { content: "* "; }
+  .note.good { color: var(--green); }
+  .note.bad { color: #ff8a95; }
+  #msg { min-height: 26px; margin-bottom: 10px; }
+  .empty { border: 4px dashed #333342; padding: 30px; text-align: center; color: var(--dim); }
+
+  /* ----- Publish form ----- */
+  .form { border: 5px solid var(--line); padding: 18px; max-width: 760px; display: flex; flex-direction: column; gap: 12px;
+          box-shadow: 0 0 0 3px #000, 8px 8px 0 3px #1d1d2b; }
+  .form h2 { font-family: 'Press Start 2P', monospace; font-size: 15px; color: var(--gold); letter-spacing: 2px; }
+  .field { display: flex; flex-direction: column; gap: 3px; color: var(--dim); }
+  .field input, .field textarea { width: 100%; }
+  .field textarea { min-height: 150px; resize: vertical; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row .field { flex: 1; min-width: 180px; }
+  .pick { display: flex; flex-direction: column; gap: 8px; }
+  .pickItem { display: flex; align-items: center; gap: 10px; border: 3px solid #26263a; padding: 6px 10px; flex-wrap: wrap; }
+  .pickItem .nm { flex: 1; min-width: 180px; }
+
+  @media (max-width: 600px) { body { font-size: 20px; } .grid { grid-template-columns: 1fr; } .me { margin-left: 0; width: 100%; } }
+</style>
+</head>
+<body>
+<div class="fx scan"></div>
+<div class="fx vig"></div>
+
+<div class="wrap">
+  <div class="top">
+    <a class="btn" id="back" href="../">&lt; BACK</a>
+    <h1>WORKSHOP</h1>
+    <div class="me" id="me"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="msg"></div>
+  <div id="view"></div>
+</div>
+
+<!-- Global settings + accounts + mod storage (shared with the menu and both tapes) -->
+<script src="../tools/global.js"></script>
+<script>
+  /* =========================================================
+     STATE
+     ========================================================= */
+  const params = new URLSearchParams(location.search);
+  let tab = params.get("mod") ? "MOD" : "BROWSE";   // BROWSE, MOD (one mod by link), MINE, PUBLISH
+  let filters = { tape: Number(params.get("tape")) || 0, search: "", sort: "new" };
+  let editing = null;      // the publish/edit form: { tape, localId, row } (row = already published)
+  let busy = false;
+  const SOUL = '<svg viewBox="0 0 10 9"><path d="M1 0h3v1h2V0h3v1h1v3H9v1H8v1H7v1H6v1H4V7H3V6H2V5H1V4H0V1h1z"/></svg>';
+  const view = document.getElementById("view");
+
+  // BACK goes to the page that opened the workshop (a tape's mods screen), else the tape menu.
+  // Only paths on this same site are allowed.
+  const back = params.get("back");
+  if (back && /^\/(?!\/)/.test(back)) document.getElementById("back").href = back;
+
+  if (!Global.data.visuals.vhs) document.body.classList.add("novhs");
+
+  /* =========================================================
+     SMALL HELPERS
+     ========================================================= */
+  function h(tag, attrs = {}, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === false || v == null) continue;
+      if (k === "class") e.className = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids) if (k != null && k !== false) e.append(k);
+    return e;
+  }
+  const note = (text, kind) => h("div", { class: "note" + (kind ? " " + kind : "") }, text);
+  function say(text, kind) { document.getElementById("msg").replaceChildren(text ? note(text, kind) : ""); }
+  const sizeText = b => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
+  const dateText = t => new Date(t).toLocaleDateString();
+  const tapeOf = n => TAPES.find(t => t.tape === n);
+  const linkFor = id => location.origin + location.pathname + "?mod=" + id;
+
+  // a beep (follows Settings > Sound on the menu)
+  let ac;
+  function beep(freq, len) {
+    try {
+      const vol = .05 * Global.vol("sfx");
+      if (vol <= 0) return;
+      ac = ac || new AudioContext();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "square"; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + len);
+      o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + len);
+    } catch (e) {}
+  }
+
+  // run something that talks to the server, with a message after
+  async function act(fn, okText) {
+    if (busy) return;
+    busy = true; say("Working...");
+    try {
+      const out = await fn();
+      say(typeof okText === "function" ? okText(out) : okText || "", "good");
+      beep(880, .08);
+    } catch (e) { say(e.message || String(e), "bad"); beep(110, .18); }
+    busy = false;
+    draw();
+  }
+
+  // Is this workshop mod on this device? ("ws-<id>" in its tape's mod list)
+  function installed(row) {
+    const t = tapeOf(row.tape);
+    if (!t) return null;
+    return TapeMods(t.key).list().find(m => m.id === "ws-" + row.id) || null;
+  }
+  // Local mods that came from LOAD UNPACKED (a folder or a zip), from every tape
+  function unpackedMods() {
+    const out = [];
+    for (const t of TAPES) for (const m of TapeMods(t.key).list()) {
+      const type = m.source && m.source.type;
+      if (type === "github" || type === "workshop") continue;
+      out.push({ tape: t, mod: m });
+    }
+    return out;
+  }
+
+  /* =========================================================
+     TOP: who's signed in + tabs
+     ========================================================= */
+  function drawTop() {
+    const me = document.getElementById("me");
+    if (!Cloud.ready()) me.replaceChildren("Accounts are not set up");
+    else if (Cloud.signedIn()) me.replaceChildren("Signed in as ", h("b", {}, Cloud.profile ? Cloud.profile.username : "player"));
+    else me.replaceChildren("Not signed in", h("a", { class: "btn small", href: "../?account" }, "SIGN IN"));
+
+    const tabs = document.getElementById("tabs");
+    tabs.innerHTML = "";
+    const list = [["BROWSE", "BROWSE"]];
+    if (tab === "MOD") list.push(["MOD", "MOD LINK"]);
+    if (Cloud.signedIn()) list.push(["MINE", "MY MODS"], ["PUBLISH", "PUBLISH"]);
+    for (const [id, label] of list) {
+      const b = h("button", { class: "tab" + (tab === id ? " on" : ""), onclick: () => go(id) });
+      b.innerHTML = SOUL + label;
+      tabs.append(b);
+    }
+  }
+  function go(id) {
+    tab = id;
+    if (id !== "PUBLISH") editing = null;
+    if (id !== "MOD" && params.get("mod")) {        // leave the mod link out of the address
+      params.delete("mod");
+      history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params : ""));
+    }
+    say("");
+    beep(520, .05);
+    draw();
+  }
+
+  function draw() {
+    drawTop();
+    view.innerHTML = "";
+    if (!Cloud.ready()) { view.append(note("The workshop needs accounts set up (CLOUD_CONFIG in tools/global.js).", "bad")); return; }
+    if (tab === "MOD") drawOne();
+    else if (tab === "MINE") drawMine();
+    else if (tab === "PUBLISH") drawPublish();
+    else drawBrowse();
+  }
+
+  /* =========================================================
+     BROWSE: every published mod that isn't mature
+     ========================================================= */
+  let searchTimer;
+  function drawBrowse() {
+    const chip = (label, val) => h("button", { class: "btn small" + (filters.tape === val ? " on" : ""),
+      onclick: () => { filters.tape = val; beep(520, .05); draw(); } }, label);
+    const sort = (label, val) => h("button", { class: "btn small" + (filters.sort === val ? " on" : ""),
+      onclick: () => { filters.sort = val; beep(520, .05); draw(); } }, label);
+    const search = h("input", { type: "search", id: "search", placeholder: "Search mods or authors", value: filters.search });
+    search.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { filters.search = search.value; loadList(grid); }, 300);
+    });
+    const grid = h("div", { class: "grid" });
+    view.append(
+      h("div", { class: "filters" }, chip("ALL", 0), ...TAPES.map(t => chip(t.name.toUpperCase(), t.tape)),
+        h("span", { class: "gap" }), search, sort("NEWEST", "new"), sort("POPULAR", "popular")),
+      grid);
+    loadList(grid);
+  }
+  async function loadList(grid) {
+    grid.replaceChildren(note("Loading mods..."));
+    try {
+      const rows = await Cloud.workshopList(filters);
+      grid.replaceChildren(...(rows.length ? rows.map(r => card(r)) :
+        [h("div", { class: "empty" }, filters.search ? "No mods match that search." : "No mods published yet. Be the first!")]));
+    } catch (e) { grid.replaceChildren(note("Could not load the workshop: " + e.message, "bad")); }
+  }
+
+  // One mod as a card. big = the full page for a mod link.
+  function card(row, big) {
+    const have = installed(row);
+    const outdated = have && have.source && have.source.updated !== row.updated_at;
+    const t = tapeOf(row.tape);
+    const mine = Cloud.signedIn() && row.user_id === Cloud.uid();
+    let installBtn;
+    if (!t) installBtn = h("button", { class: "btn small", disabled: true }, "TAPE " + row.tape + " ISN'T OUT");
+    else if (Global.noMods()) installBtn = h("button", { class: "btn small", disabled: true, title: "Mods are turned off in the parental settings" }, "MODS ARE OFF");
+    else installBtn = h("button", { class: "btn small go", disabled: have && !outdated, onclick: () => install(row) },
+      have ? (outdated ? "UPDATE" : "INSTALLED") : "INSTALL");
+
+    return h("div", { class: "card" + (big ? " big" : "") },
+      h("h3", {}, row.name),
+      h("div", { class: "by" }, "by ", h("b", {}, row.author || "player"), (row.version ? "  ·  v" + row.version : "")),
+      h("div", { class: "tags" },
+        h("span", { class: "tag tape" }, t ? t.name.toUpperCase() : "TAPE " + row.tape),
+        h("span", { class: "tag" }, sizeText(row.size || 0)),
+        h("span", { class: "tag" }, (row.downloads || 0) + " DOWNLOADS"),
+        row.has_code ? h("span", { class: "tag code", title: "This mod runs its own code" }, "HAS CODE") : null,
+        row.mature ? h("span", { class: "tag mature", title: "Hidden from the list, opens from its link only" }, "MATURE") : null,
+        have ? h("span", { class: "tag got" }, outdated ? "UPDATE READY" : "ON THIS DEVICE") : null),
+      row.description ? h("div", { class: "desc" }, row.description) : null,
+      big ? note("Updated " + dateText(row.updated_at) + " · published " + dateText(row.created_at)) : null,
+      h("div", { class: "acts" },
+        installBtn,
+        h("button", { class: "btn small", onclick: () => copyLink(row) }, "COPY LINK"),
+        !big ? h("button", { class: "btn small", onclick: () => openMod(row.id) }, "MORE") : null,
+        mine ? h("button", { class: "btn small", onclick: () => editRow(row) }, "EDIT") : null));
+  }
+
+  function openMod(id) {
+    params.set("mod", id);
+    history.replaceState(null, "", location.pathname + "?" + params);
+    tab = "MOD"; say(""); beep(520, .05); draw();
+  }
+  async function copyLink(row) {
+    try { await navigator.clipboard.writeText(linkFor(row.id)); say("Link copied: " + linkFor(row.id), "good"); }
+    catch (e) { prompt("Copy this link:", linkFor(row.id)); }
+    beep(660, .05);
+  }
+
+  // Install: download into the tape's DOWNLOADED list. Mods with code ask first (same warning as the game).
+  function install(row) {
+    act(() => Cloud.installWorkshop(row, info => {
+      if (info.scripts && info.scripts.length && !confirm(`"${row.name}" runs its own code (${info.scripts.join(", ")}).\n\n` +
+          "Code in a mod can change ANYTHING in the game, and can also read your save files. Only use mods you trust.\n\nInstall it?"))
+        throw new Error("Not installed (the mod has code and you said no).");
+    }), () => `"${row.name}" is installed! In ${tapeOf(row.tape).name}, open Settings > Mods and drag it into IN USE.`);
+  }
+
+  /* =========================================================
+     MOD LINK: ?mod=<id> (works for mature mods too)
+     ========================================================= */
+  async function drawOne() {
+    const box = h("div", {}, note("Loading..."));
+    view.append(box);
+    try {
+      const row = await Cloud.workshopGet(params.get("mod"));
+      if (!row) { box.replaceChildren(note("That mod isn't on the workshop any more (or the link is wrong).", "bad")); return; }
+      box.replaceChildren(
+        row.mature ? note("This mod is marked MATURE by its author. It only opens from its link.", "bad") : "",
+        card(row, true));
+    } catch (e) { box.replaceChildren(note("Could not load that mod: " + e.message, "bad")); }
+  }
+
+  /* =========================================================
+     MY MODS: what you published (edit, copy link, unpublish)
+     ========================================================= */
+  async function drawMine() {
+    const box = h("div", { class: "grid" }, note("Loading your mods..."));
+    view.append(h("div", { class: "filters" },
+      h("button", { class: "btn go", onclick: () => go("PUBLISH") }, "+ PUBLISH A MOD")), box);
+    try {
+      const rows = await Cloud.myWorkshop();
+      if (!rows.length) { box.replaceChildren(h("div", { class: "empty" }, "You haven't published anything yet.")); return; }
+      box.replaceChildren(...rows.map(row => {
+        const c = card(row);
+        c.querySelector(".acts").append(h("button", { class: "btn small bad", onclick: () => {
+          if (confirm(`Unpublish "${row.name}"? Players who installed it keep their copy.`))
+            act(() => Cloud.unpublish(row), `"${row.name}" was unpublished.`);
+        } }, "UNPUBLISH"));
+        return c;
+      }));
+    } catch (e) { box.replaceChildren(note("Could not load your mods: " + e.message, "bad")); }
+  }
+
+  /* =========================================================
+     PUBLISH: pick a LOAD UNPACKED mod, then change its details
+     ========================================================= */
+  function editRow(row) {
+    editing = { tape: tapeOf(row.tape), localId: null, row };
+    tab = "PUBLISH"; say(""); beep(520, .05); draw();
+  }
+
+  async function drawPublish() {
+    if (!Cloud.signedIn()) { view.append(note("Sign in on the tape menu (Settings > Account) to publish mods.")); return; }
+    if (editing) return drawForm();
+    // step 1: choose a mod from this device
+    const mods = unpackedMods();
+    let mine = [];
+    try { mine = await Cloud.myWorkshop(); } catch (e) {}
+    view.append(h("div", { class: "form" },
+      h("h2", {}, "PICK A MOD"),
+      note("These are the mods you added with LOAD UNPACKED in a tape's Settings > Mods."),
+      mods.length ? h("div", { class: "pick" }, ...mods.map(({ tape, mod }) => {
+        const published = mine.find(r => r.source_mod === mod.id && r.tape === tape.tape);
+        return h("div", { class: "pickItem" },
+          h("span", { class: "nm" }, `${tape.name} · ${mod.name}${mod.version ? " v" + mod.version : ""}`),
+          published ? h("span", { class: "tag got" }, "PUBLISHED") : null,
+          h("button", { class: "btn small go", onclick: () => {
+            editing = { tape, localId: mod.id, row: published || null };
+            beep(520, .05); draw();
+          } }, published ? "UPDATE" : "CHOOSE"));
+      })) : h("div", { class: "empty" }, "No unpacked mods on this device yet. Open a tape, go to Settings > Mods > LOAD UNPACKED, then come back.")));
+  }
+
+  // step 2: the details (filled from the mod, all changeable except author and tape)
+  function drawForm() {
+    const { tape, localId, row } = editing;
+    const local = localId ? TapeMods(tape.key).list().find(m => m.id === localId) : null;
+    const start = row || local || {};
+    const name = h("input", { type: "text", maxlength: 60, value: start.name || "" });
+    const version = h("input", { type: "text", maxlength: 20, value: start.version || "", placeholder: "1.0" });
+    const desc = h("textarea", { maxlength: 2000, placeholder: "What does your mod change?" });
+    desc.value = start.description || "";
+    let mature = !!(row && row.mature);
+    const matureBox = h("div", { class: "row" });
+    const drawMature = () => matureBox.replaceChildren(
+      h("button", { class: "btn small" + (mature ? " on" : ""), type: "button", onclick: () => { mature = true; beep(660, .05); drawMature(); } }, "ON"),
+      h("button", { class: "btn small" + (!mature ? " on" : ""), type: "button", onclick: () => { mature = false; beep(660, .05); drawMature(); } }, "OFF"),
+      note(mature ? "Hidden from BROWSE. Only people with the link can see it." : "Shows up in BROWSE for everyone."));
+    drawMature();
+
+    // editing a published mod: optionally swap in new files from an unpacked mod on this device
+    let fileFrom = localId;
+    const filePick = row ? h("select", {},
+      h("option", { value: "" }, "Keep the files that are published"),
+      ...TapeMods(tape.key).list().filter(m => !["github", "workshop"].includes(m.source && m.source.type))
+        .map(m => h("option", { value: m.id, selected: m.id === localId }, "Upload files from: " + m.name))) : null;
+    if (filePick) { if (!localId) filePick.value = ""; filePick.onchange = () => fileFrom = filePick.value || null; }
+
+    const submit = h("button", { class: "btn go", type: "submit" }, row ? "SAVE CHANGES" : "PUBLISH");
+    const form = h("form", { class: "form" },
+      h("h2", {}, row ? "EDIT MOD" : "PUBLISH MOD"),
+      row && localId ? note(`This mod is already published. Saving updates "${row.name}" with these files.`, "good") : null,
+      h("div", { class: "row" },
+        h("label", { class: "field" }, "Tape", h("input", { type: "text", readonly: true, value: tape.name })),
+        h("label", { class: "field" }, "Author (your username)", h("input", { type: "text", readonly: true, value: Cloud.profile ? Cloud.profile.username : "player" }))),
+      h("div", { class: "row" },
+        h("label", { class: "field" }, "Name", name),
+        h("label", { class: "field" }, "Version", version)),
+      h("label", { class: "field" }, "Description", desc),
+      h("div", { class: "field" }, "Mature content", matureBox),
+      filePick ? h("label", { class: "field" }, "Files", filePick) : null,
+      local && local.scripts && local.scripts.length ? note("This mod runs its own code, so players get a warning before installing it.") : null,
+      h("div", { class: "row" }, submit,
+        h("button", { class: "btn", type: "button", onclick: () => { editing = null; go(row && !localId ? "MINE" : "PUBLISH"); } }, "CANCEL")));
+
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const details = { name: name.value.trim(), version: version.value.trim(), description: desc.value.trim(), mature };
+      if (!details.name) { say("Give your mod a name.", "bad"); name.focus(); return; }
+      act(async () => {
+        let id;
+        if (fileFrom) id = await Cloud.publish(tape, fileFrom, details, row);    // new files (and details)
+        else { await Cloud.editWorkshop(row, details); id = row.id; }        // just the details
+        editing = null; tab = "MINE";
+        return id;
+      }, id => `Saved! ${mature ? "Share this link (mature mods only open from it): " : "Link: "}${linkFor(id)}`);
+    });
+    view.append(form);
+  }
+
+  /* =========================================================
+     START
+     ========================================================= */
+  draw();
+  // refresh the username (it may have changed on another device)
+  if (Cloud.signedIn()) Cloud.loadProfile().then(drawTop).catch(() => {});
+</script>
+</body>
+</html>

@@ -1140,6 +1140,12 @@
 
   /* ---------- On load: links from emails, then a quiet sync ---------- */
   applyVisuals();
+  // ?account (from the workshop's SIGN IN button) opens Settings on the Account tab
+  if (new URLSearchParams(location.search).has("account")) {
+    tab = "ACCOUNT";
+    history.replaceState(null, "", location.pathname);
+    setTimeout(openSettings, 0);
+  }
   (async () => {
     if (!Cloud.ready()) return;
     const linkType = await Cloud.fromLink();

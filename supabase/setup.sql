@@ -108,3 +108,102 @@ begin
 end $$;
 revoke execute on function public.delete_my_account() from anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- =====================================================================
+-- WORKSHOP: published mods anyone can browse and install (no account
+-- needed to look). Publishing needs an account; the author is always
+-- the publisher's username. Mature mods never show in the list, only
+-- through their link (workshop_get), or to the person who made them.
+-- Safe to run again.
+-- =====================================================================
+create table if not exists public.workshop (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  tape int not null check (tape between 1 and 4),
+  name text not null check (char_length(name) between 1 and 60),
+  description text not null default '' check (char_length(description) <= 2000),
+  version text not null default '' check (char_length(version) <= 20),
+  author text not null default '',          -- always the publisher's username (set by the trigger below)
+  mature boolean not null default false,    -- true = hidden from the list, link only
+  has_code boolean not null default false,  -- the mod runs its own code (players are warned)
+  size bigint not null default 0,
+  path text not null,                       -- public storage path: workshop/<user id>/<workshop id>.zip
+  source_mod text not null default '',      -- the publisher's local mod id it came from
+  downloads int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists workshop_list on public.workshop (tape, mature, created_at desc);
+
+alter table public.workshop enable row level security;
+drop policy if exists "workshop read" on public.workshop;
+drop policy if exists "workshop add" on public.workshop;
+drop policy if exists "workshop change" on public.workshop;
+drop policy if exists "workshop delete" on public.workshop;
+create policy "workshop read" on public.workshop for select using (not mature or auth.uid() = user_id);
+create policy "workshop add" on public.workshop for insert to authenticated with check (auth.uid() = user_id);
+create policy "workshop change" on public.workshop for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "workshop delete" on public.workshop for delete to authenticated using (auth.uid() = user_id);
+
+-- The author is the publisher's username, and players can't fake the download count
+create or replace function public.workshop_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  new.author := coalesce((select username from public.profiles where id = new.user_id), 'player');
+  if tg_op = 'INSERT' then
+    new.downloads := 0;
+    new.created_at := now();
+  elsif coalesce(current_setting('frae.counting', true), '') <> '1' then
+    new.downloads := old.downloads;
+    new.created_at := old.created_at;
+  end if;
+  return new;
+end $$;
+drop trigger if exists workshop_guard on public.workshop;
+create trigger workshop_guard before insert or update on public.workshop
+  for each row execute function public.workshop_guard();
+
+-- Changing your username changes the author on your published mods too
+create or replace function public.workshop_rename()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.username is distinct from old.username then
+    update public.workshop set author = new.username where user_id = new.id;
+  end if;
+  return new;
+end $$;
+drop trigger if exists workshop_rename on public.profiles;
+create trigger workshop_rename after update on public.profiles
+  for each row execute function public.workshop_rename();
+
+-- One mod by its link (works for mature mods too)
+create or replace function public.workshop_get(mod_id uuid)
+returns setof public.workshop language sql security definer set search_path = public stable as $$
+  select * from public.workshop where id = mod_id;
+$$;
+grant execute on function public.workshop_get(uuid) to anon, authenticated;
+
+-- +1 download (anyone)
+create or replace function public.workshop_downloaded(mod_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform set_config('frae.counting', '1', true);
+  update public.workshop set downloads = downloads + 1 where id = mod_id;
+end $$;
+grant execute on function public.workshop_downloaded(uuid) to anon, authenticated;
+
+-- Storage: public bucket (anyone can download), players upload only into their own folder
+insert into storage.buckets (id, name, public, file_size_limit) values ('workshop', 'workshop', true, 52428800)
+  on conflict (id) do update set public = true;
+drop policy if exists "own workshop files add" on storage.objects;
+drop policy if exists "own workshop files change" on storage.objects;
+drop policy if exists "own workshop files delete" on storage.objects;
+drop policy if exists "own workshop files read" on storage.objects;
+create policy "own workshop files read" on storage.objects for select to authenticated
+  using (bucket_id = 'workshop' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "own workshop files add" on storage.objects for insert to authenticated
+  with check (bucket_id = 'workshop' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "own workshop files change" on storage.objects for update to authenticated
+  using (bucket_id = 'workshop' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "own workshop files delete" on storage.objects for delete to authenticated
+  using (bucket_id = 'workshop' and (storage.foldername(name))[1] = auth.uid()::text);

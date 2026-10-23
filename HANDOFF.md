@@ -96,3 +96,12 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Synced keys: `frae<N>-save-file<N>`, `frae<N>-settings`, `frae-global` (table `saves`). `saveProgress`/`saveSettings`/`Global.save` call `Cloud.saved(key)` (pushes 1.5 s later when signed in); `eraseProgress` calls `Cloud.erased(key)`. `frae-sync` remembers local/synced times; newest change wins, first sign in on a device with different saves asks KEEP THIS DEVICE / KEEP ACCOUNT. The menu syncs quietly on load.
 - Mods on the account: `TapeMods(key)` reads/writes a tape's mod store from outside the game (same layout as ModDB). One zip per mod (mod.json + files/) in private bucket `mods/<user id>/<tape>-<mod id>.zip` + a row in `mods`. CREATED = manifest author equals the username, else INSTALLED.
 - makeZip/readZip moved from ui.js into global.js.
+
+## Workshop (`workshop/index.html`, shared by both tapes)
+- Opened from Settings > Mods > LOAD PACKED > WORKSHOP in either tape (`#workshopBtn`, wired in ui.js): `../workshop/?tape=N&back=<game page>`; BACK returns to that game page (same-site paths only), which reloads and applies mods.
+- Anyone can BROWSE (tape filter, search by name/author, newest/popular) and INSTALL (download from the public `workshop` bucket into that tape's Downloaded list as mod id `ws-<workshop id>`, source `{type: "workshop", id, updated}`; UPDATE shows when the files changed). Mods with code ask first. Parental "block mods" disables installing.
+- Signed in: PUBLISH picks a LOAD UNPACKED mod (source folder/zip) from either tape, fills name/version/description from it (all editable), author = your username (locked, and forced server-side by the `workshop_guard` trigger), mature ON/OFF. MY MODS: edit (details only, or new files from a local mod), copy link, unpublish.
+- Mature = left out of the list (`mature=eq.false`, and RLS hides it from other players); `?mod=<id>` opens it through the `workshop_get` RPC. Downloads count via `workshop_downloaded` (players can't set it).
+- Supabase: table `workshop` + bucket `workshop` (public, 50 MB per file), WORKSHOP section at the end of supabase/setup.sql (already run on the frae project). `Cloud.workshop*` / `publish` / `editWorkshop` / `unpublish` / `installWorkshop` in global.js; `TapeMods.pack(id, extra)` / `unpack(zip, overrides, check)`.
+- The menu opens Settings on the Account tab with `?account` (the workshop's SIGN IN button).
+

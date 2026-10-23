@@ -1030,6 +1030,12 @@ function setupModsUI() {
   $("#zipInput").onchange = e => { loadUnpacked(e.target.files, true); e.target.value = ""; };
   $("#tplBtn").onclick = downloadTemplate;
   $("#ghLoad").onclick = loadPacked;
+  // WORKSHOP: the shared page (workshop/index.html) for this tape; BACK there returns to this exact page
+  $("#workshopBtn").onclick = () => {
+    blip();
+    const tape = GI.key.replace(/\D/g, "");
+    location.href = "../workshop/?tape=" + tape + "&back=" + encodeURIComponent(location.pathname + location.search);
+  };
   $("#ghInput").addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") loadPacked(); });
   showTab("unpacked");
 }

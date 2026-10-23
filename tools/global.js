@@ -206,7 +206,8 @@ function TapeMods(key) {
     list() { try { return JSON.parse(localStorage.getItem(listKey) || "[]"); } catch (e) { return []; } },
     state() { try { return JSON.parse(localStorage.getItem(stateKey)) || { downloaded: [], inUse: [] }; } catch (e) { return { downloaded: [], inUse: [] }; } },
     // one mod as a .zip: mod.json (its details + file types) and files/<path>
-    async pack(id) {
+    // extra: details to change in mod.json (the workshop sets author/name/version...)
+    async pack(id, extra = {}) {
       const info = this.list().find(m => m.id === id);
       if (!info) throw new Error("That mod is not on this device");
       const entries = [], types = {};
@@ -216,15 +217,19 @@ function TapeMods(key) {
         types[path] = blob.type || "";
         entries.push({ path: "files/" + path, bytes: new Uint8Array(await blob.arrayBuffer()) });
       }
-      const meta = new TextEncoder().encode(JSON.stringify({ ...info, types }));
+      const meta = new TextEncoder().encode(JSON.stringify({ ...info, ...extra, types }));
       return makeZip([{ path: "mod.json", bytes: meta }, ...entries]);
     },
     // a zip made by pack() goes back into this tape (in the Downloaded list)
-    async unpack(zip) {
+    // overrides: details to change (the workshop gives each install its own id + source)
+    // check(info): called before anything is saved; throw to stop (like "this mod has code")
+    async unpack(zip, overrides = {}, check = null) {
       const items = await readZip(zip);
       const metaFile = items.find(f => f.path === "mod.json");
       if (!metaFile) throw new Error("This backup is missing mod.json");
-      const { types = {}, ...info } = JSON.parse(await metaFile.blob.text());
+      const { types = {}, ...saved } = JSON.parse(await metaFile.blob.text());
+      const info = { ...saved, ...overrides };
+      if (check) await check(info);
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
       await run("readwrite", st => st.delete(IDBKeyRange.bound(info.id + "/", info.id + "/￿")));
       const fileList = [];
@@ -376,6 +381,7 @@ const Cloud = {
   async deleteAccount() {
     const mods = await this.cloudMods();
     for (const m of mods) await this.deleteMod(m).catch(() => {});
+    for (const w of await this.myWorkshop().catch(() => [])) await this.unpublish(w).catch(() => {});
     await this.call("/rest/v1/rpc/delete_my_account", { method: "POST", json: {} });
     this.keepSession(null);
   },
@@ -515,6 +521,73 @@ const Cloud = {
   async deleteMod(row) {
     await this.call("/storage/v1/object/" + CLOUD_CONFIG.modBucket + "/" + row.path, { method: "DELETE" }).catch(() => {});
     await this.call("/rest/v1/mods?user_id=eq." + this.uid() + "&id=eq." + encodeURIComponent(row.id), { method: "DELETE" });
+  },
+
+  /* =================================================================
+     WORKSHOP (workshop/index.html): published mods everyone can install
+     Table "workshop" + public storage bucket "workshop" (setup.sql).
+     Mature mods are left out of the list and only open by their link.
+     ================================================================= */
+  // the list: opts { tape, search, sort: "new" | "popular", limit }
+  async workshopList(opts = {}) {
+    let q = "/rest/v1/workshop?select=*&mature=eq.false";
+    if (opts.tape) q += "&tape=eq." + Number(opts.tape);
+    const s = String(opts.search || "").replace(/[^\w\s'-]/g, " ").trim();
+    if (s) q += "&or=(name.ilike.*" + encodeURIComponent(s) + "*,author.ilike.*" + encodeURIComponent(s) + "*)";
+    q += "&order=" + (opts.sort === "popular" ? "downloads.desc,created_at.desc" : "created_at.desc");
+    q += "&limit=" + (opts.limit || 60);
+    return await this.call(q);
+  },
+  // one mod by its link (mature ones too)
+  async workshopGet(id) {
+    const rows = await this.call("/rest/v1/rpc/workshop_get", { method: "POST", json: { mod_id: id } });
+    return rows[0] || null;
+  },
+  async myWorkshop() {
+    return await this.call("/rest/v1/workshop?select=*&user_id=eq." + this.uid() + "&order=updated_at.desc");
+  },
+  // publish (or update, when row.id is given) a mod from this device.
+  // details: { name, description, version, mature }. The author is always your username.
+  async publish(tape, localId, details, row) {
+    const store = TapeMods(tape.key);
+    const info = store.list().find(m => m.id === localId);
+    if (!info) throw new Error("That mod is not on this device any more.");
+    const author = this.profile && this.profile.username || "player";
+    const id = row ? row.id : crypto.randomUUID();
+    const zip = await store.pack(localId, { name: details.name, description: details.description, version: details.version, author });
+    const path = this.uid() + "/" + id + ".zip";
+    await this.call("/storage/v1/object/workshop/" + path, {
+      method: "POST", headers: { "x-upsert": "true", "Content-Type": "application/zip" }, body: zip
+    });
+    const data = { name: details.name, description: details.description, version: details.version, mature: !!details.mature,
+                   tape: tape.tape, has_code: !!(info.scripts && info.scripts.length), size: zip.size, path,
+                   source_mod: localId, updated_at: new Date().toISOString() };
+    if (row) await this.call("/rest/v1/workshop?id=eq." + id, { method: "PATCH", json: data });
+    else await this.call("/rest/v1/workshop", { method: "POST", headers: { Prefer: "return=minimal" }, json: { id, user_id: this.uid(), ...data } });
+    return id;
+  },
+  // change only the words / mature switch (no new upload)
+  async editWorkshop(row, details) {
+    await this.call("/rest/v1/workshop?id=eq." + row.id, { method: "PATCH", json: {
+      name: details.name, description: details.description, version: details.version, mature: !!details.mature } });
+    // (updated_at is left alone: it means "the files changed", so installs only show UPDATE for new files)
+  },
+  async unpublish(row) {
+    await this.call("/storage/v1/object/workshop/" + row.path, { method: "DELETE" }).catch(() => {});
+    await this.call("/rest/v1/workshop?id=eq." + row.id, { method: "DELETE" });
+  },
+  // download + put it in that tape's Downloaded list (id "ws-<workshop id>")
+  async installWorkshop(row, check) {
+    const tape = TAPES.find(t => t.tape === row.tape);
+    if (!tape) throw new Error("That tape isn't out yet.");
+    const res = await fetch(CLOUD_CONFIG.url.replace(/\/$/, "") + "/storage/v1/object/public/workshop/" + row.path + "?v=" + Date.parse(row.updated_at));
+    if (!res.ok) throw new Error("Could not download that mod (" + res.status + ").");
+    const info = await TapeMods(tape.key).unpack(await res.blob(), {
+      id: "ws-" + row.id, name: row.name, author: row.author, version: row.version, description: row.description,
+      source: { type: "workshop", id: row.id, updated: row.updated_at }
+    }, check);
+    this.call("/rest/v1/rpc/workshop_downloaded", { method: "POST", json: { mod_id: row.id }, auth: false }).catch(() => {});
+    return info;
   }
 };
 Cloud.loadSession();

@@ -271,6 +271,8 @@
       <input id="ghInput" placeholder="github.com/user/repo" autocomplete="off" spellcheck="false">
       <button id="ghLoad">LOAD</button>
       <div class="hint">Loads a mod straight from a public GitHub repo (it needs a manifest.json).</div>
+      <button id="workshopBtn">WORKSHOP</button>
+      <div class="hint">Browse and install mods other players published (and publish your own with an account).</div>
     </div>
     <div id="modStatus"></div>
     <div class="lists">
@@ -508,7 +510,8 @@ function TapeMods(key) {
     list() { try { return JSON.parse(localStorage.getItem(listKey) || "[]"); } catch (e) { return []; } },
     state() { try { return JSON.parse(localStorage.getItem(stateKey)) || { downloaded: [], inUse: [] }; } catch (e) { return { downloaded: [], inUse: [] }; } },
     // one mod as a .zip: mod.json (its details + file types) and files/<path>
-    async pack(id) {
+    // extra: details to change in mod.json (the workshop sets author/name/version...)
+    async pack(id, extra = {}) {
       const info = this.list().find(m => m.id === id);
       if (!info) throw new Error("That mod is not on this device");
       const entries = [], types = {};
@@ -518,15 +521,19 @@ function TapeMods(key) {
         types[path] = blob.type || "";
         entries.push({ path: "files/" + path, bytes: new Uint8Array(await blob.arrayBuffer()) });
       }
-      const meta = new TextEncoder().encode(JSON.stringify({ ...info, types }));
+      const meta = new TextEncoder().encode(JSON.stringify({ ...info, ...extra, types }));
       return makeZip([{ path: "mod.json", bytes: meta }, ...entries]);
     },
     // a zip made by pack() goes back into this tape (in the Downloaded list)
-    async unpack(zip) {
+    // overrides: details to change (the workshop gives each install its own id + source)
+    // check(info): called before anything is saved; throw to stop (like "this mod has code")
+    async unpack(zip, overrides = {}, check = null) {
       const items = await readZip(zip);
       const metaFile = items.find(f => f.path === "mod.json");
       if (!metaFile) throw new Error("This backup is missing mod.json");
-      const { types = {}, ...info } = JSON.parse(await metaFile.blob.text());
+      const { types = {}, ...saved } = JSON.parse(await metaFile.blob.text());
+      const info = { ...saved, ...overrides };
+      if (check) await check(info);
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
       await run("readwrite", st => st.delete(IDBKeyRange.bound(info.id + "/", info.id + "/￿")));
       const fileList = [];
@@ -678,6 +685,7 @@ const Cloud = {
   async deleteAccount() {
     const mods = await this.cloudMods();
     for (const m of mods) await this.deleteMod(m).catch(() => {});
+    for (const w of await this.myWorkshop().catch(() => [])) await this.unpublish(w).catch(() => {});
     await this.call("/rest/v1/rpc/delete_my_account", { method: "POST", json: {} });
     this.keepSession(null);
   },
@@ -817,6 +825,73 @@ const Cloud = {
   async deleteMod(row) {
     await this.call("/storage/v1/object/" + CLOUD_CONFIG.modBucket + "/" + row.path, { method: "DELETE" }).catch(() => {});
     await this.call("/rest/v1/mods?user_id=eq." + this.uid() + "&id=eq." + encodeURIComponent(row.id), { method: "DELETE" });
+  },
+
+  /* =================================================================
+     WORKSHOP (workshop/index.html): published mods everyone can install
+     Table "workshop" + public storage bucket "workshop" (setup.sql).
+     Mature mods are left out of the list and only open by their link.
+     ================================================================= */
+  // the list: opts { tape, search, sort: "new" | "popular", limit }
+  async workshopList(opts = {}) {
+    let q = "/rest/v1/workshop?select=*&mature=eq.false";
+    if (opts.tape) q += "&tape=eq." + Number(opts.tape);
+    const s = String(opts.search || "").replace(/[^\w\s'-]/g, " ").trim();
+    if (s) q += "&or=(name.ilike.*" + encodeURIComponent(s) + "*,author.ilike.*" + encodeURIComponent(s) + "*)";
+    q += "&order=" + (opts.sort === "popular" ? "downloads.desc,created_at.desc" : "created_at.desc");
+    q += "&limit=" + (opts.limit || 60);
+    return await this.call(q);
+  },
+  // one mod by its link (mature ones too)
+  async workshopGet(id) {
+    const rows = await this.call("/rest/v1/rpc/workshop_get", { method: "POST", json: { mod_id: id } });
+    return rows[0] || null;
+  },
+  async myWorkshop() {
+    return await this.call("/rest/v1/workshop?select=*&user_id=eq." + this.uid() + "&order=updated_at.desc");
+  },
+  // publish (or update, when row.id is given) a mod from this device.
+  // details: { name, description, version, mature }. The author is always your username.
+  async publish(tape, localId, details, row) {
+    const store = TapeMods(tape.key);
+    const info = store.list().find(m => m.id === localId);
+    if (!info) throw new Error("That mod is not on this device any more.");
+    const author = this.profile && this.profile.username || "player";
+    const id = row ? row.id : crypto.randomUUID();
+    const zip = await store.pack(localId, { name: details.name, description: details.description, version: details.version, author });
+    const path = this.uid() + "/" + id + ".zip";
+    await this.call("/storage/v1/object/workshop/" + path, {
+      method: "POST", headers: { "x-upsert": "true", "Content-Type": "application/zip" }, body: zip
+    });
+    const data = { name: details.name, description: details.description, version: details.version, mature: !!details.mature,
+                   tape: tape.tape, has_code: !!(info.scripts && info.scripts.length), size: zip.size, path,
+                   source_mod: localId, updated_at: new Date().toISOString() };
+    if (row) await this.call("/rest/v1/workshop?id=eq." + id, { method: "PATCH", json: data });
+    else await this.call("/rest/v1/workshop", { method: "POST", headers: { Prefer: "return=minimal" }, json: { id, user_id: this.uid(), ...data } });
+    return id;
+  },
+  // change only the words / mature switch (no new upload)
+  async editWorkshop(row, details) {
+    await this.call("/rest/v1/workshop?id=eq." + row.id, { method: "PATCH", json: {
+      name: details.name, description: details.description, version: details.version, mature: !!details.mature } });
+    // (updated_at is left alone: it means "the files changed", so installs only show UPDATE for new files)
+  },
+  async unpublish(row) {
+    await this.call("/storage/v1/object/workshop/" + row.path, { method: "DELETE" }).catch(() => {});
+    await this.call("/rest/v1/workshop?id=eq." + row.id, { method: "DELETE" });
+  },
+  // download + put it in that tape's Downloaded list (id "ws-<workshop id>")
+  async installWorkshop(row, check) {
+    const tape = TAPES.find(t => t.tape === row.tape);
+    if (!tape) throw new Error("That tape isn't out yet.");
+    const res = await fetch(CLOUD_CONFIG.url.replace(/\/$/, "") + "/storage/v1/object/public/workshop/" + row.path + "?v=" + Date.parse(row.updated_at));
+    if (!res.ok) throw new Error("Could not download that mod (" + res.status + ").");
+    const info = await TapeMods(tape.key).unpack(await res.blob(), {
+      id: "ws-" + row.id, name: row.name, author: row.author, version: row.version, description: row.description,
+      source: { type: "workshop", id: row.id, updated: row.updated_at }
+    }, check);
+    this.call("/rest/v1/rpc/workshop_downloaded", { method: "POST", json: { mod_id: row.id }, auth: false }).catch(() => {});
+    return info;
   }
 };
 Cloud.loadSession();
@@ -836,7 +911,7 @@ function friendlyError(msg) {
 }
 
 
-const DEVLOG = [{"date": "2026-10-16", "tapes": [2], "text": "Tape 2 is here: Fried Rice at Eddie's 2, a FNaF 2 style night."}, {"date": "2026-10-16", "tapes": [2], "text": "Rigged 3D models for Toy Eddy, Toy Weddy, Toy Cheddy and Toy Endo."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-16", "tapes": [2], "text": "The toys are drawn from their 3D models."}, {"date": "2026-10-17", "tapes": [2], "text": "Characters are drawn live from the models folder, with less lag. Fred makes the phone calls."}, {"date": "2026-10-17", "tapes": [2], "text": "Fixed the stutter once characters start moving."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's own office."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [2], "text": "Mods can add 3D models and 2D characters (models and characters folders)."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-17", "tapes": [2], "text": "Uploaded models follow the game's rig, and their looping animations play."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys have faces (calm, creepy and scary). Mangled Endo is now Meyg."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: a red star over each character's right eye, stronger the harder they are."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: the \"F*CK NO!\" preset, everyone on 20."}, {"date": "2026-10-17", "tapes": [2], "text": "GET READY minigame: the rainbow Endo runs, and the last run ends in a huge fire."}, {"date": "2026-10-17", "tapes": [2], "text": "After the GET READY run the title reads \"Eddies Riceria\" with the crying rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "New tab icon: the rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "The death minigame depends on who caught you (still 1 in 3)."}, {"date": "2026-10-17", "tapes": [2], "text": "The Eddy mask, and the withered cast is torn up and broken."}, {"date": "2026-10-17", "tapes": [2], "text": "Toy Weddy's new model."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's new Puppet."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys breathe while they stand, and each toy has its own 3D jumpscare."}, {"date": "2026-10-17", "tapes": [2], "text": "No idle animation on the title screen and custom night portraits."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: < on 0 jumps to 20 and > on 20 jumps to 0 (not when held or spammed)."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys crawl in the vents and walk down the hall. Sharp close-up on the title screen."}, {"date": "2026-10-18", "tapes": [2], "text": "No static noise on the cameras or the flashlight. New fan sound with rain."}, {"date": "2026-10-18", "tapes": [2], "text": "No more vent light hum."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's newspaper ad at the start of a new game."}, {"date": "2026-10-18", "tapes": [2], "text": "Cheddy takes Bonnie's spots and Weddy takes Chica's."}, {"date": "2026-10-18", "tapes": [2], "text": "Withered Endo no longer kills you right away: survive his stare minigame."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's new mask."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy takes her face plate off when she leaves the stage: a glitching black box covers her face."}, {"date": "2026-10-18", "tapes": [2], "text": "Balloon Boy is now the Peepeepoopoo Monster."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy wears a shirt, and her chest wobbles with real physics."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-18", "tapes": [2], "text": "A warning screen when the game starts: sensitive content on or off. Off turns jumpscares off. It can skip itself on that save file."}, {"date": "2026-10-18", "tapes": [2], "text": "A new phone call on night 1."}, {"date": "2026-10-18", "tapes": [2], "text": "The Puppet's music box on CAM 11 plays a new song."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}];
+const DEVLOG = [{"date": "2026-10-16", "tapes": [2], "text": "Tape 2 is here: Fried Rice at Eddie's 2, a FNaF 2 style night."}, {"date": "2026-10-16", "tapes": [2], "text": "Rigged 3D models for Toy Eddy, Toy Weddy, Toy Cheddy and Toy Endo."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-16", "tapes": [2], "text": "The toys are drawn from their 3D models."}, {"date": "2026-10-17", "tapes": [2], "text": "Characters are drawn live from the models folder, with less lag. Fred makes the phone calls."}, {"date": "2026-10-17", "tapes": [2], "text": "Fixed the stutter once characters start moving."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's own office."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [2], "text": "Mods can add 3D models and 2D characters (models and characters folders)."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-17", "tapes": [2], "text": "Uploaded models follow the game's rig, and their looping animations play."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys have faces (calm, creepy and scary). Mangled Endo is now Meyg."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: a red star over each character's right eye, stronger the harder they are."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: the \"F*CK NO!\" preset, everyone on 20."}, {"date": "2026-10-17", "tapes": [2], "text": "GET READY minigame: the rainbow Endo runs, and the last run ends in a huge fire."}, {"date": "2026-10-17", "tapes": [2], "text": "After the GET READY run the title reads \"Eddies Riceria\" with the crying rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "New tab icon: the rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "The death minigame depends on who caught you (still 1 in 3)."}, {"date": "2026-10-17", "tapes": [2], "text": "The Eddy mask, and the withered cast is torn up and broken."}, {"date": "2026-10-17", "tapes": [2], "text": "Toy Weddy's new model."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's new Puppet."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys breathe while they stand, and each toy has its own 3D jumpscare."}, {"date": "2026-10-17", "tapes": [2], "text": "No idle animation on the title screen and custom night portraits."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: < on 0 jumps to 20 and > on 20 jumps to 0 (not when held or spammed)."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys crawl in the vents and walk down the hall. Sharp close-up on the title screen."}, {"date": "2026-10-18", "tapes": [2], "text": "No static noise on the cameras or the flashlight. New fan sound with rain."}, {"date": "2026-10-18", "tapes": [2], "text": "No more vent light hum."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's newspaper ad at the start of a new game."}, {"date": "2026-10-18", "tapes": [2], "text": "Cheddy takes Bonnie's spots and Weddy takes Chica's."}, {"date": "2026-10-18", "tapes": [2], "text": "Withered Endo no longer kills you right away: survive his stare minigame."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's new mask."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy takes her face plate off when she leaves the stage: a glitching black box covers her face."}, {"date": "2026-10-18", "tapes": [2], "text": "Balloon Boy is now the Peepeepoopoo Monster."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy wears a shirt, and her chest wobbles with real physics."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-18", "tapes": [2], "text": "A warning screen when the game starts: sensitive content on or off. Off turns jumpscares off. It can skip itself on that save file."}, {"date": "2026-10-18", "tapes": [2], "text": "A new phone call on night 1."}, {"date": "2026-10-18", "tapes": [2], "text": "The Puppet's music box on CAM 11 plays a new song."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}];
 
 /* =====================================================================
    PICTURES AND SOUNDS
@@ -5965,6 +6040,12 @@ function setupModsUI() {
   $("#zipInput").onchange = e => { loadUnpacked(e.target.files, true); e.target.value = ""; };
   $("#tplBtn").onclick = downloadTemplate;
   $("#ghLoad").onclick = loadPacked;
+  // WORKSHOP: the shared page (workshop/index.html) for this tape; BACK there returns to this exact page
+  $("#workshopBtn").onclick = () => {
+    blip();
+    const tape = GI.key.replace(/\D/g, "");
+    location.href = "../workshop/?tape=" + tape + "&back=" + encodeURIComponent(location.pathname + location.search);
+  };
   $("#ghInput").addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") loadPacked(); });
   showTab("unpacked");
 }
