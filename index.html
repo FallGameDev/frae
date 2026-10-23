@@ -210,17 +210,9 @@
     font-size: clamp(20px, 1.8vw, 26px);
     margin-bottom: 10px;
   }
-  /* The tape's own name, under the episode tag. Hover it for the pronunciation (if it has one). */
-  .right .subtitle {
-    text-align: center;
-    color: #ffe14a;
-    font-style: italic;
-    font-size: clamp(15px, 1.4vw, 20px);
-    margin-top: -4px;
-    margin-bottom: 10px;
-    letter-spacing: 1px;
-  }
-  .right .subtitle span[title] { cursor: help; border-bottom: 1px dashed var(--dim); }
+  /* The tape's own name, as part of the title itself. Hover it for the pronunciation (if it has one). */
+  .right h2 .name { color: #ffe14a; }
+  .right h2 .name[title] { cursor: help; border-bottom: 2px dashed var(--dim); }
   .right p {
     font-size: clamp(20px, 1.9vw, 28px);
     line-height: 1.15;
@@ -424,8 +416,11 @@
     const card = document.createElement("div");
     card.className = "card" + (game.unlocked ? "" : " locked");
 
-    // Locked games hide their real title and art
-    const title = game.unlocked ? game.title : "? ? ?";
+    // Locked games hide their real title and art. Unlocked games show their own
+    // name as part of the title (hover the name for its pronunciation, if it has one).
+    const title = !game.unlocked ? "? ? ?"
+      : game.subtitle ? `${game.title}: <span class="name"${game.pronounce ? ` title="${game.pronounce}"` : ""}>${game.subtitle.toUpperCase()}</span>`
+      : game.title;
     const thumbStyle = game.unlocked
       ? (game.thumb
           ? `background-image:url('${game.thumb}')`
@@ -442,7 +437,6 @@
       <div class="right">
         <h2>${title}</h2>
         <div class="tag">${game.unlocked ? game.tag : "NO SIGNAL"}</div>
-        ${game.unlocked && game.subtitle ? `<div class="subtitle"><span${game.pronounce ? ` title="${game.pronounce}"` : ""}>"${game.subtitle}"</span></div>` : ""}
         <p>${game.unlocked ? game.desc : "This tape has not been recorded yet."}</p>
       </div>
     `;
