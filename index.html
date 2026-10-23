@@ -210,9 +210,7 @@
     font-size: clamp(20px, 1.8vw, 26px);
     margin-bottom: 10px;
   }
-  /* The tape's own name, as part of the title itself. Hover it for the pronunciation (if it has one). */
-  .right h2 .name { color: #ffe14a; }
-  .right h2 .name[title] { cursor: help; border-bottom: 2px dashed var(--dim); }
+  .right h2 span[title] { cursor: help; border-bottom: 2px dashed var(--dim); }
   .right p {
     font-size: clamp(20px, 1.9vw, 28px);
     line-height: 1.15;
@@ -416,10 +414,10 @@
     const card = document.createElement("div");
     card.className = "card" + (game.unlocked ? "" : " locked");
 
-    // Locked games hide their real title and art. Unlocked games show their own
-    // name as part of the title (hover the name for its pronunciation, if it has one).
+    // Locked games hide their real title and art. Unlocked games with their own name use
+    // JUST that name as the title (hover it for its pronunciation, if it has one).
     const title = !game.unlocked ? "? ? ?"
-      : game.subtitle ? `${game.title}: <span class="name"${game.pronounce ? ` title="${game.pronounce}"` : ""}>${game.subtitle.toUpperCase()}</span>`
+      : game.subtitle ? `<span${game.pronounce ? ` title="${game.pronounce}"` : ""}>${game.subtitle.toUpperCase()}</span>`
       : game.title;
     const thumbStyle = game.unlocked
       ? (game.thumb
