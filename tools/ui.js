@@ -19,10 +19,16 @@ const GI = Object.assign({ key: "frae1", modName: "My Eddie's Mod", gameId: "fri
 const SETTINGS_KEY = GI.key + "-settings";
 const settings = { music: 100, sound: 100, jumpscares: "0", debug: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}")); } catch (e) {}
-function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
+// Parental setting on the tape menu: no jumpscares at all (Tape 2: sensitive content off too)
+if (Global.noJumpscares()) settings.jumpscares = "0";
+function saveSettings() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+  Cloud.saved(SETTINGS_KEY);                    // backed up to the account (tools/global.js)
+}
+// This tape's sliders, times the global volumes from the tape menu's Settings
 function applyVolumes() {
-  Sound.musicBus.gain.value = settings.music / 100;
-  Sound.sfxBus.gain.value = settings.sound / 100;
+  Sound.musicBus.gain.value = settings.music / 100 * Global.vol("music");
+  Sound.sfxBus.gain.value = settings.sound / 100 * Global.vol("sfx");
 }
 
 // Words for the settings screen (mods can change these too)
@@ -37,7 +43,8 @@ function el(tag, attrs = {}, ...kids) {
   for (const [k, v] of Object.entries(attrs)) {
     if (k === "class") e.className = v;
     else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
-    else e.setAttribute(k, v);
+    else if (v === false || v === null || v === undefined) continue;     // (disabled: false = not disabled)
+    else e.setAttribute(k, v === true ? "" : v);
   }
   for (const k of kids) e.append(k);
   return e;
@@ -298,70 +305,8 @@ async function addMod(mod) {
   await ModDB.putState(st);
 }
 
-/* ---------------------------------------------------------------------
-   ZIP files (no libraries): write uncompressed zips, read normal zips
-   --------------------------------------------------------------------- */
-const CRC_TABLE = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
-  return t;
-})();
-function crc32(bytes) {
-  let c = 0xFFFFFFFF;
-  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
-  return (c ^ 0xFFFFFFFF) >>> 0;
-}
-// entries: [{path, bytes: Uint8Array}] -> Blob (.zip, "stored" so it is fast)
-function makeZip(entries) {
-  const parts = [], central = [];
-  let offset = 0;
-  const enc = new TextEncoder();
-  for (const e of entries) {
-    const name = enc.encode(e.path), crc = crc32(e.bytes), n = e.bytes.length;
-    const h = new DataView(new ArrayBuffer(30));
-    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
-    h.setUint32(14, crc, true); h.setUint32(18, n, true); h.setUint32(22, n, true); h.setUint16(26, name.length, true);
-    parts.push(h, name, e.bytes);
-    const c = new DataView(new ArrayBuffer(46));
-    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
-    c.setUint32(16, crc, true); c.setUint32(20, n, true); c.setUint32(24, n, true); c.setUint16(28, name.length, true);
-    c.setUint32(42, offset, true);
-    central.push(c, name);
-    offset += 30 + name.length + n;
-  }
-  const size = central.reduce((a, p) => a + p.byteLength, 0);
-  const end = new DataView(new ArrayBuffer(22));
-  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true);
-  end.setUint32(12, size, true); end.setUint32(16, offset, true);
-  return new Blob([...parts, ...central, end], { type: "application/zip" });
-}
-// Blob (.zip) -> [{path, blob}]
-async function readZip(blob) {
-  const buf = new Uint8Array(await blob.arrayBuffer());
-  const dv = new DataView(buf.buffer);
-  let e = buf.length - 22;
-  while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
-  if (e < 0) throw new Error("That file is not a zip");
-  const count = dv.getUint16(e + 10, true);
-  let p = dv.getUint32(e + 16, true);
-  const dec = new TextDecoder(), out = [];
-  for (let i = 0; i < count; i++) {
-    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
-    const nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true);
-    const local = dv.getUint32(p + 42, true);
-    const path = dec.decode(buf.subarray(p + 46, p + 46 + nlen));
-    p += 46 + nlen + xlen + clen;
-    if (path.endsWith("/")) continue;
-    const start = local + 30 + dv.getUint16(local + 26, true) + dv.getUint16(local + 28, true);
-    let data = buf.slice(start, start + csize);
-    if (method === 8) {
-      const ds = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-      data = new Uint8Array(await new Response(ds).arrayBuffer());
-    } else if (method !== 0) continue;
-    out.push({ path, blob: new Blob([data]) });
-  }
-  return out;
-}
+
+/* ZIP files: makeZip() / readZip() live in tools/global.js (shared with the menu) */
 function download(blob, name) {
   const a = el("a", { href: URL.createObjectURL(blob), download: name });
   document.body.append(a); a.click(); a.remove();
@@ -543,6 +488,7 @@ async function applyMods() {
   };
   mergeTexts(DEFAULT_TEXTS);
   let mods = [];
+  if (Global.noMods()) { TEXTS = texts; return 0; }      // parental setting: play without mods
   try {
     await ModDB.moveOldMods().catch(e => console.warn("Could not move old mods", e));
     const st = await ModDB.getState();
@@ -785,6 +731,7 @@ function buildSettings() {
   }, T(label));
   const jsBtn = (label, val) => el("button", {
     class: "pick" + (settings.jumpscares === val ? " on" : ""),
+    disabled: Global.noJumpscares(),                     // locked by the parental settings
     onclick: () => {
       settings.jumpscares = val; saveSettings(); buildSettings(); blip();
       if (typeof onJumpscaresChanged === "function") onJumpscaresChanged();      // (Tape 2: sensitive content follows it)
@@ -799,7 +746,8 @@ function buildSettings() {
   box.append(
     el("h2", {}, T("Settings")),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Jumpscares")),
-       el("div", { class: "pair" }, jsBtn("ON", "1"), jsBtn("OFF", "0"))),
+       el("div", { class: "pair" }, jsBtn("ON", "1"), jsBtn("OFF", "0")),
+       Global.noJumpscares() ? el("span", { class: "note" }, T("locked by parental settings")) : ""),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Debug mode")),
        el("div", { class: "pair" }, dbBtn("ON", true), dbBtn("OFF", false)),
        el("span", { class: "note" }, T("no saving or achievements while on"))),
@@ -817,8 +765,10 @@ function buildSettings() {
     el("div", { class: "row" }, el("span", { class: "label" }, T("Music")), ...slider("music")),
     el("div", { class: "row" }, el("span", { class: "label" }, T("Sound")), ...slider("sound")),
     el("div", { class: "row" }, el("span", { class: "label" }, ""),
-       el("button", { class: "big", onclick: () => { blip(); openMods(); } }, T("Mods")),
-       el("button", { class: "big", onclick: () => { blip(); openDevlog(); } }, T("Devlog"))),
+       el("button", { class: "big", disabled: Global.noMods(), title: Global.noMods() ? T("Mods are turned off in the parental settings") : "",
+                      onclick: () => { blip(); openMods(); } }, T("Mods")),
+       el("button", { class: "big", onclick: () => { blip(); openDevlog(); } }, T("Devlog")),
+       Global.chicken() ? el("span", { class: "note" }, T("Chicken mode: 10x easier, no achievements")) : ""),
     el("button", { class: "confirm", onclick: closeSettings }, T("CONFIRM"))
   );
 }

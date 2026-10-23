@@ -278,6 +278,112 @@
   .hint { margin-top: 14px; color: var(--dim); font-size: 22px; letter-spacing: 1px; }
 
   /* =========================================================
+     SETTINGS BUTTON (next to the save files) + SETTINGS PANEL
+     Global settings for every tape: visuals, sound, parental, account.
+     The logic lives in tools/global.js (shared with the games).
+     ========================================================= */
+  .gear {
+    font-family: 'Press Start 2P', monospace; font-size: clamp(10px, 1vw, 13px); letter-spacing: 2px;
+    color: #fff; background: #000; border: 4px solid #555; box-shadow: 5px 5px 0 #1d1d2b;
+    padding: 12px clamp(12px, 1.4vw, 18px); cursor: pointer; display: flex; align-items: center; gap: 10px;
+    transition: border-color .12s, transform .08s;
+  }
+  .gear:hover { border-color: #fff; }
+  .gear:active { transform: translate(2px, 2px); box-shadow: 3px 3px 0 #1d1d2b; }
+  .gear svg { width: 18px; height: 18px; fill: #ffe14a; }
+  .gear .who { font-family: 'VT323', monospace; font-size: 20px; color: #7fdc5a; letter-spacing: 0; }
+
+  #settings {
+    position: fixed; inset: 0; z-index: 45; background: rgba(0,0,0,.78);
+    display: grid; place-items: center; padding: 16px;
+  }
+  #settings[hidden] { display: none; }
+  .sbox {
+    width: min(900px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column;
+    background: #000; border: 6px solid var(--line);
+    box-shadow: 0 0 0 4px #000, 12px 12px 0 4px #1d1d2b;
+  }
+  .shead { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 0; }
+  .shead h2 { font-family: 'Press Start 2P', monospace; font-size: clamp(14px, 1.8vw, 22px); letter-spacing: 3px;
+              text-shadow: 3px 0 var(--glow-r), -3px 0 var(--glow-b); }
+  .sclose { background: none; border: 4px solid #555; color: #fff; font-family: 'Press Start 2P', monospace; font-size: 12px;
+            padding: 8px 12px; cursor: pointer; }
+  .sclose:hover { border-color: #fff; }
+
+  /* tabs */
+  .stabs { display: flex; gap: 10px; padding: 16px 20px 0; flex-wrap: wrap; }
+  .stab {
+    position: relative; font-family: 'Press Start 2P', monospace; font-size: clamp(9px, 1vw, 12px); letter-spacing: 2px;
+    color: var(--dim); background: #000; border: 4px solid #333342; padding: 10px 14px 10px 30px; cursor: pointer;
+  }
+  .stab:hover { color: #fff; border-color: #777; }
+  .stab.on { color: #fff; border-color: #fff; background: #12121c; }
+  .stab .soul { position: absolute; left: 9px; top: 50%; translate: 0 -50%; width: 12px; height: 12px; fill: var(--soul); display: none; }
+  .stab.on .soul { display: block; }
+
+  .sbody { padding: 18px 20px 20px; overflow-y: auto; font-size: 24px; }
+  .sbody h3 { font-family: 'Press Start 2P', monospace; font-size: 12px; letter-spacing: 2px; color: #ffe14a; margin: 18px 0 8px; }
+  .sbody h3:first-child { margin-top: 0; }
+  .srow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 8px 0; border-bottom: 2px dashed #1f1f2c; }
+  .srow:last-child { border-bottom: none; }
+  .slabel { width: 300px; flex: none; }
+  .slabel small { display: block; color: var(--dim); font-size: 18px; line-height: 1; margin-top: 2px; }
+  .spair { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* chunky buttons for choices and actions */
+  .sbtn {
+    font-family: 'VT323', monospace; font-size: 22px; color: #fff; background: #000;
+    border: 4px solid #555; box-shadow: 4px 4px 0 #1d1d2b; padding: 2px 14px; cursor: pointer;
+    transition: border-color .12s, transform .08s;
+  }
+  .sbtn:hover { border-color: #fff; }
+  .sbtn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #1d1d2b; }
+  .sbtn.on { background: var(--start); border-color: #fff; }
+  .sbtn.go { background: var(--start); border-color: #fff; }
+  .sbtn.go:hover { background: var(--start-hi); }
+  .sbtn.bad { border-color: #7a1d26; color: #ff8a95; }
+  .sbtn.bad:hover { border-color: var(--soul); }
+  .sbtn:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* sliders */
+  .sbody input[type=range] { width: min(260px, 50vw); accent-color: #8a4dff; }
+  .sval { width: 56px; color: #ffe14a; }
+
+  /* text boxes */
+  .sbody input[type=text], .sbody input[type=email], .sbody input[type=password] {
+    font-family: 'VT323', monospace; font-size: 24px; color: #fff; background: #0b0b12;
+    border: 4px solid #555; padding: 4px 10px; width: min(320px, 100%); outline: none;
+  }
+  .sbody input:focus { border-color: #fff; }
+  .sform { display: flex; flex-direction: column; gap: 10px; max-width: 360px; }
+  .sform label { display: flex; flex-direction: column; gap: 2px; color: var(--dim); font-size: 20px; }
+
+  .snote { color: var(--dim); font-size: 20px; line-height: 1.1; }
+  .snote.good { color: #7fdc5a; }
+  .snote.bad { color: #ff8a95; }
+  .snote::before { content: "* "; }
+
+  /* account card + lists */
+  .acard { display: flex; align-items: center; gap: 16px; padding: 12px; border: 4px solid #333342; margin-bottom: 12px; flex-wrap: wrap; }
+  .avatar { width: 64px; height: 64px; flex: none; display: grid; place-items: center; border: 4px solid #fff;
+            font-family: 'Press Start 2P', monospace; font-size: 26px; color: #000; }
+  .acard .uname { font-family: 'Press Start 2P', monospace; font-size: 16px; }
+  .acard .umeta { color: var(--dim); font-size: 20px; }
+  .slist { display: flex; flex-direction: column; gap: 6px; }
+  .sitem { display: flex; align-items: center; gap: 10px; border: 3px solid #26263a; padding: 4px 10px; flex-wrap: wrap; }
+  .sitem .nm { flex: 1; min-width: 160px; }
+  .sitem .tg { font-family: 'Press Start 2P', monospace; font-size: 9px; padding: 4px 6px; border: 2px solid #555; color: var(--dim); }
+  .sitem .tg.created { color: #ffe14a; border-color: #ffe14a; }
+  .sitem .tg.cloud { color: #46e0ff; border-color: #46e0ff; }
+  .sitem .sbtn { font-size: 18px; padding: 0 10px; }
+  .pinbox { letter-spacing: 12px; text-align: center; width: 160px !important; }
+
+  /* Visual settings from tools/global.js */
+  body.novhs .fx, body.novhs .tracking::after { display: none; }
+  body.calm .screen, body.calm .blink, body.calm .soul, body.calm .tracking::after { animation: none !important; }
+  body.calm .card { transition: none; }
+
+  /* =========================================================
      START TRANSITION (screen shrinks to a line like an old TV turning off)
      ========================================================= */
   #tvoff {
@@ -309,6 +415,7 @@
     .files { flex-wrap: wrap; justify-content: center; }
     .files .label { width: 100%; text-align: center; }
     .file { min-width: 0; }
+    .slabel { width: 100%; }
   }
 </style>
 </head>
@@ -346,8 +453,19 @@
   <div class="hint">◀ ▶ CHOOSE &nbsp; · &nbsp; 1 2 3 FILE &nbsp; · &nbsp; Z / ENTER START</div>
 </div>
 
+<!-- Global settings for every tape (built by JavaScript below; logic in tools/global.js) -->
+<div id="settings" hidden>
+  <div class="sbox" role="dialog" aria-label="Settings">
+    <div class="shead"><h2>SETTINGS</h2><button class="sclose" id="sclose">X CLOSE</button></div>
+    <div class="stabs" id="stabs"></div>
+    <div class="sbody" id="sbody"></div>
+  </div>
+</div>
+
 <div id="tvoff"></div>
 
+<!-- Global settings + accounts (shared with both tapes) -->
+<script src="tools/global.js"></script>
 <script>
   /* =========================================================
      GAME LIST
@@ -467,6 +585,18 @@
     filesBox.appendChild(b);
     return b;
   });
+  // Settings button at the end of the save file row (shows who is signed in)
+  const gearBtn = document.createElement("button");
+  gearBtn.className = "gear";
+  gearBtn.title = "Settings (S)";
+  gearBtn.onclick = () => openSettings();
+  filesBox.appendChild(gearBtn);
+  function showGear() {
+    const who = Cloud.signedIn() && Cloud.profile ? `<span class="who">${esc(Cloud.profile.username)}</span>` : "";
+    gearBtn.innerHTML = `<svg viewBox="0 0 10 10"><path d="M4 0h2v1.3l1 .5 1-1 1.4 1.4-1 1 .4 1H10v2H8.7l-.5 1 1 1-1.4 1.4-1-1-1 .4V10H4V8.7l-1-.5-1 1L.6 7.8l1-1-.5-1H0V4h1.3l.5-1-1-1L2.2.6l1 1 1-.4z M5 3.4a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2z"/></svg>SETTINGS${who}`;
+  }
+  showGear();
+
   function pickFile(n) {
     if (n === file) return;
     file = n;
@@ -553,6 +683,9 @@
   document.getElementById("next").onclick = () => go(current + 1);
 
   document.addEventListener("keydown", e => {
+    // while Settings is open, only Escape works here (so typing in boxes is safe)
+    if (!document.getElementById("settings").hidden) { if (e.key === "Escape") closeSettings(); return; }
+    if (e.key === "s" || e.key === "S") { openSettings(); return; }
     if (e.key === "1" || e.key === "2" || e.key === "3") pickFile(Number(e.key));
     if (e.key === "ArrowLeft"  || e.key === "a") go(current - 1);
     if (e.key === "ArrowRight" || e.key === "d") go(current + 1);
@@ -577,7 +710,9 @@
       const gain = audio.createGain();
       osc.type = type;
       osc.frequency.value = freq;
-      gain.gain.setValueAtTime(.06, audio.currentTime);
+      const vol = .06 * Global.vol("sfx");           // master x sound effects (Settings > Sound)
+      if (vol <= 0) return;
+      gain.gain.setValueAtTime(vol, audio.currentTime);
       gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + len);
       osc.connect(gain).connect(audio.destination);
       osc.start();
@@ -617,6 +752,413 @@
     document.getElementById("clock").textContent =
       `SP ${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
   }, 1000);
+
+  /* =========================================================
+     GLOBAL SETTINGS PANEL (S key or the SETTINGS button)
+     Tabs: VISUALS, SOUND, PARENTAL, ACCOUNT.
+     Everything is saved by Global / Cloud in tools/global.js,
+     and both tapes read the same settings when they start.
+     ========================================================= */
+  const TABS = ["VISUALS", "SOUND", "PARENTAL", "ACCOUNT"];
+  let tab = "VISUALS";
+  let parentalOpen = false;      // PIN typed this visit (or no PIN)
+  let accountMode = "signin";    // signed out: "signin" / "create" / "forgot"
+  let accountMsg = null;         // { text, bad } shown at the top of the Account tab
+  let syncConflicts = [];        // keys that differ between this device and the account
+  let busy = false;              // an account request is running
+  let cloudModRows = null;       // mods on the account (loaded when the Account tab opens)
+
+  const sbody = document.getElementById("sbody");
+  const stabs = document.getElementById("stabs");
+
+  // escape text before putting it in HTML
+  function esc(t) { return String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+  // tiny element maker: h("button", {class: "sbtn", onclick}, "text", child...)
+  function h(tag, attrs = {}, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === false || v == null) continue;
+      if (k === "class") e.className = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids) if (k != null && k !== false) e.append(k);
+    return e;
+  }
+  const row = (label, note, ...right) => h("div", { class: "srow" },
+    h("div", { class: "slabel" }, label, note ? h("small", {}, note) : null), ...right);
+  // a group of buttons where one is picked
+  function choice(options, now, onPick, locked) {
+    return h("div", { class: "spair" }, ...options.map(([label, val]) =>
+      h("button", { class: "sbtn" + (now === val ? " on" : ""), disabled: !!locked,
+                    onclick: () => { onPick(val); beep(660, .05); drawSettings(); } }, label)));
+  }
+  function slider(get, set, min = 0, max = 100, step = 5) {
+    const out = h("span", { class: "sval" }, get() + "%");
+    const input = h("input", { type: "range", min, max, step, value: get() });
+    input.addEventListener("input", () => { set(+input.value); out.textContent = input.value + "%"; applyVisuals(); });
+    input.addEventListener("change", () => { Global.save(); beep(660, .05); });
+    return [input, out];
+  }
+  const note = (text, kind) => h("div", { class: "snote" + (kind ? " " + kind : "") }, text);
+
+  /* ---------- open / close ---------- */
+  function openSettings() {
+    beep(520, .05);
+    document.getElementById("settings").hidden = false;
+    drawSettings();
+  }
+  function closeSettings() {
+    document.getElementById("settings").hidden = true;
+    parentalOpen = false;            // the PIN is asked again next time
+    beep(440, .05);
+    showFiles(); showGear();
+  }
+  document.getElementById("sclose").onclick = closeSettings;
+  document.getElementById("settings").addEventListener("click", e => { if (e.target.id === "settings") closeSettings(); });
+
+  /* ---------- tabs ---------- */
+  function drawSettings() {
+    stabs.innerHTML = "";
+    for (const t of TABS) {
+      const b = h("button", { class: "stab" + (t === tab ? " on" : ""), onclick: () => { tab = t; beep(520, .05); drawSettings(); } });
+      b.innerHTML = SOUL_SVG + t;
+      stabs.append(b);
+    }
+    sbody.innerHTML = "";
+    if (tab === "VISUALS") drawVisuals();
+    else if (tab === "SOUND") drawSound();
+    else if (tab === "PARENTAL") drawParental();
+    else drawAccount();
+  }
+
+  /* ---------- VISUALS ---------- */
+  function drawVisuals() {
+    const v = Global.data.visuals;
+    sbody.append(
+      h("h3", {}, "VISUALS"),
+      row("Brightness", "the game picture, in every tape", ...slider(() => v.brightness, x => v.brightness = x, 50, 150, 5)),
+      row("Picture quality", "PRETTY looks smoother but can lag",
+        choice([["PIXEL", "pixel"], ["FAST", "fast"], ["PRETTY", "pretty"]], v.quality, x => { v.quality = x; Global.save(); })),
+      row("VHS effects", "scanlines and static on this menu",
+        choice([["ON", true], ["OFF", false]], v.vhs, x => { v.vhs = x; Global.save(); applyVisuals(); })),
+      row("Calm menu", "no flicker or bouncing",
+        choice([["ON", true], ["OFF", false]], v.calm, x => { v.calm = x; Global.save(); applyVisuals(); })),
+      note("These work in every tape. Each tape still has its own Settings for jumpscares and mods.")
+    );
+  }
+  // the menu follows the visual settings too
+  function applyVisuals() {
+    const v = Global.data.visuals;
+    document.body.classList.toggle("novhs", !v.vhs);
+    document.body.classList.toggle("calm", !!v.calm);
+    document.querySelector(".screen").style.filter = v.brightness === 100 ? "" : `brightness(${v.brightness / 100})`;
+  }
+
+  /* ---------- SOUND ---------- */
+  function drawSound() {
+    const s = Global.data.sound;
+    sbody.append(
+      h("h3", {}, "SOUND"),
+      row("Master", "everything", ...slider(() => s.master, x => s.master = x)),
+      row("Music", "songs and music boxes", ...slider(() => s.music, x => s.music = x)),
+      row("Sound effects", "everything else (and these beeps)", ...slider(() => s.sfx, x => s.sfx = x)),
+      note("These turn every tape up or down. Each tape's own Music and Sound sliders still work on top.")
+    );
+  }
+
+  /* ---------- PARENTAL ---------- */
+  function drawParental() {
+    const p = Global.data.parental;
+    sbody.append(h("h3", {}, "PARENTAL"));
+    // locked with a PIN: ask for it first
+    if (p.pin && !parentalOpen) {
+      const pin = h("input", { type: "password", class: "pinbox", maxlength: 4, inputmode: "numeric", autocomplete: "off", placeholder: "····" });
+      const msg = h("div");
+      const tryPin = async () => {
+        if (await Global.checkPin(pin.value)) { parentalOpen = true; beep(880, .08); drawSettings(); }
+        else { msg.replaceChildren(note("Wrong PIN.", "bad")); beep(110, .18); pin.value = ""; pin.focus(); }
+      };
+      pin.addEventListener("keydown", e => { if (e.key === "Enter") tryPin(); });
+      sbody.append(
+        note("These settings are locked with a PIN."),
+        h("div", { class: "srow" }, pin, h("button", { class: "sbtn go", onclick: tryPin }, "UNLOCK")),
+        msg,
+        h("button", { class: "sbtn", onclick: forgotPin }, "FORGOT PIN?")
+      );
+      setTimeout(() => pin.focus(), 0);
+      return;
+    }
+    const set = (k, v) => { p[k] = v; Global.save(); };
+    sbody.append(
+      row("Mods", "BLOCKED = tapes load with no mods, and the Mods button is locked",
+        choice([["ALLOWED", false], ["BLOCKED", true]], p.noMods, x => set("noMods", x))),
+      row("Jumpscares", "BLOCKED = jumpscares are always off (and Tape 2's sensitive content)",
+        choice([["ALLOWED", false], ["BLOCKED", true]], p.noJumpscares, x => set("noJumpscares", x))),
+      row("Story mode only", "only the main nights: no 6th night, no custom night",
+        choice([["ON", true], ["OFF", false]], p.storyOnly, x => set("storyOnly", x))),
+      row("Chicken mode 🐔", "10x easier: characters move way less, power lasts longer. No achievements!",
+        choice([["ON", true], ["OFF", false]], p.chicken, x => set("chicken", x))),
+      h("h3", {}, "PIN LOCK"),
+      p.pin ? note("A PIN is set. These settings ask for it every time.", "good")
+            : note("No PIN yet. Set one so only a grown-up can change these."),
+      h("div", { class: "srow" },
+        h("button", { class: "sbtn", onclick: setPin }, p.pin ? "CHANGE PIN" : "SET PIN"),
+        p.pin ? h("button", { class: "sbtn bad", onclick: () => { p.pin = ""; Global.save(); beep(440, .05); drawSettings(); } }, "REMOVE PIN") : null),
+      note("Changes start the next time a tape is opened.")
+    );
+  }
+  async function setPin() {
+    const a = prompt("New 4 digit PIN:");
+    if (a === null) return;
+    if (!/^\d{4}$/.test(a)) { alert("The PIN has to be 4 numbers."); return; }
+    if (prompt("Type the PIN again:") !== a) { alert("Those PINs did not match."); return; }
+    Global.data.parental.pin = await Global.hashPin(a);
+    Global.save();
+    beep(880, .08);
+    drawSettings();
+  }
+  // Forgot the PIN: the account owner can reset it with their password
+  async function forgotPin() {
+    if (!Cloud.signedIn()) {
+      alert("To reset a forgotten PIN, sign in to the account (Settings > Account), then press FORGOT PIN? again.");
+      return;
+    }
+    const pw = prompt("Type the password for " + Cloud.session.user.email + " to reset the PIN:");
+    if (!pw) return;
+    try {
+      await Cloud.signIn(Cloud.session.user.email, pw);     // checks the password
+      Global.data.parental.pin = "";
+      Global.save();
+      parentalOpen = true;
+      alert("PIN removed. You can set a new one now.");
+    } catch (e) { alert(e.message); }
+    drawSettings();
+  }
+
+  /* ---------- ACCOUNT ---------- */
+  function drawAccount() {
+    sbody.append(h("h3", {}, "ACCOUNT"));
+    if (!Cloud.ready()) {
+      sbody.append(
+        note("Accounts are not hooked up yet."),
+        note("To turn them on: make a free Supabase project, run supabase/setup.sql in its SQL Editor, then paste the project URL and anon key into CLOUD_CONFIG at the top of tools/global.js.")
+      );
+      return;
+    }
+    if (accountMsg) sbody.append(note(accountMsg.text, accountMsg.bad ? "bad" : "good"));
+    if (!Cloud.signedIn()) drawSignedOut(); else drawSignedIn();
+  }
+  // run an account request with a "busy" state and a message after
+  async function act(fn, okText) {
+    if (busy) return;
+    busy = true; accountMsg = { text: "Working..." }; drawSettings();
+    try {
+      const out = await fn();
+      accountMsg = okText ? { text: typeof okText === "function" ? okText(out) : okText } : null;
+      beep(880, .08);
+    } catch (e) {
+      accountMsg = { text: e.message, bad: true };
+      beep(110, .18);
+    }
+    busy = false;
+    drawSettings(); showFiles(); showGear();
+  }
+
+  function drawSignedOut() {
+    sbody.append(h("div", { class: "spair", style: "margin-bottom:14px" },
+      ...[["SIGN IN", "signin"], ["CREATE ACCOUNT", "create"]].map(([label, m]) =>
+        h("button", { class: "sbtn" + (accountMode === m ? " on" : ""), onclick: () => { accountMode = m; accountMsg = null; drawSettings(); } }, label))));
+
+    const email = h("input", { type: "email", autocomplete: "email", placeholder: "you@email.com" });
+    const pass = h("input", { type: "password", autocomplete: accountMode === "create" ? "new-password" : "current-password", placeholder: "password" });
+    const user = h("input", { type: "text", maxlength: 20, autocomplete: "username", placeholder: "3-20 letters, numbers or _" });
+    const form = h("form", { class: "sform" });
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      if (accountMode === "signin") act(async () => { await Cloud.signIn(email.value.trim(), pass.value); return startSync(); }, syncText);
+      else if (accountMode === "create") act(async () => {
+        const r = await Cloud.signUp(email.value.trim(), pass.value, user.value.trim());
+        if (r.confirm) { accountMode = "signin"; return "confirm"; }
+        return startSync();
+      }, out => out === "confirm" ? "Almost done! Check your email and click the link to confirm your account." : syncText(out));
+      else act(() => Cloud.resetPassword(email.value.trim()), "If that email has an account, a reset link is on its way.");
+    });
+
+    if (accountMode === "forgot") {
+      form.append(h("label", {}, "Email", email), h("button", { class: "sbtn go", type: "submit" }, "SEND RESET LINK"),
+        h("button", { class: "sbtn", type: "button", onclick: () => { accountMode = "signin"; drawSettings(); } }, "BACK"));
+    } else {
+      if (accountMode === "create") form.append(h("label", {}, "Username", user));
+      form.append(h("label", {}, "Email", email), h("label", {}, "Password", pass),
+        h("button", { class: "sbtn go", type: "submit", disabled: busy }, accountMode === "create" ? "CREATE ACCOUNT" : "SIGN IN"));
+      if (accountMode === "signin") form.append(h("button", { class: "sbtn", type: "button",
+        onclick: () => { accountMode = "forgot"; accountMsg = null; drawSettings(); } }, "FORGOT PASSWORD?"));
+    }
+    sbody.append(form,
+      note("Your account keeps your save files, settings and mods, so you can play on any device."));
+    if (!busy) setTimeout(() => (accountMode === "create" ? user : email).focus(), 0);
+  }
+
+  // sync right after signing in; conflicts get a question in the Account tab
+  async function startSync(prefer) {
+    const r = await Cloud.sync(prefer);
+    syncConflicts = r.conflicts;
+    cloudModRows = null;
+    return r;
+  }
+  function syncText(r) {
+    if (!r || typeof r !== "object") return "Signed in!";
+    if (r.conflicts.length) return "Signed in! Some saves are different on this device and your account: pick which to keep below.";
+    return `Synced! ${r.pulled} downloaded, ${r.pushed} uploaded.`;
+  }
+
+  function drawSignedIn() {
+    const user = Cloud.session.user, prof = Cloud.profile || { username: "player" };
+    const joined = prof.created_at ? new Date(prof.created_at).toLocaleDateString() : "";
+    // the avatar color comes from the username so it's always the same
+    const hue = [...prof.username].reduce((a, c) => a + c.charCodeAt(0) * 37, 0) % 360;
+    const card = h("div", { class: "acard" },
+      h("div", { class: "avatar", style: `background:hsl(${hue} 85% 60%)` }, prof.username.slice(0, 1).toUpperCase()),
+      h("div", {}, h("div", { class: "uname" }, prof.username),
+        h("div", { class: "umeta" }, user.email + (joined ? " · joined " + joined : "")),
+        h("div", { class: "umeta" }, accountStats())));
+    sbody.append(card);
+
+    // saves differ on first sign in: ask which to keep
+    if (syncConflicts.length) {
+      sbody.append(h("h3", {}, "WHICH SAVES?"),
+        note("This device and your account have different saves (" + syncConflicts.map(keyName).join(", ") + ")."),
+        h("div", { class: "srow" },
+          h("button", { class: "sbtn go", onclick: () => act(() => startSync("local"), syncText) }, "KEEP THIS DEVICE"),
+          h("button", { class: "sbtn go", onclick: () => act(() => startSync("cloud"), syncText) }, "KEEP ACCOUNT")));
+    }
+
+    // save files
+    sbody.append(h("h3", {}, "SAVE FILES"),
+      h("div", { class: "srow" },
+        h("button", { class: "sbtn go", onclick: () => act(() => startSync(), syncText) }, "SYNC NOW"),
+        h("button", { class: "sbtn", onclick: () => confirm("Copy EVERY save and setting from this device to your account (replacing the account's copies)?") &&
+          act(() => Cloud.uploadAll(), "This device's saves are on your account now.") }, "UPLOAD THIS DEVICE"),
+        h("button", { class: "sbtn", onclick: () => confirm("Replace this device's saves and settings with your account's?") &&
+          act(async () => { await Cloud.downloadAll(); Global.load(); applyVisuals(); }, "Your account's saves are on this device now.") }, "DOWNLOAD FROM ACCOUNT")));
+    const times = Cloud.times(), saves = h("div", { class: "slist" });
+    for (const g of GAMES.filter(g => g.saveKey)) for (const n of [1, 2, 3]) {
+      const key = g.saveKey + n, info = fileInfo(g, n);
+      if (info === "EMPTY") continue;
+      const t = times[key] || {};
+      const synced = t.synced && (t.local || 0) <= t.synced;
+      saves.append(h("div", { class: "sitem" },
+        h("span", { class: "nm" }, `${g.tag} · FILE ${n} · ${info}`),
+        h("span", { class: "tg" + (synced ? " cloud" : "") }, synced ? "ON ACCOUNT" : "NOT SYNCED")));
+    }
+    sbody.append(saves.childNodes.length ? saves : note("No save files on this device yet."));
+
+    // mods
+    sbody.append(h("h3", {}, "MODS"));
+    const modsBox = h("div", { class: "slist" }, note("Loading your mods..."));
+    sbody.append(modsBox, note("CREATED = mods whose manifest author is your username. Others are INSTALLED."));
+    drawMods(modsBox);
+
+    // account stuff
+    sbody.append(h("h3", {}, "ACCOUNT"),
+      h("div", { class: "srow" },
+        h("button", { class: "sbtn", onclick: () => {
+          const name = prompt("New username (3-20 letters, numbers or _):", prof.username);
+          if (name && name !== prof.username) act(() => Cloud.changeUsername(name.trim()), "Username changed.");
+        } }, "CHANGE USERNAME"),
+        h("button", { class: "sbtn", onclick: () => {
+          const pw = prompt("New password (at least 6 characters):");
+          if (pw) act(() => Cloud.changePassword(pw), "Password changed.");
+        } }, "CHANGE PASSWORD"),
+        h("button", { class: "sbtn", onclick: () => act(async () => { await Cloud.signOut(); syncConflicts = []; cloudModRows = null; }, "Signed out. Your saves stay on this device.") }, "SIGN OUT"),
+        h("button", { class: "sbtn bad", onclick: () => {
+          if (prompt('This deletes your account and everything on it (saves and mods on THIS device stay).\nType DELETE to be sure:') === "DELETE")
+            act(() => Cloud.deleteAccount(), "Account deleted.");
+        } }, "DELETE ACCOUNT")));
+  }
+
+  // a line like "3 saves · 12 achievements · 2 mods on account"
+  function accountStats() {
+    let saves = 0, trophies = 0;
+    for (const g of GAMES.filter(g => g.saveKey)) for (const n of [1, 2, 3]) {
+      try {
+        const sv = JSON.parse(localStorage.getItem(g.saveKey + n) || "null");
+        if (sv) { saves++; trophies += sv.achievements ? Object.keys(sv.achievements).length : 0; }
+      } catch (e) {}
+    }
+    return `${saves} save${saves === 1 ? "" : "s"} · ${trophies} achievement${trophies === 1 ? "" : "s"}` +
+      (cloudModRows ? ` · ${cloudModRows.length} mod${cloudModRows.length === 1 ? "" : "s"} on account` : "");
+  }
+  // "frae2-save-file3" -> "Tape 2 file 3"
+  function keyName(key) {
+    let m = key.match(/^frae(\d+)-save-file(\d+)$/);
+    if (m) return `Tape ${m[1]} file ${m[2]}`;
+    m = key.match(/^frae(\d+)-settings$/);
+    if (m) return `Tape ${m[1]} settings`;
+    return key === GLOBAL_KEY ? "menu settings" : key;
+  }
+
+  // every mod on this device (both tapes) + every mod on the account
+  async function drawMods(box) {
+    try { if (!cloudModRows) cloudModRows = await Cloud.cloudMods(); }
+    catch (e) { box.replaceChildren(note("Could not load your mods: " + e.message, "bad")); return; }
+    const items = [];
+    const sizeText = b => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
+    for (const t of TAPES) {
+      for (const m of TapeMods(t.key).list()) {
+        const up = cloudModRows.find(r => r.id === m.id && r.tape === t.tape);
+        const kind = Cloud.modKind(m);
+        items.push(h("div", { class: "sitem" },
+          h("span", { class: "nm" }, `${t.name} · ${m.name}${m.author ? " by " + m.author : ""}`),
+          h("span", { class: "tg" + (kind === "created" ? " created" : "") }, kind.toUpperCase()),
+          up ? h("span", { class: "tg cloud" }, "ON ACCOUNT") : null,
+          h("button", { class: "sbtn", onclick: () => act(async () => { await Cloud.uploadMod(t, m.id); cloudModRows = null; }, `"${m.name}" is backed up.`) },
+            up ? "UPDATE" : "BACK UP")));
+      }
+    }
+    // on the account but not on this device
+    for (const r of cloudModRows) {
+      const t = TAPES.find(x => x.tape === r.tape);
+      if (!t || TapeMods(t.key).list().some(m => m.id === r.id)) continue;
+      items.push(h("div", { class: "sitem" },
+        h("span", { class: "nm" }, `${t.name} · ${r.name}${r.author ? " by " + r.author : ""} (${sizeText(r.size || 0)})`),
+        h("span", { class: "tg" + (r.kind === "created" ? " created" : "") }, (r.kind || "installed").toUpperCase()),
+        h("span", { class: "tg cloud" }, "ACCOUNT ONLY"),
+        h("button", { class: "sbtn go", onclick: () => act(async () => {
+          const info = await Cloud.installMod(r);
+          return info.name;
+        }, name => `"${name}" is installed on ${t.name}. Turn it on in that tape's Settings > Mods.`) }, "INSTALL"),
+        h("button", { class: "sbtn bad", onclick: () => confirm(`Delete "${r.name}" from your account?`) &&
+          act(async () => { await Cloud.deleteMod(r); cloudModRows = null; }, "Deleted from your account.") }, "X")));
+    }
+    box.replaceChildren(...(items.length ? items : [note("No mods yet. Load mods in a tape's Settings > Mods, then back them up here.")]));
+    // the stats line can show the mod count now
+    const meta = sbody.querySelectorAll(".acard .umeta")[1];
+    if (meta) meta.textContent = accountStats();
+  }
+
+  /* ---------- On load: links from emails, then a quiet sync ---------- */
+  applyVisuals();
+  (async () => {
+    if (!Cloud.ready()) return;
+    const linkType = await Cloud.fromLink();
+    if (linkType === "recovery") {
+      // came from a "reset password" email: ask for the new one
+      tab = "ACCOUNT"; openSettings();
+      const pw = prompt("Pick a new password (at least 6 characters):");
+      if (pw) await act(() => Cloud.changePassword(pw), "Password changed. You're signed in.");
+      return;
+    }
+    if (linkType) { tab = "ACCOUNT"; openSettings(); await act(() => startSync(), syncText); return; }
+    if (Cloud.signedIn()) {
+      try {
+        const r = await startSync();
+        Global.load(); applyVisuals(); showFiles(); showGear();
+        if (r.conflicts.length) { tab = "ACCOUNT"; accountMsg = { text: syncText(r) }; openSettings(); }
+      } catch (e) { console.warn("Sync failed", e); }
+    }
+  })();
 
   layout();
 </script>

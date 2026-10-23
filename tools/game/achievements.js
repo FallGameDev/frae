@@ -44,6 +44,7 @@ Object.assign(Game.prototype, {
     const got = this.progress.achievements;
     if (!a || got[id]) return;
     if (settings.debug) return;                 // no achievements while debug mode is on
+    if (Global.chicken()) return;               // ...or in chicken mode (tape menu > Settings > Parental)
     got[id] = Date.now();
     this.progress.started = true;
     this.save();

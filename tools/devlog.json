@@ -60,5 +60,9 @@
  {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."},
  {"date": "2026-10-18", "tapes": [2], "text": "A warning screen when the game starts: sensitive content on or off. Off turns jumpscares off. It can skip itself on that save file."},
  {"date": "2026-10-18", "tapes": [2], "text": "A new phone call on night 1."},
- {"date": "2026-10-18", "tapes": [2], "text": "The Puppet's music box on CAM 11 plays a new song."}
+ {"date": "2026-10-18", "tapes": [2], "text": "The Puppet's music box on CAM 11 plays a new song."},
+
+ {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."},
+ {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."},
+ {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}
 ]

@@ -212,9 +212,10 @@ function saveProgress(file, p) {
   try {
     localStorage.setItem(saveKey(file), JSON.stringify({ night: p.night, beat5: p.beat5, beat6: p.beat6, beat420: p.beat420,
       prizes: p.prizes, achievements: p.achievements, caughtBy: p.caughtBy, custom: p.custom }));
+    Cloud.saved(saveKey(file));                  // backed up to the account if signed in (tools/global.js)
   } catch (e) {}
 }
-function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); } catch (e) {} }
+function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); Cloud.erased(saveKey(file)); } catch (e) {} }
 
 /* =====================================================================
    THE GAME
@@ -274,8 +275,7 @@ class Game {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(k, 0, 0, k, 0, 0);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "low";     // "high" re-filters every scaled picture each frame (slow)
+    Global.smoothing(ctx);                 // picture quality from the menu's Settings ("fast" = low smoothing)
     if (this.screen === "title") this.drawTitle(ctx, a);
     else if (this.screen === "custom") this.drawCustom(ctx, a);
     else if (this.screen === "night") this.drawNight(ctx, a);
@@ -360,8 +360,9 @@ class Game {
     const items = [
       { id: "new",      label: W("Title menu", "New Game"),   show: true },
       { id: "continue", label: W("Title menu", "Continue"),   show: true },
-      { id: "night6",   label: W("Title menu", "6th Night"),  show: this.progress.beat5 },
-      { id: "custom",   label: W("Title menu", "It's still dark."), show: true },
+      // (parental "story mode only" hides both)
+      { id: "night6",   label: W("Title menu", "6th Night"),  show: this.progress.beat5 && !Global.storyOnly() },
+      { id: "custom",   label: W("Title menu", "It's still dark."), show: !Global.storyOnly() },
     ].filter(i => i.show);
     items.forEach((it, i) => { it.x = 46; it.y = 222 + i * 26; });
     return items;
@@ -373,7 +374,8 @@ class Game {
     this.sp.music.setVolume(100);
     this.sp.music.play("Title", "title", { loop: true });
     this.level = this.progress.night;
-    this.selected = this.progress.beat6 ? "custom" : this.progress.beat5 ? "night6" : this.level === 1 ? "new" : "continue";
+    const extras = !Global.storyOnly();      // story mode only: never land on a hidden item
+    this.selected = extras && this.progress.beat6 ? "custom" : extras && this.progress.beat5 ? "night6" : this.level === 1 ? "new" : "continue";
     this.hovered = null;
     this.face = 1;
     this.titleFlash = 0;
@@ -737,7 +739,7 @@ class Game {
       n.wait[who] -= TICK;
       if (n.wait[who] > 0) continue;
       n.wait[who] = randFloat(4.5, 5.5);
-      if (rand(1, 20) <= n.ai[who]) this.step(who);
+      if (rand(1, 20) <= n.ai[who] && Global.letMove()) this.step(who);   // (chicken mode: 1 in 10)
     }
     this.updateFoxy();
   }
@@ -823,7 +825,7 @@ class Game {
       n.wait.foxy -= TICK;
       if (n.wait.foxy > 0) return;
       n.wait.foxy = randFloat(4.5, 5.5);
-      if (rand(1, 20) > n.ai.foxy || this.taken("hall", "foxy") && chance(2)) return;
+      if (rand(1, 20) > n.ai.foxy || this.taken("hall", "foxy") && chance(2) || !Global.letMove()) return;
       if (n.camsUp && n.cam === 8) this.camGlitch();
       f.hall = true;
       n.at.foxy = "hall";
@@ -985,7 +987,7 @@ class Game {
     if (n.puppet > 0) return;
     const ai = n.ai.puppet;
     const secondsToEmpty = 150 - ai * 5;
-    n.musicBox -= TICK / secondsToEmpty;
+    n.musicBox -= TICK / secondsToEmpty * Global.drain();     // (chicken mode: 3x slower)
     // the tune plays only while you watch camera 11
     this.sp.musicbox.setVolume(n.camsUp && n.cam === 11 ? 55 : 0);
     if (n.musicBox <= 0) { n.musicBox = 0; this.puppetComes(); }
@@ -1026,7 +1028,7 @@ class Game {
     const ai = n.ai.golden;
     const odds = ai > 0 ? Math.max(4, 60 - ai * 3) : Math.max(1, Math.round(this.goldenRate));
     if (n.golden || this.level < 3 && ai <= 0) return;
-    if (rand(1, odds) === 1) {
+    if (rand(1, odds) === 1 && Global.letMove()) {
       n.golden = "office";
       n.goldenTimer = 1.6;
       this.unlock("golden");
@@ -1194,7 +1196,7 @@ class Game {
     // on the cameras the flashlight lights up the room
     n.camFlash = n.camsUp && ok && want && !this.onMap(m.x, m.y);
     const on = n.flash || n.ventL || n.ventR || n.camFlash;
-    if (on) n.battery = Math.max(0, n.battery - TICK * (this.level >= 5 ? 1.2 : 1));
+    if (on) n.battery = Math.max(0, n.battery - TICK * (this.level >= 5 ? 1.2 : 1) * Global.drain());   // (chicken mode: 3x slower)
     if (n.flash) n.hallFlicker = (n.foxy.hall || Object.values(n.at).includes("hall")) && chance(5);
     else n.hallFlicker = false;
     // the music box button on camera 11
@@ -1508,6 +1510,7 @@ class Game {
      CUSTOM NIGHT ("It's still dark.")
      ================================================================= */
   showCustom() {
+    if (Global.storyOnly()) return;          // parental: story mode only
     this.go("custom");
     if (!this.customPick) this.customPick = this.progress.custom ? [...this.progress.custom] : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     this.presetIndex = this.presetIndex || 0;

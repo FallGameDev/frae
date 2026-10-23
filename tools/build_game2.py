@@ -178,6 +178,8 @@ def write_page():
     # the devlog (Settings > Devlog): this tape's updates from tools/devlog.json
     log = [e for e in json.load(open(os.path.join(HERE, 'devlog.json'), encoding='utf-8')) if 2 in e['tapes']]
     code = 'const DEVLOG = ' + json.dumps(log, ensure_ascii=False) + ';\n\n' + code
+    # global settings + accounts (shared with the tape menu) go first
+    code = open(os.path.join(HERE, 'global.js'), encoding='utf-8').read() + '\n\n' + code
     ui = open(os.path.join(HERE, 'ui.js'), encoding='utf-8').read()
     shell = open(os.path.join(TAPE, 'shell.html'), encoding='utf-8').read()
     html = shell.replace('/*GAME*/', code).replace('/*UI*/', ui)

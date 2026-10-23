@@ -140,9 +140,10 @@ function saveProgress(file, p) {
   try {
     localStorage.setItem(saveKey(file), JSON.stringify({ night: p.night, beat5: p.beat5, beat6: p.beat6, beat420: p.beat420,
                                                       achievements: p.achievements, caughtBy: p.caughtBy }));
+    Cloud.saved(saveKey(file));                  // backed up to the account if signed in (tools/global.js)
   } catch (e) {}
 }
-function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); } catch (e) {} }
+function eraseProgress(file) { try { localStorage.removeItem(saveKey(file)); Cloud.erased(saveKey(file)); } catch (e) {} }
 
 /* =====================================================================
    THE GAME
@@ -226,8 +227,7 @@ class Game {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(k, 0, 0, k, 0, 0);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "low";     // "high" re-filters every scaled picture each frame (slow)
+    Global.smoothing(ctx);                 // picture quality from the menu's Settings ("fast" = low smoothing)
     if (this.screen === "title") this.drawTitle(ctx, a);
     else if (this.screen === "custom") this.drawCustom(ctx, a);
     else if (this.screen === "night") this.drawNight(ctx, a);
@@ -282,8 +282,9 @@ class Game {
       { id: "new",      group: "new game",     name: "text",   x: 105,   y: 210,    show: true },
       { id: "continue", group: "continue",     name: "text",   x: 105,   y: 235,    show: true },
       // Spooky (the 6th night) unlocks after beating nights 1-5; the custom night is always open
-      { id: "night6",   group: "6th Night",    name: "string", x: 110,   y: 265,    show: this.progress.beat5 },
-      { id: "custom",   group: "Custom Night", name: "string", x: 125,   y: 290,    show: true },
+      // (parental "story mode only" hides both)
+      { id: "night6",   group: "6th Night",    name: "string", x: 110,   y: 265,    show: this.progress.beat5 && !Global.storyOnly() },
+      { id: "custom",   group: "Custom Night", name: "string", x: 125,   y: 290,    show: !Global.storyOnly() },
     ];
     return items.filter(i => i.show);
   }
@@ -313,7 +314,8 @@ class Game {
     this.sp.music.play("Stage", "Menu", { loop: true });
     this.level = this.progress.night;
     const p = this.progress;
-    this.selected = p.beat6 ? "custom" : p.beat5 ? "night6" : this.level === 1 ? "new" : "continue";
+    const extras = !Global.storyOnly();      // story mode only: never land on a hidden item
+    this.selected = extras && p.beat6 ? "custom" : extras && p.beat5 ? "night6" : this.level === 1 ? "new" : "continue";
     this.hovered = null;
     this.settingsHover = false;
     this.face = 1;                      // which flickering face picture
@@ -556,7 +558,7 @@ class Game {
         yield 1;
         // nights 1-4 add 0.0 - 0.3 per second, later nights add 0.4
         const extra = this.level < 5 ? (this.level - 1) / 10 : 0.4;
-        n.power -= this.usage() + extra;
+        n.power -= (this.usage() + extra) * Global.drain();     // (chicken mode: 3x slower)
       }
       this.powerOut();
     }.call(this));
@@ -677,7 +679,7 @@ class Game {
     this.scripts.run("bonnie", function* () {
       for (;;) {
         yield 4.97;
-        if (rand(1, 20) <= n.ai.bonnie) this.moveBonnie();
+        if (rand(1, 20) <= n.ai.bonnie && Global.letMove()) this.moveBonnie();   // (chicken mode: 1 in 10)
         if (b.at === "Got You") return;
       }
     }.call(this));
@@ -716,7 +718,7 @@ class Game {
     this.scripts.run("chica", function* () {
       for (;;) {
         yield 4.98;
-        if (rand(1, 20) <= n.ai.chica) this.moveChica();
+        if (rand(1, 20) <= n.ai.chica && Global.letMove()) this.moveChica();
         if (c.at === "Got You") return;
       }
     }.call(this));
@@ -772,7 +774,7 @@ class Game {
     this.scripts.run("foxy", function* () {
       for (;;) {
         yield 5.01;
-        if (rand(1, 20) > n.ai.foxy || f.cooldown > 0) continue;
+        if (rand(1, 20) > n.ai.foxy || f.cooldown > 0 || !Global.letMove()) continue;
         f.stage++;
         if (f.stage !== 4) continue;
         // he is out of the cove: 25 seconds until he runs (or right away if you watch the hall)
@@ -820,7 +822,7 @@ class Game {
       for (;;) {
         yield 3.02;
         if (n.bonnie.at === "Show Stage" || n.chica.at === "Show Stage") continue;
-        if (rand(1, 20) > n.ai.freddy) continue;
+        if (rand(1, 20) > n.ai.freddy || !Global.letMove()) continue;
         if (fr.at === "Got You") {
           if (n.camsUp) this.lowerMonitor();
           return this.jumpscare("Eddie");
@@ -1479,6 +1481,7 @@ class Game {
      CUSTOM NIGHT
      ================================================================= */
   showCustom() {
+    if (Global.storyOnly()) return;          // parental: story mode only
     this.go("custom");
     if (!this.customPick) this.customPick = [1, 2, 2, 7];      // Eddie, Weddy, Cheddy, Endo
     this.smooth.jump("customFade", 0);
