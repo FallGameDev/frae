@@ -1314,8 +1314,9 @@ class Game {
     Sound.stopAll();
     this.died = false;
     this.sp.chime.play("Ambience", "Chimes");
-    const card = this.overlay(null, null, { fade: 0, paint: (ctx, a) => {
-      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
+    // the black card behind everything, then the XP pop-up (added by winPopup), then the 5 -> 6 AM text in front
+    const card = this.overlay(null, null, { fade: 0, paint: ctx => { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360); } });
+    const words = this.overlay(null, null, { fade: 0, paint: (ctx, a) => {
       const k = this.smooth.at("roll", a) || 0;         // the 5 rolls up into a 6
       ctx.save();
       ctx.beginPath(); ctx.rect(150, 150, 70, 50); ctx.clip();
@@ -1325,17 +1326,31 @@ class Game {
       this.text(ctx, "AM", 230, 196, { size: 40, font: "Press Start 2P" });
     } });
     this.smooth.jump("roll", 0);
+    const fadeBoth = function* (to) {
+      const from = card.fade;
+      for (let i = 1; i <= 30; i++) { const f = from + (to - from) * i / 30; card.setFade(f); words.setFade(f); yield; }
+    };
+    let popupDone = false;
+    // the XP pop-up starts right away, while the 5 AM text is showing.
+    // If the player somehow hits "yay", everything stops and the night is won at once.
     this.scripts.run("6am", function* () {
-      yield* this.fade(card, 1, 30);
+      const skipped = yield* this.winPopup(words);
+      if (skipped) {
+        this.scripts.stop("6am");
+        this.removeOverlay(card); this.removeOverlay(words);
+        return this.nightWon();
+      }
+      popupDone = true;
+    }.call(this));
+    this.scripts.run("6am", function* () {
+      yield* fadeBoth(1);
       yield 1.5;
       for (let t = 0; t <= 1; t += TICK / 2) { this.smooth.set("roll", t); yield; }
       this.smooth.set("roll", 1);
       this.sp.chime.play("Ambience", "CROWD_SMALL_CHIL_EC049202");
       yield 1.5;
-      // the XP pop-up bounces around; true = the player somehow hit "yay" (skip right away)
-      const skipped = yield* this.winPopup();
-      if (skipped) { this.removeOverlay(card); return this.nightWon(); }
-      yield* this.fade(card, 0, 30);
+      yield () => popupDone;                    // wait for the pop-up to finish bouncing
+      yield* fadeBoth(0);
       this.nightWon();
     }.call(this));
     this.scripts.run("6am", function* () { yield 1; if (this.screen === "night") this.screen = "black"; }.call(this));
@@ -1350,7 +1365,7 @@ class Game {
      at once and they get the hidden "yay" achievement.
      Returns true when skipped (use with yield*).
      ----------------------------------------------------------------- */
-  *winPopup() {
+  *winPopup(front) {
     const p = pic("Outcome", "popup");
     if (!p) return false;                       // picture missing (old mod): just carry on
     const W2 = p.w / 2, H2 = p.h / 2;
@@ -1367,6 +1382,11 @@ class Game {
       ctx.drawImage(trail, 0, 0, 480, 360);
       if (box.shown) draw(ctx, p, this.smooth.at("winX", a), this.smooth.at("winY", a));
     } });
+    // keep the pop-up BEHIND the `front` layer (the 6 AM text)
+    if (front) {
+      this.layers.splice(this.layers.indexOf(layer), 1);
+      this.layers.splice(Math.max(0, this.layers.indexOf(front)), 0, layer);
+    }
     // did a click land on "yay" right now?
     const hitYay = () => this.clicks.some(c => {
       const x0 = box.x - W2 + p.w * YAY_BOX[0], x1 = box.x - W2 + p.w * YAY_BOX[2];
@@ -1377,13 +1397,13 @@ class Game {
     const rand = (a, b) => a + Math.random() * (b - a);
     for (let throwNo = 0; throwNo < 3; throwNo++) {
       // pop up somewhere random (anywhere it fits on screen)
-      box.x = rand(W2, 480 - W2); box.y = rand(H2, 360 - H2 - 40);
+      box.x = rand(W2, 480 - W2); box.y = rand(H2, 360 - H2 - 30);
       this.smooth.jump("winX", box.x); this.smooth.jump("winY", box.y);
       box.shown = true;
       this.sp.blip.play("Sprite10", "COMPUTER_DIGITAL_L2076605");
       for (let t = 0; t < 0.6; t += TICK) { if (hitYay()) { this.unlock("yay"); return done(); } yield; }
       // the Solitaire throw: sideways speed, a little hop, gravity, bouncy floor
-      let vx = rand(3.5, 6.5) * (Math.random() < 0.5 ? -1 : 1), vy = rand(-7, -1);
+      let vx = rand(3, 5.5) * (Math.random() < 0.5 ? -1 : 1), vy = rand(-7, -1);
       while (box.x + W2 > 0 && box.x - W2 < 480) {
         if (hitYay()) { this.unlock("yay"); return done(); }
         draw(tctx, p, box.x, box.y);              // leave a copy behind (the trail)

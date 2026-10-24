@@ -561,7 +561,7 @@ def apply(b):
     # 6 AM: Aidan's Windows XP "Outcome Memories" pop-up (tools/tape2/outcome_win.png, cropped tight).
     # The game bounces it around like the Solitaire win; its "yay" button is hit-tested in game.js (YAY_BOX).
     win = Image.open(os.path.join(HERE, 'outcome_win.png')).convert('RGBA')
-    ww_ = 220.0
+    ww_ = 140.0
     wh_ = ww_ * win.height / win.width
     art['Outcome'] = {'popup': dict(w=ww_, h=wh_, cx=ww_ / 2, cy=wh_ / 2,
                                     layers=[dict(img=save_img(b, win, 'outcome-popup'), x=0, y=0, w=ww_, h=wh_)])}
