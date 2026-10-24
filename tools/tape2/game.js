@@ -130,6 +130,10 @@ const PATHS = {
   wbonnie: [8, 7, 1, 5, "ventL", "office"],
   wchica:  [8, 4, 2, 6, "ventR", "office"],
 };
+// The spots that aren't cameras, on the camera map (screen spot), for the bear trap and the x-ray glasses
+const MAP_SPOTS = { hall: [347, 287], ventL: [316, 302], ventR: [369, 302] };
+const MAP_SPOT_NAMES = { hall: W("Items", "HALL"), ventL: W("Items", "L VENT"), ventR: W("Items", "R VENT") };
+
 // side trips: from this spot they may go here instead (then carry on from there)
 const DETOURS = {
   tchica: { 7: "hall", hall: 4 },
@@ -286,6 +290,7 @@ class Game {
   }
 
   go(screen) {
+    if (screen !== "night") ItemBar.show(false);       // the item bar is only there during a night
     this.scripts.stopAll();
     this.layers = [];
     this.screen = screen;
@@ -357,7 +362,7 @@ class Game {
 
   // (Tape 2 asks about sensitive content first, once per save file unless they say otherwise: warning.js)
   async boot() {
-    await Demo.check();                 // server time + who is signed in (see Demo in global.js)
+    await Promise.all([Demo.check(), loadItemsQuick()]);   // server time + who is signed in + shop items
     if (Story.on) { const go = () => this.storyBoot(); return needsWarning(this.file) ? showWarning(go) : go(); }
     if (Demo.on()) return this.demoLocked();
     if (needsWarning(this.file)) showWarning(() => this.showTitle()); else this.showTitle();
@@ -619,6 +624,14 @@ class Game {
     this.runCameraPan();
     this.runExtras();
     if (L === 1) this.showHelp();
+    // shop items (see ITEMS in global.js)
+    n.time = 0;                  // seconds into the night (item timers)
+    n.trap = null;               // camera number, "hall", "ventL" or "ventR"
+    n.placingTrap = false;
+    n.glassesUntil = 0;
+    n.stopwatchUsed = false;
+    ItemBar.attach(this);
+    ItemBar.show(true);
   }
 
   // A short how-to on the first night
@@ -643,6 +656,7 @@ class Game {
      -------------------------------------------------------------- */
   updateClock() {
     const n = this.n;
+    n.time += TICK;
     n.clock += TICK;
     if (n.clock < 70) return;
     n.clock -= 70;
@@ -832,6 +846,7 @@ class Game {
     if (this.taken(next, who)) return;
     const from = here;
     n.at[who] = next;
+    if (this.trapCheck(who, next)) return;      // walked into the bear trap (shop item)
     // footsteps in the vents
     if (next === 5 || next === 6 || next === "ventL" || next === "ventR") {
       this.sp.steps.setVolume(next === "ventL" || next === "ventR" ? 60 : 30);
@@ -881,6 +896,7 @@ class Game {
       if (n.camsUp && n.cam === 8) this.camGlitch();
       f.hall = true;
       n.at.foxy = "hall";
+      if (this.trapCheck("foxy", "hall")) return;
       f.flashes = 0;
       f.need = rand(4, 6) + Math.floor(n.ai.foxy / 5);
       f.timer = randFloat(14, 22) - n.ai.foxy * 0.3;
@@ -1198,6 +1214,7 @@ class Game {
     this.updateGolden();
     this.updatePhone();
     this.updateNightSounds();
+    if (n.placingTrap && !n.monitorUp) n.placingTrap = false;     // put the monitor down: no trap set
     if (n.mangleIn) n.mangleAttack -= TICK;
     n.switchFx = Math.max(0, n.switchFx - 0.08);
     n.maskTime = n.maskUp ? n.maskTime + TICK : 0;
@@ -1279,9 +1296,15 @@ class Game {
     const n = this.n;
     if (this.onPhone(x, y)) { this.phoneTap(); return; }
     if (n.camsUp) {
+      // setting the bear trap: the hall / vent spots too
+      if (n.placingTrap) for (const [spot, [sx, sy]] of Object.entries(MAP_SPOTS))
+        if (Math.abs(x - sx) < 12 && Math.abs(y - sy) < 6) return this.placeTrap(spot);
       for (const [k, r] of Object.entries(MAP_BUTTONS)) {
         const bx = SX(139) + r[0] * 0.45, by = SY(-73) + r[1] * 0.45;
-        if (x >= bx - 2 && x <= bx + r[2] * 0.45 + 2 && y >= by - 2 && y <= by + r[3] * 0.45 + 2) { this.switchCam(Number(k)); return; }
+        if (x >= bx - 2 && x <= bx + r[2] * 0.45 + 2 && y >= by - 2 && y <= by + r[3] * 0.45 + 2) {
+          if (n.placingTrap) return this.placeTrap(Number(k));
+          this.switchCam(Number(k)); return;
+        }
       }
       return;
     }
@@ -1292,11 +1315,161 @@ class Game {
   }
 
   /* =================================================================
+     SHOP ITEMS (bought in the Story Mode hub, see ITEMS in global.js)
+     ================================================================= */
+  // What the item bar shows under an item: null = can't use it now
+  itemNote(id) {
+    const n = this.n;
+    if (this.screen !== "night" || !n || n.frozen || n.jumpscare || n.stare) return null;
+    if (id === "stopwatch") return n.stopwatchUsed ? null : "";
+    if (id === "glasses") return n.glassesUntil > n.time ? Math.ceil(n.glassesUntil - n.time) + "s" : "";
+    if (id === "trap") return n.trap ? "SET" : n.placingTrap ? "PICK" : "";
+    return "";
+  }
+  // Use an item: true = used (take one), false = not now, "later" = taken when it is placed
+  useItem(id) {
+    const n = this.n;
+    if (this.itemNote(id) === null) return false;
+    if (id === "stopwatch") {
+      n.stopwatchUsed = true;
+      n.clock += 70;                                     // one whole hour (the clock moves on next update)
+      Items.sfx("tick");
+      ItemBar.say(W("Items", "Stopwatch: one hour skipped!"));
+      return true;
+    }
+    if (id === "battery") {
+      n.battery = 100;
+      Items.sfx("power");
+      ItemBar.say(W("Items", "Battery pack: flashlight back to 100%!"));
+      return true;
+    }
+    if (id === "glasses") {
+      n.glassesUntil = n.time + 30;
+      ItemBar.say(W("Items", "X-ray glasses on for 30 seconds: look at the camera map!"));
+      return true;
+    }
+    if (id === "trap") {
+      if (n.trap) { ItemBar.say(W("Items", "A bear trap is already set.")); return false; }
+      if (n.maskUp || n.maskFrame) { ItemBar.say(W("Items", "Take the mask off first.")); return false; }
+      if (!n.monitorUp && n.monitorFrame) return false;           // (the monitor is going down right now)
+      n.placingTrap = true;
+      if (!n.monitorUp) this.toggleMonitor();
+      ItemBar.say(W("Items", "Click a camera, the HALL or a VENT on the map to set the bear trap."));
+      return "later";
+    }
+    if (id === "horn") { this.airHorn(); return true; }
+    return false;
+  }
+
+  // Send someone back to the start and keep them there `stun` seconds
+  sendHome(who, stun = 6) {
+    const n = this.n;
+    if (who === "foxy") { n.foxy.hall = false; n.foxy.retreat = 0; n.at.foxy = 8; n.wait.foxy = stun; return; }
+    if (n.visit && n.visit.who === who) { n.visit = null; this.officeFlicker(false); }
+    if (who === "mangle") n.mangleIn = false;
+    if (who === "bb") n.bbIn = false;
+    if (PATHS[who]) { this.sendBack(who); n.wait[who] = stun; }
+  }
+
+  // The frying pan: whoever caught you goes back. Returns true if it saved you.
+  panSave(who) {
+    const n = this.n;
+    if (!n || n.frozen || !Items.count("pan")) return false;
+    Items.spend("pan");
+    Items.sfx("bonk");
+    if (who === "puppet") {
+      // back in the box, music box wound all the way
+      n.puppet = 0; n.musicBox = 1;
+      this.scripts.stop("puppet");
+      this.sp.jack.stopAll();
+      this.sp.musicbox.setVolume(0); this.sp.musicbox.play("Sprite6", "Music_Box_Melody_Playful", { loop: true });
+    } else if (who === "golden") n.golden = null;
+    else this.sendHome(who, 8);
+    ItemBar.say(W("Items", "BONK! The frying pan sent") + " " + (CAST[who] ? CAST[who].name : who) + " " + W("Items", "back. You're safe!"), 4000);
+    return true;
+  }
+
+  // The air horn: everyone close to the office runs back to the start
+  airHorn() {
+    const n = this.n, ran = [];
+    Items.sfx("horn");
+    for (const who of Object.keys(PATHS))
+      if (["hall", "ventL", "ventR", "office", "gone"].includes(n.at[who]) || (n.visit && n.visit.who === who)) { this.sendHome(who, 6); ran.push(CAST[who].name); }
+    if (n.foxy.hall) { this.sendHome("foxy", 8); ran.push(CAST.foxy.name); }
+    if (n.golden) n.golden = null;
+    ItemBar.say(ran.length ? W("Items", "HONK! Back to the start:") + " " + ran.join(", ") : W("Items", "HONK! Nobody was close."));
+  }
+
+  // Bear trap: set it on a camera (number) or "hall" / "ventL" / "ventR"
+  placeTrap(spot) {
+    const n = this.n;
+    if (!Items.spend("trap")) { n.placingTrap = false; return; }
+    n.trap = spot;
+    n.placingTrap = false;
+    Items.sfx("snap");
+    ItemBar.say(W("Items", "Bear trap set on") + " " + this.spotName(spot) + ".");
+  }
+  spotName(spot) { return typeof spot === "number" ? W("Cameras", "CAM") + " " + spot + " (" + CAMS[spot] + ")" : MAP_SPOT_NAMES[spot]; }
+  // Did `who` just walk into the trap at `spot`?
+  trapCheck(who, spot) {
+    const n = this.n;
+    if (n.trap === null || n.trap !== spot) return false;
+    n.trap = null;
+    this.sendHome(who, 15);
+    Items.sfx("snap");
+    ItemBar.say(W("Items", "SNAP!") + " " + CAST[who].name + " " + W("Items", "stepped in the bear trap on") + " " + this.spotName(spot) + "! " +
+                W("Items", "Back to the start for 15 seconds."), 4500);
+    return true;
+  }
+
+  // On the camera map: hall/vent spots, the bear trap, and (with the glasses on) everyone's face
+  drawItemsOnMap(ctx) {
+    const n = this.n, glasses = n.glassesUntil > n.time;
+    const where = spot => typeof spot === "number"
+      ? [SX(139) + (MAP_BUTTONS[spot][0] + MAP_BUTTONS[spot][2] / 2) * 0.45, SY(-73) + (MAP_BUTTONS[spot][1] + MAP_BUTTONS[spot][3] / 2) * 0.45]
+      : MAP_SPOTS[spot];
+    // the hall / vent spots show while setting a trap, while one is set there, or with the glasses
+    for (const [spot, [x, y]] of Object.entries(MAP_SPOTS)) {
+      if (!n.placingTrap && n.trap !== spot && !glasses) continue;
+      ctx.save();
+      ctx.fillStyle = n.placingTrap ? "rgba(255,207,63,0.85)" : "rgba(0,0,0,0.7)";
+      ctx.fillRect(x - 11, y - 5, 22, 10);
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.strokeRect(x - 11, y - 5, 22, 10);
+      ctx.restore();
+      this.text(ctx, MAP_SPOT_NAMES[spot], x, y + 2.5, { size: 5, align: "center", color: n.placingTrap ? "#000" : "#fff" });
+    }
+    if (n.placingTrap && Math.floor(this.tick / 10) % 2) this.text(ctx, W("Items", "PICK A SPOT FOR THE BEAR TRAP"), 385, 166, { size: 8, align: "center", color: "#ffcf3f", shadow: "#000" });
+    if (n.trap !== null) { const [x, y] = where(n.trap); drawItemIcon(ctx, "trap", x - 12, y - 7, 9); }
+    if (!glasses) return;
+    // faces: everyone on a camera or a hall/vent spot (the office counts as the hall)
+    const spots = {};
+    for (const [who, at] of Object.entries(n.at)) {
+      if (at === "gone") continue;
+      const spot = at === "office" ? "hall" : at;
+      if (typeof spot !== "number" && !MAP_SPOTS[spot]) continue;
+      (spots[spot] = spots[spot] || []).push(who);
+    }
+    if (n.puppet > 0) (spots[11] = spots[11] || []).push("puppet");
+    for (const [spot, list] of Object.entries(spots)) {
+      const [x, y] = where(isNaN(spot) ? spot : Number(spot));
+      list.forEach((who, i) => {
+        const fx = x + (i - (list.length - 1) / 2) * 11;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(fx, y, 5.5, 0, Math.PI * 2); ctx.fillStyle = "#000"; ctx.fill(); ctx.clip();
+        drawActor(ctx, who, [fx - 6, y - 6, fx + 6, y + 6], { mode: "head", still: true });
+        ctx.restore();
+        ctx.save(); ctx.strokeStyle = "#ffcf3f"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(fx, y, 5.5, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      });
+    }
+  }
+
+  /* =================================================================
      JUMPSCARES, DEATH, 6 AM
      ================================================================= */
   jumpscare(who) {
     const n = this.n;
     if (n.jumpscare || n.frozen) return;
+    if (this.panSave(who)) return;              // the frying pan (shop item): BONK, you live
     this.scripts.stop("night", "puppet", "ring", "phone", "monitor", "mask");
     n.phone = "off";
     n.halluc = null;
@@ -1885,6 +2058,7 @@ class Game {
     if (Math.floor(this.tick / 15) % 2 === 0)
       draw(ctx, pic("Map", "lit" + c), SX(139) + r[0] * 0.45, SY(-73) + r[1] * 0.45, { size: 45 });
     this.text(ctx, CAMS[c], 292, 178, { size: 12, shadow: "#000" });
+    this.drawItemsOnMap(ctx);                  // bear trap + x-ray glasses (shop items)
     // music box controls on camera 11
     if (c === 11) {
       draw(ctx, pic("Wind up", n.winding ? "Wind up1" : "Wind up0"), SX(-10), SY(-90), { size: 100 });

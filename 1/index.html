@@ -1533,6 +1533,221 @@ const Story = {
   },
 };
 
+/* =====================================================================
+   SHOP + ITEMS (bought with Story Mode EXP in the hub, used in BOTH
+   Story Mode and the normal game while signed in)
+   - Spending EXP never lowers your level: the account keeps "exp" (all
+     EXP ever earned, sets the level) and "spent"; you can spend exp - spent.
+   - The inventory is profiles.items ({ pan: 2, ... }); only the database
+     functions shop_buy / use_item can change it (supabase/story.sql).
+   - In a night, ItemBar shows your items down the left side (click, or
+     keys 1-6). Each tape decides what an item does: game.useItem(id).
+   ===================================================================== */
+// icon: 12 x 12 pixels. # white, g gold, d grey, b blue, r red, . empty
+const ITEMS = [
+  { id: "pan", name: "Frying Pan", price: 600, auto: true,
+    desc: "Works by itself: when something gets you, BONK! They go back to the start and you live.",
+    icon: ["....####....", "..##dddd##..", ".#dddddddd#.", ".#dddddddd#.", "#dddddddddd#", "#dddddddddd#",
+           ".#dddddddd#.", ".#dddddddd#.", "..##dddd##..", "....####....", ".....gg.....", ".....gg....."] },
+  { id: "stopwatch", name: "Stopwatch", price: 400,
+    desc: "Skips one hour of the night. One per night.",
+    icon: [".....gg.....", "....####....", "..##....##..", ".#........#.", ".#....r...#.", "#.....r....#",
+           "#.....rrr..#", "#..........#", ".#........#.", ".#........#.", "..##....##..", "....####...."] },
+  { id: "battery", name: "Battery Pack", price: 250,
+    desc: "Fills your power (Tape 1) or your flashlight (Tape 2) back to 100%.",
+    icon: ["....####....", "..########..", "..#......#..", "..#....g.#..", "..#...gg.#..", "..#..gggg#..",
+           "..#gggg..#..", "..#.gg...#..", "..#.g....#..", "..#......#..", "..########..", "............"] },
+  { id: "glasses", name: "X-Ray Glasses", price: 300,
+    desc: "For 30 seconds, the camera map shows a face on every camera someone is on.",
+    icon: ["............", "............", "#..........#", "#..........#", "#..........#", "#####..#####",
+           "#bbb#..#bbb#", "#bbb####bbb#", "#bbb#..#bbb#", ".###....###.", "............", "............"] },
+  { id: "trap", name: "Bear Trap", price: 350,
+    desc: "Set it on a camera, the hall or a vent. The next one to walk in gets caught: you hear about it, and they go back to the start for 15 seconds.",
+    icon: ["............", ".#.#.##.#.#.", ".##########.", "#..........#", "#....dd....#", "#...dddd...#",
+           "#....dd....#", "#..........#", ".##########.", ".#.#.##.#.#.", "............", "............"] },
+  { id: "horn", name: "Air Horn", price: 450,
+    desc: "HONK! Everyone near your office (doors, hall, vents) runs back to the start.",
+    icon: ["............", ".........##.", ".......##.#.", ".....##...#.", ".rr##.....#.", ".rr#......#.",
+           ".rr#......#.", ".rr##.....#.", ".....##...#.", ".......##.#.", ".........##.", "............"] },
+];
+const ITEM_COLORS = { "#": "#fff", g: "#ffcf3f", d: "#8a8a99", b: "#46a0ff", r: "#ff2a3c" };
+// an item's icon as an SVG string
+function itemIcon(id, size = 48) {
+  const it = ITEMS.find(i => i.id === id);
+  let rects = "";
+  it.icon.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ITEM_COLORS[ch]) rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${ITEM_COLORS[ch]}"/>`;
+  }));
+  return `<svg viewBox="0 0 12 12" width="${size}" height="${size}" shape-rendering="crispEdges">${rects}</svg>`;
+}
+
+// an item's icon on a game canvas (centered on x, y)
+function drawItemIcon(ctx, id, x, y, size) {
+  const it = ITEMS.find(i => i.id === id), k = size / 12;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(x - size / 2 - 1, y - size / 2 - 1, size + 2, size + 2);
+  it.icon.forEach((row, yy) => [...row].forEach((ch, xx) => {
+    if (!ITEM_COLORS[ch]) return;
+    ctx.fillStyle = ITEM_COLORS[ch];
+    ctx.fillRect(x - size / 2 + xx * k, y - size / 2 + yy * k, k + 0.05, k + 0.05);
+  }));
+  ctx.restore();
+}
+// items + EXP from the account, but never hold the game up long (offline, slow network)
+function loadItemsQuick() { return Promise.race([Items.load(), new Promise(r => setTimeout(r, 4000))]); }
+
+const Items = {
+  owned: {},        // id -> how many
+  exp: 0, spent: 0,
+  loaded: false,
+  count(id) { return this.owned[id] || 0; },
+  spendable() { return Math.max(0, this.exp - this.spent); },
+  // read the inventory (and EXP) from the account
+  async load() {
+    if (!Cloud.ready() || !Cloud.signedIn()) return false;
+    try {
+      const rows = await Cloud.call("/rest/v1/profiles?select=exp,spent,items&id=eq." + Cloud.uid());
+      if (!rows || !rows[0]) return false;
+      this.owned = rows[0].items || {}; this.exp = rows[0].exp || 0; this.spent = rows[0].spent || 0;
+      this.loaded = true;
+      return true;
+    } catch (e) { return false; }   // (the shop columns aren't there until supabase/story.sql is run)
+  },
+  // buy in the shop (the database checks the price and your EXP)
+  async buy(id, qty = 1) {
+    const r = await Cloud.call("/rest/v1/rpc/shop_buy", { method: "POST", json: { item: id, qty } });
+    this.owned = r.items || {}; this.exp = r.exp; this.spent = r.spent;
+    return r;
+  },
+  // use one up (counted here right away, then on the account)
+  spend(id) {
+    if (!this.count(id)) return false;
+    this.owned[id]--;
+    ItemBar.refresh();
+    Cloud.call("/rest/v1/rpc/use_item", { method: "POST", json: { item: id } })
+      .then(r => { if (r && r.items) { this.owned = r.items; ItemBar.refresh(); } })
+      .catch(e => console.warn("use_item failed", e));
+    return true;
+  },
+
+  /* little sound effects (Web Audio, on the tapes' sound effect volume) */
+  sfx(kind) {
+    try {
+      const ac = Sound.ctx, out = Sound.sfxBus, t = ac.currentTime;
+      const tone = (type, f1, f2, start, len, vol) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = type; o.frequency.setValueAtTime(f1, t + start); o.frequency.exponentialRampToValueAtTime(f2, t + start + len);
+        g.gain.setValueAtTime(vol, t + start); g.gain.exponentialRampToValueAtTime(0.0001, t + start + len);
+        o.connect(g).connect(out); o.start(t + start); o.stop(t + start + len + 0.02);
+      };
+      if (kind === "bonk") { tone("square", 900, 700, 0, 0.5, 0.25); tone("triangle", 1800, 1500, 0, 0.7, 0.2); tone("sine", 140, 60, 0, 0.25, 0.4); }
+      if (kind === "snap") { tone("square", 220, 60, 0, 0.12, 0.35); tone("sawtooth", 1200, 300, 0.02, 0.1, 0.2); }
+      if (kind === "horn") { tone("sawtooth", 410, 400, 0, 1.2, 0.18); tone("sawtooth", 520, 505, 0, 1.2, 0.14); }
+      if (kind === "tick") { for (let i = 0; i < 6; i++) tone("square", 2000, 1900, i * 0.06, 0.03, 0.15); }
+      if (kind === "power") { tone("sine", 200, 900, 0, 0.6, 0.25); }
+      if (kind === "use") { tone("sine", 660, 990, 0, 0.15, 0.2); }
+      if (kind === "no") { tone("square", 140, 110, 0, 0.18, 0.15); }
+    } catch (e) {}
+  },
+};
+
+/* ---------------------------------------------------------------------
+   The item bar (in a night). The tape gives it a game with:
+     game.useItem(id)   -> true (used: take one), false (can't now), or
+                           "later" (the tape takes it itself, like the trap)
+     game.itemNote(id)  -> short text under the icon ("ON", "USED", "") or null
+   --------------------------------------------------------------------- */
+const ItemBar = {
+  game: null, el: null, timer: null, visible: false,
+  attach(game) { this.game = game; },
+  build() {
+    if (this.el) return;
+    const el = this.el = document.createElement("div");
+    el.id = "itemBar";
+    el.setAttribute("data-nomeme", "");
+    el.innerHTML = `<style>
+      #itemBar { position: fixed; left: 8px; top: 50%; transform: translateY(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; }
+      #itemBar[hidden] { display: none; }
+      #itemBar button { position: relative; width: 58px; height: 58px; padding: 4px; background: rgba(0,0,0,.75); cursor: pointer;
+        border: 3px solid #fff; box-shadow: 0 4px 0 #333; display: flex; align-items: center; justify-content: center; }
+      #itemBar button:hover { border-color: #ffcf3f; }
+      #itemBar button.off { opacity: .35; cursor: default; }
+      #itemBar button.auto { border-style: dashed; }
+      #itemBar button.on { border-color: #ffcf3f; box-shadow: 0 0 12px #ffcf3f; }
+      #itemBar .n { position: absolute; right: -6px; top: -8px; background: #5b16ec; color: #fff; border: 2px solid #fff;
+        font: 13px "VCR OSD Mono", monospace; padding: 0 4px; }
+      #itemBar .k { position: absolute; left: 2px; top: 0; color: #8a8a99; font: 11px "VCR OSD Mono", monospace; }
+      #itemBar .t { position: absolute; bottom: -2px; left: 0; right: 0; text-align: center; color: #ffcf3f; font: 10px "VCR OSD Mono", monospace;
+        text-shadow: 1px 1px 0 #000; }
+      #itemSay { position: fixed; left: 50%; top: 14%; transform: translateX(-50%); z-index: 41; pointer-events: none;
+        background: #000; border: 3px solid #fff; box-shadow: 6px 6px 0 #5b16ec; color: #fff; padding: 8px 16px;
+        font: 20px "VCR OSD Mono", monospace; text-align: center; max-width: 80vw; transition: opacity .4s; }
+      #itemSay[hidden] { display: none; }
+    </style>`;
+    document.body.append(el);
+    const say = document.createElement("div"); say.id = "itemSay"; say.hidden = true; say.setAttribute("data-nomeme", "");
+    document.body.append(say);
+    // keys 1-6 use the item in that slot
+    addEventListener("keydown", e => {
+      if (!this.visible || e.repeat || !/^[1-6]$/.test(e.key)) return;
+      const list = this.list();
+      if (list[e.key - 1]) this.use(list[e.key - 1].id);
+    });
+  },
+  list() { return ITEMS.filter(i => Items.count(i.id) > 0); },
+  use(id) {
+    const it = ITEMS.find(i => i.id === id);
+    if (!this.game || !Items.count(id)) return;
+    if (it.auto) { this.say(it.name + " works by itself: it saves you when you get caught."); return; }
+    const r = this.game.useItem(id);
+    if (r === true) { Items.spend(id); Items.sfx("use"); }
+    else if (r === false) Items.sfx("no");
+    this.refresh();
+  },
+  show(on) {
+    if (on && !Items.loaded) on = false;
+    if (on) this.build();
+    this.visible = on;
+    if (this.el) this.el.hidden = !on;
+    clearInterval(this.timer);
+    if (on) { this.refresh(); this.timer = setInterval(() => this.refresh(), 250); }
+  },
+  refresh() {
+    if (!this.el || !this.visible) return;
+    const list = this.list();
+    // rebuild the buttons only when the set changes; update their labels every time
+    const key = list.map(i => i.id).join(",");
+    if (this.el.dataset.key !== key) {
+      this.el.dataset.key = key;
+      this.el.querySelectorAll("button").forEach(b => b.remove());
+      list.forEach((it, i) => {
+        const b = document.createElement("button");
+        b.dataset.id = it.id; b.title = it.name + ": " + it.desc;
+        b.innerHTML = itemIcon(it.id, 40) + `<span class="k">${i + 1}</span><span class="n"></span><span class="t"></span>`;
+        b.onclick = e => { e.stopPropagation(); this.use(it.id); b.blur(); };
+        b.onmousedown = b.onpointerdown = e => e.stopPropagation();     // (the game doesn't see this click)
+        this.el.append(b);
+      });
+    }
+    this.el.querySelectorAll("button").forEach(b => {
+      const id = b.dataset.id, note = this.game && this.game.itemNote ? this.game.itemNote(id) : "";
+      b.querySelector(".n").textContent = "x" + Items.count(id);
+      b.querySelector(".t").textContent = note === null ? "" : (ITEMS.find(i => i.id === id).auto ? "AUTO" : note || "");
+      b.classList.toggle("auto", !!ITEMS.find(i => i.id === id).auto);
+      b.classList.toggle("off", note === null);
+      b.classList.toggle("on", !!note && note !== "USED" && note !== null && !ITEMS.find(i => i.id === id).auto);
+    });
+  },
+  // a message at the top of the screen for a few seconds
+  say(text, ms = 3200) {
+    this.build();
+    const el = document.getElementById("itemSay");
+    el.textContent = text; el.hidden = false; el.style.opacity = 1;
+    clearTimeout(this.sayTimer);
+    this.sayTimer = setTimeout(() => { el.style.opacity = 0; this.sayTimer = setTimeout(() => { el.hidden = true; }, 400); }, ms);
+  },
+};
+
 // Supabase error words -> plain words for players
 function friendlyError(msg) {
   const m = String(msg);
@@ -1548,7 +1763,7 @@ function friendlyError(msg) {
 }
 
 
-const DEVLOG = [{"date": "2026-10-14", "tapes": [1], "text": "Fried Rice at Eddie's is playable in the browser, with a game select menu."}, {"date": "2026-10-14", "tapes": [1], "text": "The title music stops when a night starts, and the bottom button bar is gone."}, {"date": "2026-10-14", "tapes": [1], "text": "Spinning rice bowl loading screen that starts by itself."}, {"date": "2026-10-14", "tapes": [1], "text": "Mods, a new Settings screen, a new menu font and real text on the custom night."}, {"date": "2026-10-14", "tapes": [1], "text": "Full character drawings everywhere, with the faces as their own files."}, {"date": "2026-10-14", "tapes": [1], "text": "Mod template: every picture as a PNG, and mods can use any image type."}, {"date": "2026-10-14", "tapes": [1], "text": "The fan-made cast is used everywhere, and the animation is smoother."}, {"date": "2026-10-14", "tapes": [1], "text": "Smooth movement, turning, resizing and fading (like TurboWarp)."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole game was rewritten by hand as a real browser game (no Scratch converter)."}, {"date": "2026-10-15", "tapes": [1], "text": "New tab icons: the rice bowl for the menu, Eddie for this tape."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole box around SETTINGS can be clicked."}, {"date": "2026-10-15", "tapes": [1], "text": "Three save files, picked on the menu. Mods are saved in the browser."}, {"date": "2026-10-15", "tapes": [1], "text": "New phone calls for nights 1 to 4, with a ringtone before each call."}, {"date": "2026-10-15", "tapes": [1], "text": "iPhone-style call banner with a green caller circle."}, {"date": "2026-10-15", "tapes": [1], "text": "Steam-style achievements (saved per file), and the camera name shows on the monitor."}, {"date": "2026-10-15", "tapes": [1], "text": "Child's Play achievement (custom night with everyone on 3 or lower) and a BACK button on the custom night."}, {"date": "2026-10-15", "tapes": [1], "text": "Debug mode: no saving and no achievements while it is on."}, {"date": "2026-10-15", "tapes": [1], "text": "The custom night is always on the title menu. Night 6 still needs nights 1 to 5 beaten."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "New Font setting (menu Settings > Visuals, and each tape's Settings): Original, Dyslexic (OpenDyslexic) and whoo hoo super mario on the ps4 (every word memified). It changes words only, never pictures."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Demo until October 31 at 4:15 PM: Tape 1 has Night 1 and Dine In, and Tape 2 shows a countdown. Everything opens on release day."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Story Mode (Tape 0 on the menu): play every tape in order on one path, nights 1 to 5 then the 6th night and custom night. Beat nights to earn EXP and level up your account."}];
+const DEVLOG = [{"date": "2026-10-14", "tapes": [1], "text": "Fried Rice at Eddie's is playable in the browser, with a game select menu."}, {"date": "2026-10-14", "tapes": [1], "text": "The title music stops when a night starts, and the bottom button bar is gone."}, {"date": "2026-10-14", "tapes": [1], "text": "Spinning rice bowl loading screen that starts by itself."}, {"date": "2026-10-14", "tapes": [1], "text": "Mods, a new Settings screen, a new menu font and real text on the custom night."}, {"date": "2026-10-14", "tapes": [1], "text": "Full character drawings everywhere, with the faces as their own files."}, {"date": "2026-10-14", "tapes": [1], "text": "Mod template: every picture as a PNG, and mods can use any image type."}, {"date": "2026-10-14", "tapes": [1], "text": "The fan-made cast is used everywhere, and the animation is smoother."}, {"date": "2026-10-14", "tapes": [1], "text": "Smooth movement, turning, resizing and fading (like TurboWarp)."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole game was rewritten by hand as a real browser game (no Scratch converter)."}, {"date": "2026-10-15", "tapes": [1], "text": "New tab icons: the rice bowl for the menu, Eddie for this tape."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole box around SETTINGS can be clicked."}, {"date": "2026-10-15", "tapes": [1], "text": "Three save files, picked on the menu. Mods are saved in the browser."}, {"date": "2026-10-15", "tapes": [1], "text": "New phone calls for nights 1 to 4, with a ringtone before each call."}, {"date": "2026-10-15", "tapes": [1], "text": "iPhone-style call banner with a green caller circle."}, {"date": "2026-10-15", "tapes": [1], "text": "Steam-style achievements (saved per file), and the camera name shows on the monitor."}, {"date": "2026-10-15", "tapes": [1], "text": "Child's Play achievement (custom night with everyone on 3 or lower) and a BACK button on the custom night."}, {"date": "2026-10-15", "tapes": [1], "text": "Debug mode: no saving and no achievements while it is on."}, {"date": "2026-10-15", "tapes": [1], "text": "The custom night is always on the title menu. Night 6 still needs nights 1 to 5 beaten."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "New Font setting (menu Settings > Visuals, and each tape's Settings): Original, Dyslexic (OpenDyslexic) and whoo hoo super mario on the ps4 (every word memified). It changes words only, never pictures."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Demo until October 31 at 4:15 PM: Tape 1 has Night 1 and Dine In, and Tape 2 shows a countdown. Everything opens on release day."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Story Mode (Tape 0 on the menu): play every tape in order on one path, nights 1 to 5 then the 6th night and custom night. Beat nights to earn EXP and level up your account."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Shop in Story Mode: trade EXP for items that work in every night while signed in: Frying Pan, Stopwatch, Battery Pack, X-Ray Glasses, Bear Trap and Air Horn. Spending EXP never lowers your level."}];
 
 /* =====================================================================
    PICTURES AND SOUNDS
@@ -3063,6 +3278,7 @@ class Game {
 
   // Changes screen: stops every script and sound of the old one
   go(screen) {
+    if (screen !== "night") ItemBar.show(false);       // the item bar is only there during a night
     this.scripts.stopAll();
     this.layers = [];
     this.screen = screen;
@@ -3131,7 +3347,7 @@ class Game {
 
   // First screen after loading
   async boot() {
-    await Demo.check();                 // server time + who is signed in (demo or full game)
+    await Promise.all([Demo.check(), loadItemsQuick()]);   // server time + who is signed in + shop items
     if (Story.on) return this.storyBoot();
     this.showTitle();
     // a 1 in 1000 surprise when the game opens: eyes stare at you for 10 seconds
@@ -3368,6 +3584,15 @@ class Game {
     this.runCameraPan();
     this.runAmbience();
     if (settings.jumpscares === "1") this.runHallucinations();
+    // shop items (see ITEMS in global.js)
+    n.time = 0;                  // seconds into the night (item timers)
+    n.trap = null;               // the camera room with a bear trap in it
+    n.placingTrap = false;
+    n.glassesUntil = 0;
+    n.stopwatchUsed = false;
+    for (const k of ["bonnie", "chica", "freddy", "foxy"]) n[k].stunUntil = 0;
+    ItemBar.attach(this);
+    ItemBar.show(true);
   }
 
   // --------------------------------------------------------------
@@ -3376,6 +3601,7 @@ class Game {
   // --------------------------------------------------------------
   updateClock() {
     const n = this.n;
+    n.time += TICK;
     n.clock += TICK;
     if (n.clock < 90) return;
     n.clock -= 90;
@@ -3521,6 +3747,7 @@ class Game {
     this.scripts.run("bonnie", function* () {
       for (;;) {
         yield 4.97;
+        if (b.stunUntil > n.time) continue;                     // caught in the bear trap
         if (rand(1, 20) <= n.ai.bonnie && Global.letMove()) this.moveBonnie();   // (chicken mode: 1 in 10)
         if (b.at === "Got You") return;
       }
@@ -3550,6 +3777,7 @@ class Game {
       if (Array.isArray(to)) { this.footsteps(to[1]); b.at = to[0]; } else b.at = to;
     }
     this.arriveCheck(b.at);
+    this.trapCheck("bonnie");
   }
 
   // --------------------------------------------------------------
@@ -3560,6 +3788,7 @@ class Game {
     this.scripts.run("chica", function* () {
       for (;;) {
         yield 4.98;
+        if (c.stunUntil > n.time) continue;                     // caught in the bear trap
         if (rand(1, 20) <= n.ai.chica && Global.letMove()) this.moveChica();
         if (c.at === "Got You") return;
       }
@@ -3586,6 +3815,7 @@ class Game {
       else if (c.at === "E. Hall Corner") { this.footsteps("very close"); c.at = "Ready to Attack"; }
     }
     this.arriveCheck(c.at);
+    this.trapCheck("chica");
   }
 
   // If you are watching the camera someone leaves or enters, it cuts out
@@ -3616,6 +3846,7 @@ class Game {
     this.scripts.run("foxy", function* () {
       for (;;) {
         yield 5.01;
+        if (f.stunUntil > n.time) continue;                     // caught in the bear trap
         if (rand(1, 20) > n.ai.foxy || f.cooldown > 0 || !Global.letMove()) continue;
         f.stage++;
         if (f.stage !== 4) continue;
@@ -3624,6 +3855,7 @@ class Game {
         while (f.stage !== 5 && f.attackTimer > 0) { yield 1; f.attackTimer--; }
         if (f.stage === 4) f.stage = 6;
         else yield () => f.stage === 6;
+        if (this.trapCheck("foxy", "West Hall")) continue;      // a bear trap in the west hall stops his run
         if (n.leftDoor) {
           // he bangs on the closed door and costs some power
           n.power -= f.knockLoss;
@@ -3664,6 +3896,7 @@ class Game {
       for (;;) {
         yield 3.02;
         if (n.bonnie.at === "Show Stage" || n.chica.at === "Show Stage") continue;
+        if (fr.stunUntil > n.time) continue;                    // caught in the bear trap
         if (rand(1, 20) > n.ai.freddy || !Global.letMove()) continue;
         if (fr.at === "Got You") {
           if (n.camsUp) this.lowerMonitor();
@@ -3684,6 +3917,7 @@ class Game {
         }
         this.sp.eddie.play("Eddie", "pop");         // his laugh
         this.arriveCheck(fr.at);
+        if (this.trapCheck("freddy")) continue;
       }
     }.call(this));
   }
@@ -4027,6 +4261,7 @@ class Game {
     this.updateFlipBar();
     this.updateNightSounds();
     this.updatePhone();
+    if (n.placingTrap && !n.monitorUp) n.placingTrap = false;     // put the monitor down: no trap set
     if (this.n.hallucA !== undefined) {
       n.hallucination = (n.hallucA === 1 && chance(10)) ? n.hallucPic : null;
     }
@@ -4080,7 +4315,9 @@ class Game {
     if (n.camsUp) {
       // camera buttons on the map
       for (const cam of CAMERAS) {
-        if (hits(pic(cam.button, "Inactive"), cam.x, cam.y, 40, x, y)) { this.switchCamera(cam.room); return; }
+        if (!hits(pic(cam.button, "Inactive"), cam.x, cam.y, 40, x, y)) continue;
+        if (n.placingTrap) return this.placeTrap(cam);         // setting the bear trap
+        this.switchCamera(cam.room); return;
       }
       return;
     }
@@ -4169,6 +4406,7 @@ class Game {
      -------------------------------------------------------------- */
   jumpscare(who) {
     const n = this.n;
+    if (this.panSave(who)) return;              // the frying pan (shop item): BONK, you live
     // the night stops: nobody moves, the clock stops
     this.scripts.stop("night", "bonnie", "chica", "foxy", "freddy", "halluc", "breath", "golden", "powerout", "jingle", "dance", "phone", "ring");
     n.hallucination = null;
@@ -4490,6 +4728,7 @@ class Game {
       draw(ctx, pic("map", n.mapBlink ? "dot big" : "dot small"), 390, 240, { size: 40 });
       const blink = Math.floor(this.tick / 15) % 2 === 0;
       for (const cam of CAMERAS) draw(ctx, pic(cam.button, cam.room === room && blink ? "Active" : "Inactive"), cam.x, cam.y, { size: 40 });
+      this.drawItemsOnMap(ctx);                  // bear trap + x-ray glasses (shop items)
       if (n.redDot) draw(ctx, pic("red dot", "blinking"), 35, 85, { size: 40 });
       // which camera this is, next to the red recording dot ("CAM 1A  Show Stage")
       const cam = CAMERAS.find(c => c.room === room);
@@ -4531,6 +4770,178 @@ class Game {
     draw(ctx, pic("Usage Bars", "Usage" + Math.min(6, this.usage())), 65, 298, { size: 40 });
     if (n.flipArmed && !n.monitorFrame) draw(ctx, pic("flip panel", "flip down"), 205, 295, { size: 45, bright: -10 });
     this.drawPhone(ctx, a);
+  }
+
+  /* =================================================================
+     SHOP ITEMS (bought in the Story Mode hub, see ITEMS in global.js)
+     ================================================================= */
+  // What the item bar shows under an item: null = can't use it now
+  itemNote(id) {
+    const n = this.n;
+    if (this.screen !== "night" || !n || n.frozen || n.jumpscare) return null;
+    if (id === "stopwatch") return n.stopwatchUsed ? null : "";
+    if (id === "glasses") return n.glassesUntil > n.time ? Math.ceil(n.glassesUntil - n.time) + "s" : "";
+    if (id === "trap") return n.trap ? "SET" : n.placingTrap ? "PICK" : n.powerOut ? null : "";
+    return "";
+  }
+  // Use an item: true = used (take one), false = not now, "later" = taken when it is placed
+  useItem(id) {
+    const n = this.n;
+    if (this.itemNote(id) === null) return false;
+    if (id === "stopwatch") {
+      n.stopwatchUsed = true;
+      n.clock += 90;                                     // one whole hour (the clock moves on next update)
+      Items.sfx("tick");
+      ItemBar.say(ACH_WORD("Stopwatch: one hour skipped!"));
+      return true;
+    }
+    if (id === "battery") {
+      if (n.powerOut) this.powerBack();
+      n.power = 999;
+      Items.sfx("power");
+      ItemBar.say(ACH_WORD("Battery pack: power back to 100%!"));
+      return true;
+    }
+    if (id === "glasses") {
+      n.glassesUntil = n.time + 30;
+      ItemBar.say(ACH_WORD("X-ray glasses on for 30 seconds: look at the camera map!"));
+      return true;
+    }
+    if (id === "trap") {
+      if (n.trap) { ItemBar.say(ACH_WORD("A bear trap is already set.")); return false; }
+      n.placingTrap = true;
+      if (!n.monitorUp && !n.monitorFrame) this.flipMonitor();
+      ItemBar.say(ACH_WORD("Click a camera on the map to set the bear trap there."));
+      return "later";
+    }
+    if (id === "horn") { this.airHorn(); return true; }
+    return false;
+  }
+
+  // the names the player sees
+  itemName(k) { return ACH_WORD({ bonnie: "Weddy", chica: "Cheddy", freddy: "Eddie", foxy: "Endo" }[k]); }
+
+  // Send someone back to the start (and keep them there `stun` seconds)
+  sendHome(k, stun = 0) {
+    const n = this.n;
+    if (k === "bonnie" || k === "chica") {
+      n[k].at = "Show Stage"; n[k].spot = k === "bonnie" ? 2 : 1;
+      if (k === "bonnie") n.leftLight = false; else n.rightLight = false;
+      this.scripts.stop(k);
+      if (k === "bonnie") this.runBonnie(); else this.runChica();
+    }
+    if (k === "freddy") {
+      n.freddy.at = "Show Stage";
+      this.sp.westHall.stopAll();
+      this.scripts.stop("freddy");
+      this.runFreddy();
+    }
+    if (k === "foxy") {
+      n.foxy.stage = 1; n.foxy.cooldown = randFloat(5, 17.5); n.foxyRunFrame = 0;
+      this.scripts.stop("foxy", "foxy run");
+      this.runFoxy();
+    }
+    n[k].stunUntil = n.time + stun;
+  }
+
+  // The frying pan: whoever caught you goes back to the start. Returns true if it saved you.
+  panSave(who) {
+    const n = this.n;
+    if (!n || n.frozen || n.jumpscare || !Items.count("pan")) return false;
+    Items.spend("pan");
+    Items.sfx("bonk");
+    const k = { Bonnie: "bonnie", Chica: "chica", Foxy: "foxy", Eddie: "freddy" }[who];
+    if (n.powerOut) {
+      // in the dark: BONK, and the lights come back on (with a little power)
+      this.powerBack();
+      n.power = 200;
+    }
+    this.sendHome(k, 5);
+    ItemBar.say(ACH_WORD("BONK! The frying pan sent") + " " + this.itemName(k) + " " + ACH_WORD("back. You're safe!"), 4000);
+    return true;
+  }
+
+  // After a power out: lights, sounds and everyone's moving again
+  powerBack() {
+    const n = this.n, sp = this.sp;
+    this.scripts.stop("powerout", "jingle", "night");
+    n.powerOut = false;
+    n.officePic = "normal";
+    for (const s of ["fan", "power", "redDot", "steps"]) sp[s].stopAll();
+    sp.music.setVolume(100); sp.music.play("Stage", "ColdPresc B", { loop: true });
+    sp.office.setVolume(25); sp.office.play("office", "Buzz_Fan_Florescent2", { loop: true });
+    sp.lights.setVolume(0); sp.lights.play("left button panel", "BallastHumMedium2", { loop: true });
+    sp.map.setVolume(0); sp.map.play("map", "EerieAmbienceLargeSca_MV005", { loop: true });
+    for (const k of ["bonnie", "chica", "freddy", "foxy"]) this.sendHome(k, 5);
+    this.runPower();
+    this.runCameraPan();
+    this.runAmbience();
+    if (settings.jumpscares === "1") { this.scripts.stop("halluc"); this.runHallucinations(); }
+  }
+
+  // The air horn: everyone close to the office runs back to the start
+  airHorn() {
+    const n = this.n, near = ["West Hall", "W. Hall Corner", "Supply Closet", "East Hall", "E. Hall Corner", "Ready to Attack", "Got You"];
+    Items.sfx("horn");
+    const ran = [];
+    for (const k of ["bonnie", "chica", "freddy"]) if (near.includes(n[k].at)) { this.sendHome(k, 5); ran.push(this.itemName(k)); }
+    if (n.foxy.stage >= 3) { this.sendHome("foxy", 5); ran.push(this.itemName("foxy")); }
+    ItemBar.say(ran.length ? ACH_WORD("HONK! Back to the stage:") + " " + ran.join(", ") : ACH_WORD("HONK! Nobody was close."));
+  }
+
+  // Bear trap: set it on the camera that was clicked
+  placeTrap(cam) {
+    const n = this.n;
+    if (!Items.spend("trap")) { n.placingTrap = false; return; }
+    n.trap = cam.room;
+    n.placingTrap = false;
+    Items.sfx("snap");
+    ItemBar.say(ACH_WORD("Bear trap set on") + " " + ACH_WORD("CAM") + " " + cam.button.replace("CAM", "") + ".");
+  }
+  // Did k just walk into the trap? (room = where they are now)
+  trapCheck(k, room) {
+    const n = this.n;
+    room = room || n[k].at;
+    if (!n.trap || n.trap !== room) return false;
+    const cam = CAMERAS.find(c => c.room === room);
+    n.trap = null;
+    this.sendHome(k, 15);
+    Items.sfx("snap");
+    ItemBar.say(ACH_WORD("SNAP!") + " " + this.itemName(k) + " " + ACH_WORD("stepped in the bear trap on") + " " + ACH_WORD("CAM") + " " +
+                (cam ? cam.button.replace("CAM", "") : "") + "! " + ACH_WORD("Back to the start for 15 seconds."), 4500);
+    return true;
+  }
+
+  // a character's face (cut from the custom night picture), size game pixels wide, centered on x, y
+  drawFace(ctx, k, x, y, size) {
+    const spot = { freddy: [84, 139.5], bonnie: [192.5, 139.5], chica: [290, 142], foxy: [400, 139.5] }[k];
+    const z = size / 100;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+    ctx.fillStyle = "#000"; ctx.fill(); ctx.clip();
+    draw(ctx, pic("Backdrop", "custom night"), x + (240 - spot[0]) * z, y + (180 - spot[1]) * z, { size: 100 * z });
+    ctx.restore();
+    ctx.save(); ctx.strokeStyle = "#ffcf3f"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, size / 2, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
+  // On the camera map: the bear trap, and (with the glasses on) everyone's face on their camera
+  drawItemsOnMap(ctx) {
+    const n = this.n;
+    if (n.trap) { const c = CAMERAS.find(c => c.room === n.trap); if (c) drawItemIcon(ctx, "trap", c.x - 10, c.y - 6, 9); }
+    if (n.placingTrap && Math.floor(this.tick / 10) % 2) {
+      ctx.save(); ctx.font = '9px "Pixel"'; ctx.fillStyle = "#ffcf3f"; ctx.textAlign = "center";
+      ctx.fillText(ACH_WORD("PICK A CAMERA FOR THE TRAP"), 385, 165); ctx.restore();
+    }
+    if (!(n.glassesUntil > n.time)) return;
+    // where each one is on the map (the doors count as the hall corners, on the office side)
+    const spots = {};
+    const add = (k, room, dx = 0) => { const c = CAMERAS.find(c => c.room === room); if (c) (spots[room] = spots[room] || { c, dx, list: [] }).list.push(k); };
+    for (const k of ["freddy", "bonnie", "chica"]) {
+      const at = n[k].at;
+      if (at === "Ready to Attack" || at === "Got You") add(k, k === "bonnie" ? "W. Hall Corner" : "E. Hall Corner", k === "bonnie" ? 14 : -14);
+      else add(k, at);
+    }
+    add("foxy", n.foxy.stage >= 4 ? "West Hall" : "Pirate Cove");
+    for (const s of Object.values(spots)) s.list.forEach((k, i) => this.drawFace(ctx, k, s.c.x + s.dx + (i - (s.list.length - 1) / 2) * 11, s.c.y, 11));
   }
 
   /* =================================================================

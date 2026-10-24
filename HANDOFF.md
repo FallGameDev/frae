@@ -106,6 +106,14 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Unlocks (`Story.unlocked`): nights in order, 6th + custom after night 5, Tape 2 opens after Tape 1 Night 5. Demo: only Tape 1 Night 1.
 - Account data: `profiles.exp` + `profiles.story` (`{beaten: {"1-3": 2}}`), changed ONLY by the `story_win(tape, night)` database function (EXP table there: 50/75/100/150/200/300/250, Tape 2 double, replays a quarter). Players can only update their username column. SQL: `supabase/story.sql` (also at the end of setup.sql). Levels: `Story.level(exp)` (level n needs n*100 EXP).
 
+## Shop + items (Story Mode hub, used in every night while signed in)
+- Catalog: `ITEMS` in tools/global.js (id, name, price, desc, 12x12 pixel `icon`; `itemIcon()` = SVG, `drawItemIcon()` = canvas). Prices are enforced by `shop_buy` in supabase/story.sql (keep both in sync).
+- Account: `profiles.spent` + `profiles.items` (`{pan: 2}`), changed only by `shop_buy(item, qty)` / `use_item(item)`. Spendable = exp - spent (the level still uses all EXP). `Items` (load / buy / spend / count / sfx). Both tapes' `boot()` await `loadItemsQuick()`.
+- Hub: SHOP button -> `#shop` panel (`drawShop`, `buy`).
+- In a night: `ItemBar` (HTML column on the left, keys 1-6, `ItemBar.say()` messages). Shown at the end of each tape's `startNight()`, hidden by `go()`. Each tape has `itemNote(id)` (label / null = can't use) and `useItem(id)` (true = take one, false, "later" = the trap takes it when placed).
+- Items: pan (auto, in `jumpscare()` -> `panSave`; Tape 1 power out -> `powerBack()` with 20% power), stopwatch (clock + one hour, once a night), battery (Tape 1 power 100% / out of a power out; Tape 2 flashlight), glasses (`n.glassesUntil`, faces on the camera map: Tape 1 `drawFace` crops the custom night picture, Tape 2 `drawActor` heads), trap (`n.placingTrap` -> click a map button, Tape 2 also `MAP_SPOTS` hall/ventL/ventR; `trapCheck` on arrival -> `sendHome(who, 15)`), horn (`airHorn`: everyone near the office back to the start).
+- Tape 1 stuns: `n[k].stunUntil` checked in each AI loop; `n.time` counts night seconds (both tapes).
+
 ## Demo (until the release)
 - `DEMO` / `Demo` in tools/global.js: until `DEMO.until` (2026-10-31 4:15 PM EDT) the game is a demo, unless signed in as a `DEMO.bypass` username (FallGameDev, Jfor; any capitals). `Demo.check()` (awaited by both tapes' `boot()` and the menu) takes the clock from the web server's Date header and re-asks Supabase for the profile (a fake/expired session = no bypass); 4 s max. `Demo.on()`, `Demo.left()` (countdown), `Demo.recheck()` (menu runs it when Settings closes).
 - Tape 1: `menuItems()` shows only Dine In + New Game, beating Night 1 goes to `demoEnd()` (END OF THE DEMO card + countdown), DEMO countdown top right of the title. Tape 1 overlays now also take `paint` like Tape 2.

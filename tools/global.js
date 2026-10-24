@@ -1239,6 +1239,221 @@ const Story = {
   },
 };
 
+/* =====================================================================
+   SHOP + ITEMS (bought with Story Mode EXP in the hub, used in BOTH
+   Story Mode and the normal game while signed in)
+   - Spending EXP never lowers your level: the account keeps "exp" (all
+     EXP ever earned, sets the level) and "spent"; you can spend exp - spent.
+   - The inventory is profiles.items ({ pan: 2, ... }); only the database
+     functions shop_buy / use_item can change it (supabase/story.sql).
+   - In a night, ItemBar shows your items down the left side (click, or
+     keys 1-6). Each tape decides what an item does: game.useItem(id).
+   ===================================================================== */
+// icon: 12 x 12 pixels. # white, g gold, d grey, b blue, r red, . empty
+const ITEMS = [
+  { id: "pan", name: "Frying Pan", price: 600, auto: true,
+    desc: "Works by itself: when something gets you, BONK! They go back to the start and you live.",
+    icon: ["....####....", "..##dddd##..", ".#dddddddd#.", ".#dddddddd#.", "#dddddddddd#", "#dddddddddd#",
+           ".#dddddddd#.", ".#dddddddd#.", "..##dddd##..", "....####....", ".....gg.....", ".....gg....."] },
+  { id: "stopwatch", name: "Stopwatch", price: 400,
+    desc: "Skips one hour of the night. One per night.",
+    icon: [".....gg.....", "....####....", "..##....##..", ".#........#.", ".#....r...#.", "#.....r....#",
+           "#.....rrr..#", "#..........#", ".#........#.", ".#........#.", "..##....##..", "....####...."] },
+  { id: "battery", name: "Battery Pack", price: 250,
+    desc: "Fills your power (Tape 1) or your flashlight (Tape 2) back to 100%.",
+    icon: ["....####....", "..########..", "..#......#..", "..#....g.#..", "..#...gg.#..", "..#..gggg#..",
+           "..#gggg..#..", "..#.gg...#..", "..#.g....#..", "..#......#..", "..########..", "............"] },
+  { id: "glasses", name: "X-Ray Glasses", price: 300,
+    desc: "For 30 seconds, the camera map shows a face on every camera someone is on.",
+    icon: ["............", "............", "#..........#", "#..........#", "#..........#", "#####..#####",
+           "#bbb#..#bbb#", "#bbb####bbb#", "#bbb#..#bbb#", ".###....###.", "............", "............"] },
+  { id: "trap", name: "Bear Trap", price: 350,
+    desc: "Set it on a camera, the hall or a vent. The next one to walk in gets caught: you hear about it, and they go back to the start for 15 seconds.",
+    icon: ["............", ".#.#.##.#.#.", ".##########.", "#..........#", "#....dd....#", "#...dddd...#",
+           "#....dd....#", "#..........#", ".##########.", ".#.#.##.#.#.", "............", "............"] },
+  { id: "horn", name: "Air Horn", price: 450,
+    desc: "HONK! Everyone near your office (doors, hall, vents) runs back to the start.",
+    icon: ["............", ".........##.", ".......##.#.", ".....##...#.", ".rr##.....#.", ".rr#......#.",
+           ".rr#......#.", ".rr##.....#.", ".....##...#.", ".......##.#.", ".........##.", "............"] },
+];
+const ITEM_COLORS = { "#": "#fff", g: "#ffcf3f", d: "#8a8a99", b: "#46a0ff", r: "#ff2a3c" };
+// an item's icon as an SVG string
+function itemIcon(id, size = 48) {
+  const it = ITEMS.find(i => i.id === id);
+  let rects = "";
+  it.icon.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ITEM_COLORS[ch]) rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${ITEM_COLORS[ch]}"/>`;
+  }));
+  return `<svg viewBox="0 0 12 12" width="${size}" height="${size}" shape-rendering="crispEdges">${rects}</svg>`;
+}
+
+// an item's icon on a game canvas (centered on x, y)
+function drawItemIcon(ctx, id, x, y, size) {
+  const it = ITEMS.find(i => i.id === id), k = size / 12;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(x - size / 2 - 1, y - size / 2 - 1, size + 2, size + 2);
+  it.icon.forEach((row, yy) => [...row].forEach((ch, xx) => {
+    if (!ITEM_COLORS[ch]) return;
+    ctx.fillStyle = ITEM_COLORS[ch];
+    ctx.fillRect(x - size / 2 + xx * k, y - size / 2 + yy * k, k + 0.05, k + 0.05);
+  }));
+  ctx.restore();
+}
+// items + EXP from the account, but never hold the game up long (offline, slow network)
+function loadItemsQuick() { return Promise.race([Items.load(), new Promise(r => setTimeout(r, 4000))]); }
+
+const Items = {
+  owned: {},        // id -> how many
+  exp: 0, spent: 0,
+  loaded: false,
+  count(id) { return this.owned[id] || 0; },
+  spendable() { return Math.max(0, this.exp - this.spent); },
+  // read the inventory (and EXP) from the account
+  async load() {
+    if (!Cloud.ready() || !Cloud.signedIn()) return false;
+    try {
+      const rows = await Cloud.call("/rest/v1/profiles?select=exp,spent,items&id=eq." + Cloud.uid());
+      if (!rows || !rows[0]) return false;
+      this.owned = rows[0].items || {}; this.exp = rows[0].exp || 0; this.spent = rows[0].spent || 0;
+      this.loaded = true;
+      return true;
+    } catch (e) { return false; }   // (the shop columns aren't there until supabase/story.sql is run)
+  },
+  // buy in the shop (the database checks the price and your EXP)
+  async buy(id, qty = 1) {
+    const r = await Cloud.call("/rest/v1/rpc/shop_buy", { method: "POST", json: { item: id, qty } });
+    this.owned = r.items || {}; this.exp = r.exp; this.spent = r.spent;
+    return r;
+  },
+  // use one up (counted here right away, then on the account)
+  spend(id) {
+    if (!this.count(id)) return false;
+    this.owned[id]--;
+    ItemBar.refresh();
+    Cloud.call("/rest/v1/rpc/use_item", { method: "POST", json: { item: id } })
+      .then(r => { if (r && r.items) { this.owned = r.items; ItemBar.refresh(); } })
+      .catch(e => console.warn("use_item failed", e));
+    return true;
+  },
+
+  /* little sound effects (Web Audio, on the tapes' sound effect volume) */
+  sfx(kind) {
+    try {
+      const ac = Sound.ctx, out = Sound.sfxBus, t = ac.currentTime;
+      const tone = (type, f1, f2, start, len, vol) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = type; o.frequency.setValueAtTime(f1, t + start); o.frequency.exponentialRampToValueAtTime(f2, t + start + len);
+        g.gain.setValueAtTime(vol, t + start); g.gain.exponentialRampToValueAtTime(0.0001, t + start + len);
+        o.connect(g).connect(out); o.start(t + start); o.stop(t + start + len + 0.02);
+      };
+      if (kind === "bonk") { tone("square", 900, 700, 0, 0.5, 0.25); tone("triangle", 1800, 1500, 0, 0.7, 0.2); tone("sine", 140, 60, 0, 0.25, 0.4); }
+      if (kind === "snap") { tone("square", 220, 60, 0, 0.12, 0.35); tone("sawtooth", 1200, 300, 0.02, 0.1, 0.2); }
+      if (kind === "horn") { tone("sawtooth", 410, 400, 0, 1.2, 0.18); tone("sawtooth", 520, 505, 0, 1.2, 0.14); }
+      if (kind === "tick") { for (let i = 0; i < 6; i++) tone("square", 2000, 1900, i * 0.06, 0.03, 0.15); }
+      if (kind === "power") { tone("sine", 200, 900, 0, 0.6, 0.25); }
+      if (kind === "use") { tone("sine", 660, 990, 0, 0.15, 0.2); }
+      if (kind === "no") { tone("square", 140, 110, 0, 0.18, 0.15); }
+    } catch (e) {}
+  },
+};
+
+/* ---------------------------------------------------------------------
+   The item bar (in a night). The tape gives it a game with:
+     game.useItem(id)   -> true (used: take one), false (can't now), or
+                           "later" (the tape takes it itself, like the trap)
+     game.itemNote(id)  -> short text under the icon ("ON", "USED", "") or null
+   --------------------------------------------------------------------- */
+const ItemBar = {
+  game: null, el: null, timer: null, visible: false,
+  attach(game) { this.game = game; },
+  build() {
+    if (this.el) return;
+    const el = this.el = document.createElement("div");
+    el.id = "itemBar";
+    el.setAttribute("data-nomeme", "");
+    el.innerHTML = `<style>
+      #itemBar { position: fixed; left: 8px; top: 50%; transform: translateY(-50%); z-index: 40; display: flex; flex-direction: column; gap: 8px; }
+      #itemBar[hidden] { display: none; }
+      #itemBar button { position: relative; width: 58px; height: 58px; padding: 4px; background: rgba(0,0,0,.75); cursor: pointer;
+        border: 3px solid #fff; box-shadow: 0 4px 0 #333; display: flex; align-items: center; justify-content: center; }
+      #itemBar button:hover { border-color: #ffcf3f; }
+      #itemBar button.off { opacity: .35; cursor: default; }
+      #itemBar button.auto { border-style: dashed; }
+      #itemBar button.on { border-color: #ffcf3f; box-shadow: 0 0 12px #ffcf3f; }
+      #itemBar .n { position: absolute; right: -6px; top: -8px; background: #5b16ec; color: #fff; border: 2px solid #fff;
+        font: 13px "VCR OSD Mono", monospace; padding: 0 4px; }
+      #itemBar .k { position: absolute; left: 2px; top: 0; color: #8a8a99; font: 11px "VCR OSD Mono", monospace; }
+      #itemBar .t { position: absolute; bottom: -2px; left: 0; right: 0; text-align: center; color: #ffcf3f; font: 10px "VCR OSD Mono", monospace;
+        text-shadow: 1px 1px 0 #000; }
+      #itemSay { position: fixed; left: 50%; top: 14%; transform: translateX(-50%); z-index: 41; pointer-events: none;
+        background: #000; border: 3px solid #fff; box-shadow: 6px 6px 0 #5b16ec; color: #fff; padding: 8px 16px;
+        font: 20px "VCR OSD Mono", monospace; text-align: center; max-width: 80vw; transition: opacity .4s; }
+      #itemSay[hidden] { display: none; }
+    </style>`;
+    document.body.append(el);
+    const say = document.createElement("div"); say.id = "itemSay"; say.hidden = true; say.setAttribute("data-nomeme", "");
+    document.body.append(say);
+    // keys 1-6 use the item in that slot
+    addEventListener("keydown", e => {
+      if (!this.visible || e.repeat || !/^[1-6]$/.test(e.key)) return;
+      const list = this.list();
+      if (list[e.key - 1]) this.use(list[e.key - 1].id);
+    });
+  },
+  list() { return ITEMS.filter(i => Items.count(i.id) > 0); },
+  use(id) {
+    const it = ITEMS.find(i => i.id === id);
+    if (!this.game || !Items.count(id)) return;
+    if (it.auto) { this.say(it.name + " works by itself: it saves you when you get caught."); return; }
+    const r = this.game.useItem(id);
+    if (r === true) { Items.spend(id); Items.sfx("use"); }
+    else if (r === false) Items.sfx("no");
+    this.refresh();
+  },
+  show(on) {
+    if (on && !Items.loaded) on = false;
+    if (on) this.build();
+    this.visible = on;
+    if (this.el) this.el.hidden = !on;
+    clearInterval(this.timer);
+    if (on) { this.refresh(); this.timer = setInterval(() => this.refresh(), 250); }
+  },
+  refresh() {
+    if (!this.el || !this.visible) return;
+    const list = this.list();
+    // rebuild the buttons only when the set changes; update their labels every time
+    const key = list.map(i => i.id).join(",");
+    if (this.el.dataset.key !== key) {
+      this.el.dataset.key = key;
+      this.el.querySelectorAll("button").forEach(b => b.remove());
+      list.forEach((it, i) => {
+        const b = document.createElement("button");
+        b.dataset.id = it.id; b.title = it.name + ": " + it.desc;
+        b.innerHTML = itemIcon(it.id, 40) + `<span class="k">${i + 1}</span><span class="n"></span><span class="t"></span>`;
+        b.onclick = e => { e.stopPropagation(); this.use(it.id); b.blur(); };
+        b.onmousedown = b.onpointerdown = e => e.stopPropagation();     // (the game doesn't see this click)
+        this.el.append(b);
+      });
+    }
+    this.el.querySelectorAll("button").forEach(b => {
+      const id = b.dataset.id, note = this.game && this.game.itemNote ? this.game.itemNote(id) : "";
+      b.querySelector(".n").textContent = "x" + Items.count(id);
+      b.querySelector(".t").textContent = note === null ? "" : (ITEMS.find(i => i.id === id).auto ? "AUTO" : note || "");
+      b.classList.toggle("auto", !!ITEMS.find(i => i.id === id).auto);
+      b.classList.toggle("off", note === null);
+      b.classList.toggle("on", !!note && note !== "USED" && note !== null && !ITEMS.find(i => i.id === id).auto);
+    });
+  },
+  // a message at the top of the screen for a few seconds
+  say(text, ms = 3200) {
+    this.build();
+    const el = document.getElementById("itemSay");
+    el.textContent = text; el.hidden = false; el.style.opacity = 1;
+    clearTimeout(this.sayTimer);
+    this.sayTimer = setTimeout(() => { el.style.opacity = 0; this.sayTimer = setTimeout(() => { el.hidden = true; }, 400); }, ms);
+  },
+};
+
 // Supabase error words -> plain words for players
 function friendlyError(msg) {
   const m = String(msg);

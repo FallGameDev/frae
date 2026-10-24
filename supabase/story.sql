@@ -1,5 +1,6 @@
 -- =====================================================================
--- STORY MODE (run once in Supabase: Dashboard > SQL Editor > New query)
+-- STORY MODE + SHOP (run in Supabase: Dashboard > SQL Editor > New query.
+-- Safe to run again: it only adds what is missing.)
 -- Adds to every profile:
 --   exp    total EXP earned in Story Mode
 --   story  { "beaten": { "1-3": 2, ... } }  = tape-night -> times beaten
@@ -43,3 +44,62 @@ begin
 end $$;
 revoke execute on function public.story_win(int, int) from anon;
 grant execute on function public.story_win(int, int) to authenticated;
+
+-- =====================================================================
+-- SHOP (Story Mode hub): trade EXP for items that work in every night
+--   spent  EXP spent in the shop (your level still counts ALL EXP: exp)
+--   items  { "pan": 2, "trap": 1, ... }
+-- Only shop_buy and use_item can change these.
+-- =====================================================================
+alter table public.profiles add column if not exists spent integer not null default 0;
+alter table public.profiles add column if not exists items jsonb not null default '{}'::jsonb;
+
+-- Buy qty of an item. The prices live here (the page only shows them).
+create or replace function public.shop_buy(item text, qty int default 1)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  price int;
+  cost int;
+  have_exp int;
+  have_spent int;
+  new_exp int;
+  new_spent int;
+  new_items jsonb;
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+  price := case item
+    when 'pan' then 600 when 'stopwatch' then 400 when 'battery' then 250
+    when 'glasses' then 300 when 'trap' then 350 when 'horn' then 450 else null end;
+  if price is null then raise exception 'There is no item called %.', item; end if;
+  if qty is null or qty < 1 or qty > 20 then raise exception 'You can buy 1 to 20 at a time.'; end if;
+  cost := price * qty;
+  select exp, spent into have_exp, have_spent from public.profiles where id = auth.uid() for update;
+  if have_exp - have_spent < cost then raise exception 'Not enough EXP.'; end if;
+  update public.profiles
+     set spent = spent + cost,
+         items = coalesce(items, '{}'::jsonb) || jsonb_build_object(item, coalesce((items ->> item)::int, 0) + qty)
+   where id = auth.uid()
+   returning exp, spent, items into new_exp, new_spent, new_items;
+  return jsonb_build_object('exp', new_exp, 'spent', new_spent, 'items', new_items);
+end $$;
+revoke execute on function public.shop_buy(text, int) from anon;
+grant execute on function public.shop_buy(text, int) to authenticated;
+
+-- Use one item (in a night)
+create or replace function public.use_item(item text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  have int;
+  new_items jsonb;
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+  select coalesce((items ->> item)::int, 0) into have from public.profiles where id = auth.uid() for update;
+  if have < 1 then raise exception 'You have no % left.', item; end if;
+  update public.profiles
+     set items = items || jsonb_build_object(item, have - 1)
+   where id = auth.uid()
+   returning items into new_items;
+  return jsonb_build_object('items', new_items);
+end $$;
+revoke execute on function public.use_item(text) from anon;
+grant execute on function public.use_item(text) to authenticated;
