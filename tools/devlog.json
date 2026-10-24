@@ -75,5 +75,9 @@
  {"date": "2026-10-23", "tapes": [2], "text": "Tape 2: beating a night now shows a Windows XP pop-up that bounces around the screen like the Solitaire win. Hit its yay button (good luck) to skip it and get a secret achievement."},
  {"date": "2026-10-24", "tapes": [1, 2], "text": "Demo until October 31 at 4:15 PM: Tape 1 has Night 1 and Dine In, and Tape 2 shows a countdown. Everything opens on release day."},
  {"date": "2026-10-24", "tapes": [1, 2], "text": "Story Mode (Tape 0 on the menu): play every tape in order on one path, nights 1 to 5 then the 6th night and custom night. Beat nights to earn EXP and level up your account."},
- {"date": "2026-10-24", "tapes": [1, 2], "text": "Shop in Story Mode: trade EXP for items that work in every night while signed in: Frying Pan, Stopwatch, Battery Pack, X-Ray Glasses, Bear Trap and Air Horn. Spending EXP never lowers your level."}
+ {"date": "2026-10-24", "tapes": [1, 2], "text": "Shop in Story Mode: trade EXP for items that work in every night while signed in: Frying Pan, Stopwatch, Battery Pack, X-Ray Glasses, Bear Trap and Air Horn. Spending EXP never lowers your level."},
+ {"date": "2026-10-24", "tapes": [1, 2], "text": "Pause menu: press Esc (or the II button in the corner) during a night. Resume, Journal, Settings or Quit. The night also pauses itself when you switch tabs."},
+ {"date": "2026-10-24", "tapes": [1, 2], "text": "The Journal (in the pause menu): a help guide with Entities, Mechanics, Items, Cameras and Summary chapters. Entity pages stay ??? until you've met them."},
+ {"date": "2026-10-24", "tapes": [1, 2], "text": "The night goes a little faster while the cameras are up."},
+ {"date": "2026-10-24", "tapes": [1, 2], "text": "Game over is now on the blue VHS screen, with TRY AGAIN (same night) or EJECT."}
 ]

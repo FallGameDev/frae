@@ -229,7 +229,7 @@ def write_page():
     (Pictures and sounds are plain files in 1/assets, listed by names.js.)"""
     game_dir = os.path.join(HERE, 'game')
     code = '\n\n'.join(open(os.path.join(game_dir, f), encoding='utf-8').read()
-                        for f in ('names.js', 'words.js', 'pictures.js', 'sound.js', 'vhs.js', 'game.js', 'guide.js', 'secret.js', 'achievements.js'))
+                        for f in ('names.js', 'words.js', 'pictures.js', 'sound.js', 'vhs.js', 'pause.js', 'game.js', 'guide.js', 'secret.js', 'achievements.js'))
 
     # the devlog (Settings > Devlog): this tape's updates from tools/devlog.json
     log = [e for e in json.load(open(os.path.join(HERE, 'devlog.json'), encoding='utf-8')) if 1 in e['tapes']]

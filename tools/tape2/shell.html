@@ -387,7 +387,7 @@ applyMods().then(() => {
 
 // Browsers only allow sound after the player clicks or presses a key,
 // so the sound turns on at the first click/key if it could not start by itself
-function unlockSound() { if (Sound.ctx.state !== "running") Sound.ctx.resume(); }
+function unlockSound() { if (Sound.ctx.state !== "running" && !Pause.open) Sound.ctx.resume(); }   // (not while paused)
 window.addEventListener("pointerdown", unlockSound);
 window.addEventListener("keydown", unlockSound);
 
@@ -438,6 +438,7 @@ document.addEventListener("keydown", e => {
     else if (!$("#achPanel").hidden) closeAchievements();
     else if (!$("#modsPanel").hidden) closeMods();
     else if (!$("#settingsPanel").hidden) closeSettings();
+    else if (Pause.escape()) {}                    // during a night: pause / resume (pause.js)
     else location.href = "../index.html";
     return;
   }

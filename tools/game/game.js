@@ -106,6 +106,7 @@ const NIGHT_AI = {
 const SAVE_FILES = 3;
 const saveKey = file => "frae1-save-file" + file;
 const TAPE = 1;                                  // this tape's number (Story Mode)
+const CAM_TIME_SPEED = 1.15;                     // the clock runs this much faster while the cameras are up
 
 // The file number from the address (?file=1, 2 or 3), or null if it is missing or not 1-3
 function fileFromUrl() {
@@ -117,7 +118,8 @@ function fileFromUrl() {
 function loadProgress(file) {
   const p = { night: 1, beat5: false, beat6: false, beat420: false, started: false,
               achievements: {},   // achievement id -> when it was unlocked
-              caughtBy: [] };     // who has caught you (for "Full House")
+              caughtBy: [],       // who has caught you (for "Full House")
+              seen: [] };         // who you've met (the journal fills in their page)
   try {
     // the very first version had one save: it becomes file 1
     if (file === 1 && !localStorage.getItem(saveKey(1)) && localStorage.getItem("frae1-save"))
@@ -132,6 +134,7 @@ function loadProgress(file) {
       p.beat420 = !!Number(s.beat420 ?? s["beat 420"] ?? 0);
       p.achievements = (s.achievements && typeof s.achievements === "object") ? s.achievements : {};
       p.caughtBy = Array.isArray(s.caughtBy) ? s.caughtBy : [];
+      p.seen = Array.isArray(s.seen) ? s.seen : [];
       p.started = true;
       if (s.night === undefined) saveProgress(file, p);      // rewrite old saves in the new shape
     }
@@ -141,7 +144,7 @@ function loadProgress(file) {
 function saveProgress(file, p) {
   try {
     localStorage.setItem(saveKey(file), JSON.stringify({ night: p.night, beat5: p.beat5, beat6: p.beat6, beat420: p.beat420,
-                                                      achievements: p.achievements, caughtBy: p.caughtBy }));
+                                                      achievements: p.achievements, caughtBy: p.caughtBy, seen: p.seen }));
     Cloud.saved(saveKey(file));                  // backed up to the account if signed in (tools/global.js)
   } catch (e) {}
 }
@@ -240,7 +243,7 @@ class Game {
 
   // Changes screen: stops every script and sound of the old one
   go(screen) {
-    if (screen !== "night") ItemBar.show(false);       // the item bar is only there during a night
+    if (screen !== "night") { ItemBar.show(false); Pause.showButton(false); }   // item bar + pause button: nights only
     this.scripts.stopAll();
     this.layers = [];
     this.screen = screen;
@@ -435,7 +438,7 @@ class Game {
   }
 
   // Back from the settings screen
-  settingsClosed() { if (this.screen === "title") this.showTitle(); }
+  settingsClosed() { if (this.screen === "title") this.showTitle(); Pause.afterSettings(); }
 
   /* =================================================================
      NEWSPAPER AD (New Game), NIGHT INTRO, LOADING
@@ -555,6 +558,8 @@ class Game {
     for (const k of ["bonnie", "chica", "freddy", "foxy"]) n[k].stunUntil = 0;
     ItemBar.attach(this);
     ItemBar.show(true);
+    Pause.attach(this);
+    Pause.showButton(true);
   }
 
   // --------------------------------------------------------------
@@ -564,7 +569,7 @@ class Game {
   updateClock() {
     const n = this.n;
     n.time += TICK;
-    n.clock += TICK;
+    n.clock += TICK * (n.camsUp ? CAM_TIME_SPEED : 1);    // the night goes a little faster while you watch the cameras
     if (n.clock < 90) return;
     n.clock -= 90;
     n.hour++;
@@ -1224,6 +1229,7 @@ class Game {
     this.updateNightSounds();
     this.updatePhone();
     if (n.placingTrap && !n.monitorUp) n.placingTrap = false;     // put the monitor down: no trap set
+    if (this.tick % 15 === 0) this.noteSeen();
     if (this.n.hallucA !== undefined) {
       n.hallucination = (n.hallucA === 1 && chance(10)) ? n.hallucPic : null;
     }
@@ -1400,17 +1406,18 @@ class Game {
     this.died = true;              // the phone guy stops calling until you win a night
     this.go("black");
     Sound.stopAll();
-    const js = settings.jumpscares === "1";
+    const hour = this.n ? this.n.hour : 0;
     this.scripts.run("gameover", function* () {
       // the VHS STOP screen and the survival guide (vhs.js, guide.js)
       yield* this.playGuide(this.killer, this.killedByPowerOut);
-      const card = this.overlay("Backdrop", js ? "mike stuffed" : "NoJS" + this.killer, { fade: 0 });
-      // a tiny chance of something worse while you look at it
-      this.scripts.run("gameover", function* () {
+      // a tiny chance of something worse while you look at the game over screen
+      this.scripts.run("creepy", function* () {
         for (let i = 0; i < 10; i++) { yield 1; if (chance(10000)) return this.creepyEnd(); }
       }.call(this));
-      yield* this.fade(card, 1);
-      yield js ? 15 : 3;
+      // GAME OVER on the blue VHS screen: TRY AGAIN or EJECT
+      const pick = yield* this.vhsGameOver(deathGuide(this.killer, this.killedByPowerOut).name, hour);
+      this.scripts.stop("creepy");
+      if (pick === "retry") return this.retryNight();
       this.showTitle();
     }.call(this));
   }
@@ -1732,6 +1739,117 @@ class Game {
     draw(ctx, pic("Usage Bars", "Usage" + Math.min(6, this.usage())), 65, 298, { size: 40 });
     if (n.flipArmed && !n.monitorFrame) draw(ctx, pic("flip panel", "flip down"), 205, 295, { size: 45, bright: -10 });
     this.drawPhone(ctx, a);
+  }
+
+  /* =================================================================
+     GAME OVER (blue VHS screen) and TRY AGAIN
+     ================================================================= */
+  *vhsGameOver(who, hour) {
+    const g = new VhsGameOver({ who: ACH_WORD(who), night: this.level > 6 ? ACH_WORD("CUSTOM NIGHT") : ACH_WORD("NIGHT") + " " + this.level,
+                                time: (hour === 0 ? 12 : hour) + " AM" });
+    const L = { draw: ctx => g.draw(ctx) };
+    this.layers.push(L);
+    let pick = null;
+    yield () => (pick = g.step(this.clicks, this.keys));
+    this.removeOverlay(L);
+    return pick;
+  }
+  // The same night again (Story Mode reloads its step)
+  retryNight() {
+    if (Story.on) { location.reload(); return; }
+    this.startIntro();
+  }
+
+  /* =================================================================
+     THE JOURNAL (pause menu > JOURNAL, see pause.js)
+     ================================================================= */
+  // Remember who you've met (their journal page opens up)
+  noteSeen() {
+    const n = this.n, p = this.progress, seen = new Set();
+    if (n.camsUp) {
+      for (const [k, key] of [["bonnie", "Bonnie"], ["chica", "Chica"], ["freddy", "Freddy"]]) if (n[k].at === n.camera) seen.add(key);
+      if ((n.camera === "Pirate Cove" && n.foxy.stage >= 2) || (n.camera === "West Hall" && n.foxy.stage >= 5)) seen.add("Foxy");
+    } else {
+      if (n.leftLight && n.bonnie.at === "Ready to Attack") seen.add("Bonnie");
+      if (n.rightLight && n.chica.at === "Ready to Attack") seen.add("Chica");
+    }
+    if (n.goldenInOffice) seen.add("Golden");
+    let added = false;
+    for (const k of seen) if (!p.seen.includes(k)) { p.seen.push(k); added = true; }
+    if (added) this.save();
+  }
+  met(key) { return this.progress.seen.includes(key) || this.progress.caughtBy.includes(key); }
+
+  journal() {
+    const n = this.n, W1 = ACH_WORD;
+    const ENT = [
+      ["Bonnie", "bonnie", "The left side"], ["Chica", "chica", "The right side"], ["Freddy", "freddy", "The leader"],
+      ["Foxy", "foxy", "Pirate Cove"], ["Golden", null, "Very rare"],
+    ];
+    const face = k => journalPicture((g, s) => k ? this.drawFace(g, k, s / 2, s / 2, s) : draw(g, pic("Golden", "YellowBear"), s / 2, s / 2 + 10, { size: 45 }));
+    const entities = ENT.map(([key, k, sub]) => {
+      const { text, tips } = journalFromSlides(deathGuide(key).slides);
+      return { name: W1(GUIDE_NAMES[key]), sub: W1(sub), locked: !this.met(key), img: face(k), text: text.slice(1), tips: [text[0], ...tips] };
+    });
+    // who walks through each camera
+    const WHO = {
+      "Show Stage": "Weddy, Cheddy and Eddie all start here.", "Entrance": "Nobody walks through here.",
+      "Dining Area": "Weddy, Cheddy and Eddie.", "Pirate Cove": "Endo's home. Watch the curtain.",
+      "West Hall": "Weddy, and Endo when he runs.", "W. Hall Corner": "Weddy, right before your LEFT door.",
+      "Supply Closet": "Weddy, right before your LEFT door.", "East Hall": "Cheddy and Eddie.",
+      "E. Hall Corner": "Cheddy and Eddie, right before your RIGHT door.", "Backstage": "Weddy.",
+      "Kitchen": "Cheddy and Eddie.", "Restrooms": "Cheddy and Eddie.",
+    };
+    const cams = [{ name: W1("Using the cameras"), icon: "?", text: [
+        "Press SPACE (or touch the bar at the bottom) to lift the monitor. Click a camera on the map to look at it.",
+        "The cameras use power while they're up, and the night goes a little faster while you watch them.",
+        "When someone walks into or out of the camera you're watching, the picture cuts out for a moment."],
+        tips: ["Watching the cameras keeps Endo behind his curtain longer.", "Eddie never moves while you're looking right at him."] },
+      ...CAMERAS.map(c => ({ name: W1("CAM") + " " + c.button.replace("CAM", "") + "  " + W1(c.room), icon: c.button.replace("CAM", ""),
+        text: [WHO[c.room] || ""] }))];
+    const tonight = [];
+    if (n) {
+      const ai = n.ai;
+      const TIP = { bonnie: "check the LEFT light, shut the LEFT door if she's there.", chica: "check the RIGHT light, shut the RIGHT door if she's there.",
+                    freddy: "once he's at the E. Hall Corner, shut the RIGHT door.", foxy: "peek at Pirate Cove now and then; shut the LEFT door if he's out." };
+      for (const k of ["bonnie", "chica", "freddy", "foxy"]) if (ai[k] > 0) tonight.push([this.itemName(k), TIP[k]]);
+    }
+    const p = this.progress, got = ACHIEVEMENTS.filter(a => p.achievements[a.id]).length;
+    const summary = [
+      { name: W1("Tonight"), icon: "!", sub: n ? (this.level > 6 ? W1("Custom Night") : W1("Night") + " " + this.level) + "  ·  " + (n.hour === 0 ? 12 : n.hour) + " AM  ·  " + Math.max(0, Math.floor(n.power / 10)) + "% " + W1("power") : "",
+        text: tonight.length ? [W1("Who's moving tonight:")] : [W1("Nobody is moving tonight. Just watch your power.")],
+        list: tonight,
+        tips: [W1("Survive until 6 AM. Each hour is 90 seconds (a bit less while you watch the cameras).")] },
+      { name: W1("Quick rules"), icon: "#", list: [
+          [W1("LEFT side"), W1("Weddy and Endo")], [W1("RIGHT side"), W1("Cheddy and Eddie")],
+          [W1("Doors"), W1("stop anyone at that door, but drain power")], [W1("Lights"), W1("show who is standing at the door")],
+          [W1("Power"), W1("runs out = lights out, and Eddie comes")], [W1("6 AM"), W1("you win the night")]] },
+      { name: W1("Your file"), icon: "*", sub: Story.on ? W1("Story Mode") : W1("Save file") + " " + this.file, list: [
+          [W1("Night reached"), String(p.night)], [W1("Stars"), "★".repeat((p.beat5 ? 1 : 0) + (p.beat6 ? 1 : 0) + (p.beat420 ? 1 : 0)) || "-"],
+          [W1("Achievements"), got + " / " + ACHIEVEMENTS.length], [W1("Met"), p.seen.length + " / 5"], [W1("Caught by"), p.caughtBy.map(k => W1(GUIDE_NAMES[k] || k)).join(", ") || "-"]] },
+    ];
+    const mech = [
+      { name: W1("Power"), icon: "%", text: ["Everything runs on power: the doors, the door lights and the cameras. The bars at the bottom left show how much you're using right now.",
+          "On later nights the power drains a little faster on its own."], tips: [W1("Don't keep doors shut 'just in case'. Check, react, open again.")] },
+      { name: W1("Doors"), icon: "D", text: ["The top button next to each door shuts it. A shut door stops anyone standing there from getting in.",
+          "A shut door uses a lot of power."] },
+      { name: W1("Lights"), icon: "L", text: ["The bottom button next to each door turns on the light in the doorway, so you can see who is standing there.",
+          "If someone is there, shut the door. If the door was open when they moved, they're already inside."] },
+      { name: W1("The clock"), icon: "T", text: ["The night starts at 12 AM. Each hour is 90 seconds, and the clock runs a little faster while the cameras are up.",
+          "At 2, 3 and 4 AM everyone gets a bit more active. Reach 6 AM to win."] },
+      { name: W1("Phone calls"), icon: "P", text: ["On nights 1 to 5 the phone rings when the night starts. Pick up to hear the call, or hang up."] },
+      { name: W1("Power out"), icon: "!", ...(() => { const r = journalFromSlides(deathGuide("Freddy", true).slides); return { text: r.text, tips: r.tips }; })() },
+    ];
+    return {
+      title: W1("Journal") + "  ·  " + W1("Tape 1"),
+      chapters: [
+        { id: "entities", name: W1("Entities"), note: p.seen.length + " / 5 " + W1("met"), entries: entities },
+        { id: "mechanics", name: W1("Mechanics"), entries: mech },
+        journalItems({ battery: ["Tape 1: it even brings the power back after a power out."], trap: ["Tape 1: click a camera on the map to set it. Endo is caught in the West Hall."] }),
+        { id: "cameras", name: W1("Cameras"), entries: cams },
+        { id: "summary", name: W1("Summary"), entries: summary },
+      ],
+    };
   }
 
   /* =================================================================

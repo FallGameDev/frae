@@ -198,3 +198,66 @@ function vhsLines(ctx, t) {
   ctx.fillStyle = "rgba(255,255,255,0.08)";
   ctx.fillRect(0, band + 9, 480, 2);
 }
+
+/* ---------------------------------------------------------------------
+   GAME OVER on the blue VHS screen (after the guide). Both tapes.
+     const g = new VhsGameOver({ who: "Withered Endo", night: "NIGHT 3", time: "4 AM" });
+     each update:  const pick = g.step(clicks, keys)   // "retry", "eject" or null
+     each frame:   g.draw(ctx)
+   TRY AGAIN (click it, or ENTER / SPACE) and EJECT (click it, or DOWN).
+   --------------------------------------------------------------------- */
+const VHS_OVER_BUTTONS = { retry: [110, 268, 120, 30], eject: [250, 268, 120, 30] };
+class VhsGameOver {
+  constructor(info) {
+    this.info = info;
+    this.t = 0;
+    this.pick = null;
+  }
+  step(clicks, keys) {
+    this.t += typeof TICK === "number" ? TICK : 1 / 30;
+    if (this.t < 0.6) return null;                 // (so the click that ended the guide doesn't count)
+    for (const c of clicks) {
+      for (const [k, [x, y, w, h]] of Object.entries(VHS_OVER_BUTTONS))
+        if (c.x >= x && c.x <= x + w && c.y >= y && c.y <= y + h) this.pick = k;
+    }
+    for (const k of keys) {
+      if (k === "enter" || k === "space") this.pick = "retry";
+      if (k === "down") this.pick = "eject";
+    }
+    return this.pick;
+  }
+  draw(ctx) {
+    ctx.save();
+    const g = ctx.createLinearGradient(0, 0, 0, 360);
+    g.addColorStop(0, VHS_BLUE[0]); g.addColorStop(1, VHS_BLUE[1]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 480, 360);
+    if (Math.sin(this.t * 37) > 0.97) ctx.translate(1, 0);
+    // top: the tape is stopped
+    vhsText(ctx, "STOP", 30, 52, 22);
+    if (Math.floor(this.t * 2) % 2 === 0) { ctx.fillStyle = "#fff"; ctx.fillRect(100, 35, 16, 16); }
+    vhsText(ctx, vhsCounter(this.t), 450, 52, 18, { align: "right" });
+    // the big words
+    const a = Math.min(1, this.t * 2);
+    ctx.globalAlpha = a;
+    vhsText(ctx, "GAME OVER", 240, 150, 44, { align: "center" });
+    ctx.globalAlpha = 1;
+    if (this.t > 0.4) {
+      vhsText(ctx, [this.info.night, this.info.time].filter(Boolean).join("  ·  "), 240, 186, 14, { align: "center", color: VHS_CYAN });
+      if (this.info.who) vhsText(ctx, "CAUGHT BY " + String(this.info.who).toUpperCase(), 240, 212, 14, { align: "center" });
+    }
+    // buttons
+    if (this.t > 0.6) {
+      for (const [id, [x, y, w, h]] of Object.entries(VHS_OVER_BUTTONS)) {
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        if (id === "retry") vhsTriangle(ctx, x + 10, y + 8, 14, 1);
+        else { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(x + 10, y + 18); ctx.lineTo(x + 18, y + 8); ctx.lineTo(x + 26, y + 18); ctx.fill(); ctx.fillRect(x + 10, y + 20, 16, 3); }
+        vhsText(ctx, id === "retry" ? "TRY AGAIN" : "EJECT", x + w / 2 + 10, y + 20, 13, { align: "center" });
+      }
+      vhsText(ctx, "ENTER = TRY AGAIN    DOWN = EJECT", 240, 326, 10, { align: "center", color: "rgba(255,255,255,0.65)" });
+    }
+    ctx.restore();
+    vhsLines(ctx, this.t);
+  }
+}

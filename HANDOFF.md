@@ -106,6 +106,12 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Unlocks (`Story.unlocked`): nights in order, 6th + custom after night 5, Tape 2 opens after Tape 1 Night 5. Demo: only Tape 1 Night 1.
 - Account data: `profiles.exp` + `profiles.story` (`{beaten: {"1-3": 2}}`), changed ONLY by the `story_win(tape, night)` database function (EXP table there: 50/75/100/150/200/300/250, Tape 2 double, replays a quarter). Players can only update their username column. SQL: `supabase/story.sql` (also at the end of setup.sql). Levels: `Story.level(exp)` (level n needs n*100 EXP).
 
+## Pause menu + Journal (both tapes, tools/game/pause.js, pasted in after vhs.js)
+- `Pause`: Esc (shells call `Pause.escape()` before leaving to the menu) or the II button (`#pauseBtn`, shown by each tape's `startNight()` via `Pause.showButton(true)`, hidden by `go()`). Sets `game.paused` and suspends `Sound.ctx` (the shells' `unlockSound` won't resume it while paused). RESUME / JOURNAL / SETTINGS (`settingsClosed()` -> `Pause.afterSettings()` brings the menu back) / QUIT (title, or the Story hub). Auto-pauses on `visibilitychange`.
+- `Journal.open(game.journal())`: book with chapter tabs. Each tape's `journal()` builds Entities (text from its guide.js `deathGuide`, portraits via `journalPicture`), Mechanics, Items (`journalItems()` shared), Cameras, Summary (tonight's active AI, quick rules, your file). Entities are ??? until met: `progress.seen` (saved) filled by `noteSeen()` every 15 updates, or `progress.caughtBy`.
+- Time: `CAM_TIME_SPEED` (1.15) in each game.js: the clock runs faster while `n.camsUp`.
+- Game over: `VhsGameOver` in vhs.js (blue screen, TRY AGAIN / EJECT). Each tape's `dead()` -> `vhsGameOver()` -> `retryNight()` (Story Mode reloads) or `showTitle()`. Tape 1's old "mike stuffed" card is no longer shown; Tape 2 still has its 1 in 3 minigames first.
+
 ## Shop + items (Story Mode hub, used in every night while signed in)
 - Catalog: `ITEMS` in tools/global.js (id, name, price, desc, 12x12 pixel `icon`; `itemIcon()` = SVG, `drawItemIcon()` = canvas). Prices are enforced by `shop_buy` in supabase/story.sql (keep both in sync).
 - Account: `profiles.spent` + `profiles.items` (`{pan: 2}`), changed only by `shop_buy(item, qty)` / `use_item(item)`. Spendable = exp - spent (the level still uses all EXP). `Items` (load / buy / spend / count / sfx). Both tapes' `boot()` await `loadItemsQuick()`.
