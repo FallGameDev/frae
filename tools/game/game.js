@@ -246,8 +246,13 @@ class Game {
   // Adds a picture that covers the screen, with its own fade (0 = see-through, 1 = solid)
   overlay(group, name, o = {}) {
     const L = {
-      pic: pic(group, name), x: o.x ?? 240, y: o.y ?? 180, size: o.size || 100, fade: o.fade ?? 1, key: "ov" + Math.random(),
-      draw: (ctx, a) => draw(ctx, L.pic, L.x, L.y, { size: L.size, alpha: this.smooth.at(L.key, a) }),
+      pic: group ? pic(group, name) : null, x: o.x ?? 240, y: o.y ?? 180, size: o.size || 100, fade: o.fade ?? 1, key: "ov" + Math.random(),
+      paint: o.paint,                   // optional: a drawing function instead of a picture (like Tape 2)
+      draw: (ctx, a) => {
+        const f = this.smooth.at(L.key, a);
+        if (L.paint) { ctx.save(); ctx.globalAlpha *= f; L.paint(ctx, a); ctx.restore(); }
+        else draw(ctx, L.pic, L.x, L.y, { size: L.size, alpha: f });
+      },
       setFade: f => { L.fade = f; this.smooth.set(L.key, f); },
     };
     this.smooth.jump(L.key, L.fade);
@@ -286,6 +291,8 @@ class Game {
       { id: "night6",   group: "6th Night",    name: "string", x: 110,   y: 265,    show: this.progress.beat5 && !Global.storyOnly() },
       { id: "custom",   group: "Custom Night", name: "string", x: 125,   y: 290,    show: !Global.storyOnly() },
     ];
+    // DEMO (before Oct 31, see Demo in global.js): only Dine In and Night 1
+    if (Demo.on()) return items.filter(i => i.id === "dine" || i.id === "new");
     return items.filter(i => i.show);
   }
 
@@ -298,7 +305,8 @@ class Game {
   save() { if (!settings.debug) saveProgress(this.file, this.progress); }
 
   // First screen after loading
-  boot() {
+  async boot() {
+    await Demo.check();                 // server time + who is signed in (demo or full game)
     this.showTitle();
     // a 1 in 1000 surprise when the game opens: eyes stare at you for 10 seconds
     if (chance(1000)) {
@@ -316,6 +324,7 @@ class Game {
     const p = this.progress;
     const extras = !Global.storyOnly();      // story mode only: never land on a hidden item
     this.selected = extras && p.beat6 ? "custom" : extras && p.beat5 ? "night6" : this.level === 1 ? "new" : "continue";
+    if (Demo.on()) { this.selected = "new"; this.level = 1; }      // demo: only Night 1
     this.hovered = null;
     this.settingsHover = false;
     this.face = 1;                      // which flickering face picture
@@ -377,6 +386,7 @@ class Game {
   }
 
   choose(id) {
+    if (Demo.on() && id !== "dine" && id !== "new") return;        // demo: nothing else
     if (id === "dine") return this.startSecret();
     if (id === "new") {
       this.level = 1;
@@ -411,6 +421,11 @@ class Game {
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
     ctx.fillStyle = this.achHover ? "#f7931e" : "#fff";
     ctx.fillText(ACH_WORD("Achievements") + "  " + got + "/" + ACHIEVEMENTS.length, 472, 305);
+    // DEMO tag + countdown in the top right corner
+    if (Demo.on()) {
+      ctx.textBaseline = "top"; ctx.font = '10px "Share Tech Mono"'; ctx.fillStyle = "#f7931e";
+      ctx.fillText(ACH_WORD("DEMO") + "  ·  " + ACH_WORD("full game in") + " " + Demo.left(), 472, 8);
+    }
     ctx.restore();
   }
 
@@ -1448,6 +1463,7 @@ class Game {
     // achievements for surviving
     if (L <= 6) this.unlock("night" + L);
     if (this.n && this.n.power >= 300) this.unlock("frugal");
+    if (Demo.on()) return this.demoEnd();          // demo: Night 1 is the end
     if (L < 5) { this.level = L + 1; return this.startIntro(); }
     if (L === 5) { this.progress.beat5 = true; return this.ending("beat5"); }
     if (L === 6) { this.progress.beat6 = true; return this.ending("beat6"); }
@@ -1456,6 +1472,30 @@ class Game {
     if (ai.freddy > 19 && ai.bonnie > 19 && ai.chica > 19 && ai.foxy > 19) { this.progress.beat420 = true; this.unlock("max"); }
     if (ai.freddy <= 3 && ai.bonnie <= 3 && ai.chica <= 3 && ai.foxy <= 3) this.unlock("easy");
     return this.ending("pink slip");
+  }
+
+  // DEMO: after Night 1, "end of the demo" with the countdown, then the title
+  demoEnd() {
+    this.save();
+    this.go("black");
+    const card = this.overlay(null, null, { fade: 0, paint: ctx => {
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
+      ctx.textAlign = "center"; ctx.fillStyle = "#fff";
+      ctx.font = '22px "VCR OSD Mono"'; ctx.fillText(ACH_WORD("END OF THE DEMO"), 240, 140);
+      ctx.font = '12px "Share Tech Mono"';
+      ctx.fillText(ACH_WORD("Thanks for playing Night 1!"), 240, 172);
+      ctx.fillText(ACH_WORD("The full game opens") + " " + Demo.releaseText, 240, 194);
+      ctx.fillStyle = "#f7931e"; ctx.fillText(Demo.left(), 240, 222);
+      ctx.fillStyle = "#777"; ctx.font = '9px "Share Tech Mono"'; ctx.fillText(ACH_WORD("click to go back"), 240, 300);
+    } });
+    this.scripts.run("ending", function* () {
+      yield* this.fade(card, 1);
+      yield 1;
+      let t = 0;
+      yield () => (t += TICK) > 20 || this.clicks.length > 0;
+      yield* this.fade(card, 0);
+      this.showTitle();
+    }.call(this));
   }
 
   // The paycheck / pink slip screens after nights 5, 6 and 7

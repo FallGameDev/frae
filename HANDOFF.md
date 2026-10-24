@@ -98,6 +98,14 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Mods on the account: `TapeMods(key)` reads/writes a tape's mod store from outside the game (same layout as ModDB). One zip per mod (mod.json + files/) in private bucket `mods/<user id>/<tape>-<mod id>.zip` + a row in `mods`. CREATED = manifest author equals the username, else INSTALLED.
 - makeZip/readZip moved from ui.js into global.js.
 
+## Demo (until the release)
+- `DEMO` / `Demo` in tools/global.js: until `DEMO.until` (2026-10-31 4:15 PM EDT) the game is a demo, unless signed in as a `DEMO.bypass` username (FallGameDev, Jfor; any capitals). `Demo.check()` (awaited by both tapes' `boot()` and the menu) takes the clock from the web server's Date header and re-asks Supabase for the profile (a fake/expired session = no bypass); 4 s max. `Demo.on()`, `Demo.left()` (countdown), `Demo.recheck()` (menu runs it when Settings closes).
+- Tape 1: `menuItems()` shows only Dine In + New Game, beating Night 1 goes to `demoEnd()` (END OF THE DEMO card + countdown), DEMO countdown top right of the title. Tape 1 overlays now also take `paint` like Tape 2.
+- Tape 2: `boot()` -> `demoLocked()` (TAPE 2 IS NOT OUT YET + countdown, click = back to the menu).
+- Menu: `applyDemo()` (every 30 s): Tape 1 tag "DEMO: NIGHT 1 + DINE IN", later tapes greyed with "OUT IN ..." and an OCT 31 button (`game.demoLocked`).
+- After release day all of this switches itself off; it can be deleted later.
+- Client-side only: it stops normal players, not someone editing the page.
+
 ## Workshop (`workshop/index.html`, shared by both tapes)
 - Opened from Settings > Mods > LOAD PACKED > WORKSHOP in either tape (`#workshopBtn`, wired in ui.js): `../workshop/?tape=N&back=<game page>`; BACK returns to that game page (same-site paths only), which reloads and applies mods.
 - Anyone can BROWSE (tape filter, search by name/author, newest/popular) and INSTALL (download from the public `workshop` bucket into that tape's Downloaded list as mod id `ws-<workshop id>`, source `{type: "workshop", id, updated}`; UPDATE shows when the files changed). Mods with code ask first. Parental "block mods" disables installing.

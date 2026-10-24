@@ -1030,6 +1030,68 @@ const Cloud = {
 };
 Cloud.loadSession();
 
+/* =====================================================================
+   DEMO (until the release on October 31, 2026 at 4:15 PM Eastern)
+   Before the release, only the demo can be played:
+     Tape 1: Night 1 and Dine In. Tape 2: locked.
+   Signed in as one of the BYPASS accounts = the whole game.
+   - Demo.on()     true while the demo is in force for this player
+   - Demo.check()  call once on load (the menu and both tapes do): fixes the
+                   clock with the web server's time and asks Supabase who is
+                   really signed in (a copied/edited profile doesn't count)
+   - Demo.left()   "6d 4h 12m" until the release
+   Note: everything here runs in the player's browser, so a determined
+   player can still get around it. It stops normal players, not hackers.
+   ===================================================================== */
+const DEMO = {
+  until: Date.parse("2026-10-31T16:15:00-04:00"),   // Oct 31, 4:15 PM in Florida (EDT)
+  bypass: ["fallgamedev", "jfor"],                   // usernames (any capitals) that can play everything
+};
+const Demo = {
+  offset: 0,         // server time minus this device's time (ms)
+  verified: null,    // true = Supabase confirmed the profile, false = the session is fake/expired, null = not checked
+  checking: null,
+
+  now() { return Date.now() + this.offset; },
+  released() { return this.now() >= DEMO.until; },
+  // signed in as FallGameDev or Jfor (and Supabase didn't say otherwise)
+  owner() {
+    const u = Cloud.signedIn() && Cloud.profile && Cloud.profile.username;
+    return !!u && DEMO.bypass.includes(String(u).toLowerCase()) && this.verified !== false;
+  },
+  on() { return !this.released() && !this.owner(); },
+  // time left, in words
+  left() {
+    let s = Math.max(0, Math.floor((DEMO.until - this.now()) / 1000));
+    const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+    return d ? `${d}d ${h}h ${m}m` : h ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
+  },
+  releaseText: "October 31 at 4:15 PM (Eastern)",
+
+  check() {
+    if (this.checking) return this.checking;
+    const work = (async () => {
+      // 1. the web server's clock (changing the computer's clock doesn't unlock it)
+      try {
+        const t0 = Date.now();
+        const r = await fetch(location.href.split("#")[0], { method: "HEAD", cache: "no-store" });
+        const server = Date.parse(r.headers.get("Date"));
+        if (server) this.offset = server - (t0 + Date.now()) / 2;
+      } catch (e) {}
+      // 2. who is signed in, asked to Supabase with the real session
+      if (Cloud.ready() && Cloud.signedIn()) {
+        try { await Cloud.loadProfile(); this.verified = true; }
+        catch (e) { if (e.status === 401 || e.status === 403 || /signed out/i.test(e.message)) this.verified = false; }
+      }
+    })();
+    // never hold the game up more than 4 seconds (offline, slow network...)
+    this.checking = Promise.race([work, new Promise(r => setTimeout(r, 4000))]);
+    return this.checking;
+  },
+  // after signing in or out (menu Settings), check again
+  recheck() { this.checking = null; this.verified = null; return this.check(); },
+};
+
 // Supabase error words -> plain words for players
 function friendlyError(msg) {
   const m = String(msg);

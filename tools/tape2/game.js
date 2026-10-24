@@ -354,7 +354,30 @@ class Game {
   save() { if (!settings.debug) saveProgress(this.file, this.progress); }
 
   // (Tape 2 asks about sensitive content first, once per save file unless they say otherwise: warning.js)
-  boot() { if (needsWarning(this.file)) showWarning(() => this.showTitle()); else this.showTitle(); }
+  async boot() {
+    await Demo.check();                 // server time + who is signed in (see Demo in global.js)
+    if (Demo.on()) return this.demoLocked();
+    if (needsWarning(this.file)) showWarning(() => this.showTitle()); else this.showTitle();
+  }
+
+  // DEMO (before Oct 31): Tape 2 isn't out yet. A countdown, and any click goes back to the menu.
+  demoLocked() {
+    this.go("black");
+    Sound.stopAll();
+    const card = this.overlay(null, null, { fade: 0, paint: ctx => {
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
+      this.text(ctx, W("Demo", "TAPE 2 IS NOT OUT YET"), 240, 140, { size: 20, align: "center", font: "VCR OSD Mono" });
+      this.text(ctx, W("Demo", "It opens") + " " + Demo.releaseText, 240, 174, { size: 12, align: "center" });
+      this.text(ctx, Demo.left(), 240, 206, { size: 16, align: "center", color: "#ffcf3f" });
+      this.text(ctx, W("Demo", "The Tape 1 demo is on the menu."), 240, 238, { size: 10, align: "center", color: "#aaa" });
+      this.text(ctx, W("Demo", "click to go back"), 240, 300, { size: 9, align: "center", color: "#777" });
+    } });
+    this.scripts.run("demo", function* () {
+      yield* this.fade(card, 1, 20);
+      yield () => this.clicks.length > 0 || this.keys.length > 0;
+      location.href = "../";
+    }.call(this));
+  }
 
   menuItems() {
     const items = [

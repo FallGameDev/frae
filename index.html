@@ -228,6 +228,12 @@
   .card.locked .right h2, .card.locked .right p, .card.locked .right .tag { color: #333342; text-shadow: none; }
   .card.locked .right p::before { color: #222230; }
 
+  /* DEMO (before Oct 31): Tape 2 looks locked but keeps its name; Tape 1's tag says DEMO */
+  .card.demo .start { background: #0d0d14; border-color: #2b2b38; color: #ffcf3f; box-shadow: 0 7px 0 #000; cursor: not-allowed; font-size: .8em; }
+  .card.demo .start .soul { display: none; }
+  .card.demo .thumb { filter: grayscale(1) brightness(.45); }
+  .tag.demotag { color: #f7931e !important; }
+
   /* Shake when trying to start a locked game */
   .shake { animation: shake .35s; }
   @keyframes shake { 25% { margin-left: -10px; } 75% { margin-left: 10px; } }
@@ -655,8 +661,8 @@
     const game = GAMES[current];
     const card = cards[current];
 
-    if (!game.unlocked) {
-      // Locked: shake + low buzz
+    if (!game.unlocked || game.demoLocked) {
+      // Locked (or not out yet in the demo): shake + low buzz
       card.classList.remove("shake");
       void card.offsetWidth;              // restarts the animation
       card.classList.add("shake");
@@ -813,6 +819,7 @@
     parentalOpen = false;            // the PIN is asked again next time
     beep(440, .05);
     showFiles(); showGear();
+    Demo.recheck().then(applyDemo);  // signing in or out can turn the demo on or off
   }
   document.getElementById("sclose").onclick = closeSettings;
   document.getElementById("settings").addEventListener("click", e => { if (e.target.id === "settings") closeSettings(); });
@@ -1173,6 +1180,29 @@
       } catch (e) { console.warn("Sync failed", e); }
     }
   })();
+
+  /* ---------- DEMO (see Demo in tools/global.js) ----------
+     Before Oct 31 at 4:15 PM: Tape 1 = demo (Night 1 + Dine In), Tape 2 = not out yet.
+     Signed in as FallGameDev or Jfor = everything. Runs again after Settings closes
+     (signing in or out changes it) and every minute for the countdown. */
+  const demoText = GAMES.map(g => ({ tag: g.tag, desc: g.desc }));
+  function applyDemo() {
+    const on = Demo.on();
+    GAMES.forEach((g, i) => {
+      if (!g.unlocked) return;
+      const card = cards[i], tag = card.querySelector(".tag"), p = card.querySelector(".right p"), btn = card.querySelector(".start");
+      const notOut = on && i > 0;                // every tape after the first waits for the release
+      g.demoLocked = notOut;
+      card.classList.toggle("demo", notOut);
+      tag.classList.toggle("demotag", on);
+      tag.textContent = on ? (i === 0 ? "DEMO: NIGHT 1 + DINE IN" : "OUT IN " + Demo.left()) : demoText[i].tag;
+      p.textContent = notOut ? "Opens " + Demo.releaseText + "." : demoText[i].desc;
+      btn.innerHTML = SOUL_SVG + (notOut ? "OCT 31" : "START");
+    });
+  }
+  applyDemo();
+  Demo.check().then(applyDemo);
+  setInterval(applyDemo, 30000);
 
   layout();
 </script>

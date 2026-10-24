@@ -72,5 +72,6 @@
  {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."},
  {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."},
  {"date": "2026-10-23", "tapes": [1, 2], "text": "New Font setting (menu Settings > Visuals, and each tape's Settings): Original, Dyslexic (OpenDyslexic) and whoo hoo super mario on the ps4 (every word memified). It changes words only, never pictures."},
- {"date": "2026-10-23", "tapes": [2], "text": "Tape 2: beating a night now shows a Windows XP pop-up that bounces around the screen like the Solitaire win. Hit its yay button (good luck) to skip it and get a secret achievement."}
+ {"date": "2026-10-23", "tapes": [2], "text": "Tape 2: beating a night now shows a Windows XP pop-up that bounces around the screen like the Solitaire win. Hit its yay button (good luck) to skip it and get a secret achievement."},
+ {"date": "2026-10-24", "tapes": [1, 2], "text": "Demo until October 31 at 4:15 PM: Tape 1 has Night 1 and Dine In, and Tape 2 shows a countdown. Everything opens on release day."}
 ]

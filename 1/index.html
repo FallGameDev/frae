@@ -1324,6 +1324,68 @@ const Cloud = {
 };
 Cloud.loadSession();
 
+/* =====================================================================
+   DEMO (until the release on October 31, 2026 at 4:15 PM Eastern)
+   Before the release, only the demo can be played:
+     Tape 1: Night 1 and Dine In. Tape 2: locked.
+   Signed in as one of the BYPASS accounts = the whole game.
+   - Demo.on()     true while the demo is in force for this player
+   - Demo.check()  call once on load (the menu and both tapes do): fixes the
+                   clock with the web server's time and asks Supabase who is
+                   really signed in (a copied/edited profile doesn't count)
+   - Demo.left()   "6d 4h 12m" until the release
+   Note: everything here runs in the player's browser, so a determined
+   player can still get around it. It stops normal players, not hackers.
+   ===================================================================== */
+const DEMO = {
+  until: Date.parse("2026-10-31T16:15:00-04:00"),   // Oct 31, 4:15 PM in Florida (EDT)
+  bypass: ["fallgamedev", "jfor"],                   // usernames (any capitals) that can play everything
+};
+const Demo = {
+  offset: 0,         // server time minus this device's time (ms)
+  verified: null,    // true = Supabase confirmed the profile, false = the session is fake/expired, null = not checked
+  checking: null,
+
+  now() { return Date.now() + this.offset; },
+  released() { return this.now() >= DEMO.until; },
+  // signed in as FallGameDev or Jfor (and Supabase didn't say otherwise)
+  owner() {
+    const u = Cloud.signedIn() && Cloud.profile && Cloud.profile.username;
+    return !!u && DEMO.bypass.includes(String(u).toLowerCase()) && this.verified !== false;
+  },
+  on() { return !this.released() && !this.owner(); },
+  // time left, in words
+  left() {
+    let s = Math.max(0, Math.floor((DEMO.until - this.now()) / 1000));
+    const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+    return d ? `${d}d ${h}h ${m}m` : h ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
+  },
+  releaseText: "October 31 at 4:15 PM (Eastern)",
+
+  check() {
+    if (this.checking) return this.checking;
+    const work = (async () => {
+      // 1. the web server's clock (changing the computer's clock doesn't unlock it)
+      try {
+        const t0 = Date.now();
+        const r = await fetch(location.href.split("#")[0], { method: "HEAD", cache: "no-store" });
+        const server = Date.parse(r.headers.get("Date"));
+        if (server) this.offset = server - (t0 + Date.now()) / 2;
+      } catch (e) {}
+      // 2. who is signed in, asked to Supabase with the real session
+      if (Cloud.ready() && Cloud.signedIn()) {
+        try { await Cloud.loadProfile(); this.verified = true; }
+        catch (e) { if (e.status === 401 || e.status === 403 || /signed out/i.test(e.message)) this.verified = false; }
+      }
+    })();
+    // never hold the game up more than 4 seconds (offline, slow network...)
+    this.checking = Promise.race([work, new Promise(r => setTimeout(r, 4000))]);
+    return this.checking;
+  },
+  // after signing in or out (menu Settings), check again
+  recheck() { this.checking = null; this.verified = null; return this.check(); },
+};
+
 // Supabase error words -> plain words for players
 function friendlyError(msg) {
   const m = String(msg);
@@ -1339,7 +1401,7 @@ function friendlyError(msg) {
 }
 
 
-const DEVLOG = [{"date": "2026-10-14", "tapes": [1], "text": "Fried Rice at Eddie's is playable in the browser, with a game select menu."}, {"date": "2026-10-14", "tapes": [1], "text": "The title music stops when a night starts, and the bottom button bar is gone."}, {"date": "2026-10-14", "tapes": [1], "text": "Spinning rice bowl loading screen that starts by itself."}, {"date": "2026-10-14", "tapes": [1], "text": "Mods, a new Settings screen, a new menu font and real text on the custom night."}, {"date": "2026-10-14", "tapes": [1], "text": "Full character drawings everywhere, with the faces as their own files."}, {"date": "2026-10-14", "tapes": [1], "text": "Mod template: every picture as a PNG, and mods can use any image type."}, {"date": "2026-10-14", "tapes": [1], "text": "The fan-made cast is used everywhere, and the animation is smoother."}, {"date": "2026-10-14", "tapes": [1], "text": "Smooth movement, turning, resizing and fading (like TurboWarp)."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole game was rewritten by hand as a real browser game (no Scratch converter)."}, {"date": "2026-10-15", "tapes": [1], "text": "New tab icons: the rice bowl for the menu, Eddie for this tape."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole box around SETTINGS can be clicked."}, {"date": "2026-10-15", "tapes": [1], "text": "Three save files, picked on the menu. Mods are saved in the browser."}, {"date": "2026-10-15", "tapes": [1], "text": "New phone calls for nights 1 to 4, with a ringtone before each call."}, {"date": "2026-10-15", "tapes": [1], "text": "iPhone-style call banner with a green caller circle."}, {"date": "2026-10-15", "tapes": [1], "text": "Steam-style achievements (saved per file), and the camera name shows on the monitor."}, {"date": "2026-10-15", "tapes": [1], "text": "Child's Play achievement (custom night with everyone on 3 or lower) and a BACK button on the custom night."}, {"date": "2026-10-15", "tapes": [1], "text": "Debug mode: no saving and no achievements while it is on."}, {"date": "2026-10-15", "tapes": [1], "text": "The custom night is always on the title menu. Night 6 still needs nights 1 to 5 beaten."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."}];
+const DEVLOG = [{"date": "2026-10-14", "tapes": [1], "text": "Fried Rice at Eddie's is playable in the browser, with a game select menu."}, {"date": "2026-10-14", "tapes": [1], "text": "The title music stops when a night starts, and the bottom button bar is gone."}, {"date": "2026-10-14", "tapes": [1], "text": "Spinning rice bowl loading screen that starts by itself."}, {"date": "2026-10-14", "tapes": [1], "text": "Mods, a new Settings screen, a new menu font and real text on the custom night."}, {"date": "2026-10-14", "tapes": [1], "text": "Full character drawings everywhere, with the faces as their own files."}, {"date": "2026-10-14", "tapes": [1], "text": "Mod template: every picture as a PNG, and mods can use any image type."}, {"date": "2026-10-14", "tapes": [1], "text": "The fan-made cast is used everywhere, and the animation is smoother."}, {"date": "2026-10-14", "tapes": [1], "text": "Smooth movement, turning, resizing and fading (like TurboWarp)."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole game was rewritten by hand as a real browser game (no Scratch converter)."}, {"date": "2026-10-15", "tapes": [1], "text": "New tab icons: the rice bowl for the menu, Eddie for this tape."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole box around SETTINGS can be clicked."}, {"date": "2026-10-15", "tapes": [1], "text": "Three save files, picked on the menu. Mods are saved in the browser."}, {"date": "2026-10-15", "tapes": [1], "text": "New phone calls for nights 1 to 4, with a ringtone before each call."}, {"date": "2026-10-15", "tapes": [1], "text": "iPhone-style call banner with a green caller circle."}, {"date": "2026-10-15", "tapes": [1], "text": "Steam-style achievements (saved per file), and the camera name shows on the monitor."}, {"date": "2026-10-15", "tapes": [1], "text": "Child's Play achievement (custom night with everyone on 3 or lower) and a BACK button on the custom night."}, {"date": "2026-10-15", "tapes": [1], "text": "Debug mode: no saving and no achievements while it is on."}, {"date": "2026-10-15", "tapes": [1], "text": "The custom night is always on the title menu. Night 6 still needs nights 1 to 5 beaten."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "New Font setting (menu Settings > Visuals, and each tape's Settings): Original, Dyslexic (OpenDyslexic) and whoo hoo super mario on the ps4 (every word memified). It changes words only, never pictures."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Demo until October 31 at 4:15 PM: Tape 1 has Night 1 and Dine In, and Tape 2 shows a countdown. Everything opens on release day."}];
 
 /* =====================================================================
    PICTURES AND SOUNDS
@@ -2860,8 +2922,13 @@ class Game {
   // Adds a picture that covers the screen, with its own fade (0 = see-through, 1 = solid)
   overlay(group, name, o = {}) {
     const L = {
-      pic: pic(group, name), x: o.x ?? 240, y: o.y ?? 180, size: o.size || 100, fade: o.fade ?? 1, key: "ov" + Math.random(),
-      draw: (ctx, a) => draw(ctx, L.pic, L.x, L.y, { size: L.size, alpha: this.smooth.at(L.key, a) }),
+      pic: group ? pic(group, name) : null, x: o.x ?? 240, y: o.y ?? 180, size: o.size || 100, fade: o.fade ?? 1, key: "ov" + Math.random(),
+      paint: o.paint,                   // optional: a drawing function instead of a picture (like Tape 2)
+      draw: (ctx, a) => {
+        const f = this.smooth.at(L.key, a);
+        if (L.paint) { ctx.save(); ctx.globalAlpha *= f; L.paint(ctx, a); ctx.restore(); }
+        else draw(ctx, L.pic, L.x, L.y, { size: L.size, alpha: f });
+      },
       setFade: f => { L.fade = f; this.smooth.set(L.key, f); },
     };
     this.smooth.jump(L.key, L.fade);
@@ -2900,6 +2967,8 @@ class Game {
       { id: "night6",   group: "6th Night",    name: "string", x: 110,   y: 265,    show: this.progress.beat5 && !Global.storyOnly() },
       { id: "custom",   group: "Custom Night", name: "string", x: 125,   y: 290,    show: !Global.storyOnly() },
     ];
+    // DEMO (before Oct 31, see Demo in global.js): only Dine In and Night 1
+    if (Demo.on()) return items.filter(i => i.id === "dine" || i.id === "new");
     return items.filter(i => i.show);
   }
 
@@ -2912,7 +2981,8 @@ class Game {
   save() { if (!settings.debug) saveProgress(this.file, this.progress); }
 
   // First screen after loading
-  boot() {
+  async boot() {
+    await Demo.check();                 // server time + who is signed in (demo or full game)
     this.showTitle();
     // a 1 in 1000 surprise when the game opens: eyes stare at you for 10 seconds
     if (chance(1000)) {
@@ -2930,6 +3000,7 @@ class Game {
     const p = this.progress;
     const extras = !Global.storyOnly();      // story mode only: never land on a hidden item
     this.selected = extras && p.beat6 ? "custom" : extras && p.beat5 ? "night6" : this.level === 1 ? "new" : "continue";
+    if (Demo.on()) { this.selected = "new"; this.level = 1; }      // demo: only Night 1
     this.hovered = null;
     this.settingsHover = false;
     this.face = 1;                      // which flickering face picture
@@ -2991,6 +3062,7 @@ class Game {
   }
 
   choose(id) {
+    if (Demo.on() && id !== "dine" && id !== "new") return;        // demo: nothing else
     if (id === "dine") return this.startSecret();
     if (id === "new") {
       this.level = 1;
@@ -3025,6 +3097,11 @@ class Game {
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
     ctx.fillStyle = this.achHover ? "#f7931e" : "#fff";
     ctx.fillText(ACH_WORD("Achievements") + "  " + got + "/" + ACHIEVEMENTS.length, 472, 305);
+    // DEMO tag + countdown in the top right corner
+    if (Demo.on()) {
+      ctx.textBaseline = "top"; ctx.font = '10px "Share Tech Mono"'; ctx.fillStyle = "#f7931e";
+      ctx.fillText(ACH_WORD("DEMO") + "  ·  " + ACH_WORD("full game in") + " " + Demo.left(), 472, 8);
+    }
     ctx.restore();
   }
 
@@ -4062,6 +4139,7 @@ class Game {
     // achievements for surviving
     if (L <= 6) this.unlock("night" + L);
     if (this.n && this.n.power >= 300) this.unlock("frugal");
+    if (Demo.on()) return this.demoEnd();          // demo: Night 1 is the end
     if (L < 5) { this.level = L + 1; return this.startIntro(); }
     if (L === 5) { this.progress.beat5 = true; return this.ending("beat5"); }
     if (L === 6) { this.progress.beat6 = true; return this.ending("beat6"); }
@@ -4070,6 +4148,30 @@ class Game {
     if (ai.freddy > 19 && ai.bonnie > 19 && ai.chica > 19 && ai.foxy > 19) { this.progress.beat420 = true; this.unlock("max"); }
     if (ai.freddy <= 3 && ai.bonnie <= 3 && ai.chica <= 3 && ai.foxy <= 3) this.unlock("easy");
     return this.ending("pink slip");
+  }
+
+  // DEMO: after Night 1, "end of the demo" with the countdown, then the title
+  demoEnd() {
+    this.save();
+    this.go("black");
+    const card = this.overlay(null, null, { fade: 0, paint: ctx => {
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 480, 360);
+      ctx.textAlign = "center"; ctx.fillStyle = "#fff";
+      ctx.font = '22px "VCR OSD Mono"'; ctx.fillText(ACH_WORD("END OF THE DEMO"), 240, 140);
+      ctx.font = '12px "Share Tech Mono"';
+      ctx.fillText(ACH_WORD("Thanks for playing Night 1!"), 240, 172);
+      ctx.fillText(ACH_WORD("The full game opens") + " " + Demo.releaseText, 240, 194);
+      ctx.fillStyle = "#f7931e"; ctx.fillText(Demo.left(), 240, 222);
+      ctx.fillStyle = "#777"; ctx.font = '9px "Share Tech Mono"'; ctx.fillText(ACH_WORD("click to go back"), 240, 300);
+    } });
+    this.scripts.run("ending", function* () {
+      yield* this.fade(card, 1);
+      yield 1;
+      let t = 0;
+      yield () => (t += TICK) > 20 || this.clicks.length > 0;
+      yield* this.fade(card, 0);
+      this.showTitle();
+    }.call(this));
   }
 
   // The paycheck / pink slip screens after nights 5, 6 and 7
