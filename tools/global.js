@@ -1045,7 +1045,7 @@ Cloud.loadSession();
    ===================================================================== */
 const DEMO = {
   until: Date.parse("2026-10-31T16:15:00-04:00"),   // Oct 31, 4:15 PM in Florida (EDT)
-  bypass: ["fallgamedev", "jfor"],                   // usernames (any capitals) that can play everything
+  bypass: ["fallgamedev", "jfor", "omizio"],         // usernames (any capitals) that can play everything
 };
 const Demo = {
   offset: 0,         // server time minus this device's time (ms)
