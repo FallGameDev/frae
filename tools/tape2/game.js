@@ -185,8 +185,10 @@ const PHONE_ICON = new Path2D("M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2
    --------------------------------------------------------------------- */
 const SAVE_FILES = 3;
 const saveKey = file => "frae2-save-file" + file;
+const TAPE = 2;                                  // this tape's number (Story Mode)
 
 function fileFromUrl() {
+  if (Story.on) return "story";                 // Story Mode keeps its own local file (frae2-save-filestory)
   const f = Number(new URLSearchParams(location.search).get("file"));
   return Number.isInteger(f) && f >= 1 && f <= SAVE_FILES ? f : null;
 }
@@ -356,8 +358,34 @@ class Game {
   // (Tape 2 asks about sensitive content first, once per save file unless they say otherwise: warning.js)
   async boot() {
     await Demo.check();                 // server time + who is signed in (see Demo in global.js)
+    if (Story.on) { const go = () => this.storyBoot(); return needsWarning(this.file) ? showWarning(go) : go(); }
     if (Demo.on()) return this.demoLocked();
     if (needsWarning(this.file)) showWarning(() => this.showTitle()); else this.showTitle();
+  }
+
+  /* =================================================================
+     STORY MODE (?save=story&data=N, see Story in tools/global.js)
+     No title screen: the night in data starts right away (7 = custom
+     night, picked on the custom screen). When the round ends (won, lost
+     or backed out) the pop-up asks: back to the hub, or continue / retry.
+     ================================================================= */
+  async storyBoot() {
+    this.go("black");
+    if (!(await Story.start(TAPE))) return;           // not signed in or not unlocked: back to the hub
+    this.storyWin = null;
+    this.died = false;
+    if (Story.night === 7) return this.showCustom();
+    this.level = Story.night;
+    this.startIntro();
+  }
+  // called instead of the title screen in Story Mode
+  storyDone() {
+    if (this.storyOver) return;
+    this.storyOver = true;
+    const quit = this.screen === "custom";             // backed out of the custom night screen
+    this.go("black");
+    Sound.stopAll();
+    Story.after(TAPE, !!this.storyWin, this.storyWin, quit);
   }
 
   // DEMO (before Oct 31): Tape 2 isn't out yet. A countdown, and any click goes back to the menu.
@@ -392,6 +420,7 @@ class Game {
   }
 
   showTitle() {
+    if (Story.on) return this.storyDone();      // Story Mode has no title screen
     this.go("title");
     Sound.stopAll();
     this.sp.music.setVolume(100);
@@ -1448,6 +1477,12 @@ class Game {
     const L = this.level, n = this.n;
     if (L <= 6) this.unlock("night" + L);
     if (n && n.battery >= 50) this.unlock("battery");
+    // Story Mode: the database adds EXP; nights 1-4 go straight to the pop-up, 5+ show their ending first
+    if (Story.on) {
+      this.storyWin = Story.win(TAPE, L);
+      this.storyWin.catch(() => {});
+      if (L < 5) return this.showTitle();
+    }
     if (L < 5) { this.level = L + 1; return this.startIntro(); }
     if (L === 5) { this.progress.beat5 = true; this.progress.night = 5; return this.ending("paycheck"); }
     if (L === 6) { this.progress.beat6 = true; return this.ending("check2"); }

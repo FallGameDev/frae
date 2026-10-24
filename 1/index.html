@@ -417,7 +417,7 @@ Global.load();
      - game text drawn on the canvas: fillText / strokeText / measureText are
        wrapped, so every word a tape (or a mod) draws follows the setting
    ===================================================================== */
-const FONT_ROOT = /\/(?:[1-9]|workshop)\/(?:index\.html)?$/.test(location.pathname) ? "../" : "./";
+const FONT_ROOT = /\/(?:[1-9]|story|workshop)\/(?:index\.html)?$/.test(location.pathname) ? "../" : "./";
 const DYS_FAMILY = '"OpenDyslexic", sans-serif';
 
 /* ---------------------------------------------------------------------
@@ -1047,7 +1047,7 @@ const Cloud = {
 
   /* ----- account ----- */
   // where email links send the player back to: the tape menu
-  home() { return location.origin + location.pathname.replace(/\/(1|2|3|4)\/(index\.html)?$/, "/").replace(/index\.html$/, ""); },
+  home() { return location.origin + location.pathname.replace(/\/(1|2|3|4|story|workshop)\/(index\.html)?$/, "/").replace(/index\.html$/, ""); },
   async usernameTaken(name) {
     return !!(await this.call("/rest/v1/rpc/username_taken", { method: "POST", json: { name }, auth: false }));
   },
@@ -1386,6 +1386,153 @@ const Demo = {
   recheck() { this.checking = null; this.verified = null; return this.check(); },
 };
 
+/* =====================================================================
+   STORY MODE (Tape 0 on the menu, the hub is story/index.html)
+   One path through the tapes: Tape 1 nights 1-5, then its 6th night and
+   custom night, then Tape 2 the same way. Each step opens the tape with
+     ?save=story&data=N     (N = night 1-5, 6 = 6th night, 7 = custom night)
+   Beating a night in Story Mode (and only there) gives EXP. EXP and
+   which nights are beaten live on the account (profiles.exp / .story,
+   changed only by the story_win database function: supabase/story.sql).
+   ===================================================================== */
+const STORY_TAPES = [
+  { tape: 1, name: "Eddie's Riceria" },
+  { tape: 2, name: "Outcome Memories" },
+];
+const STORY_NAMES = { 6: "6th Night", 7: "Custom Night" };
+const Story = {
+  // this page was opened as a Story Mode step?
+  on: new URLSearchParams(location.search).get("save") === "story",
+  night: Math.max(1, Math.min(7, Number(new URLSearchParams(location.search).get("data")) || 1)),
+  data: null,        // { exp, story } from the account
+  error: "",
+
+  nightName(n) { return STORY_NAMES[n] || "Night " + n; },
+  beaten(tape, night) { const b = this.data && this.data.story && this.data.story.beaten; return b ? (b[tape + "-" + night] || 0) : 0; },
+  // nights 1-5 open one after another; the 6th and custom nights both open after night 5;
+  // the next tape opens after the last tape's night 5. The demo only has Tape 1 Night 1.
+  unlocked(tape, night) {
+    if (Demo.on() && !(tape === 1 && night === 1)) return false;
+    if (night === 1) return tape === 1 || this.beaten(tape - 1, 5) > 0;
+    if (night >= 6) return this.beaten(tape, 5) > 0;
+    return this.beaten(tape, night - 1) > 0;
+  },
+  // the step after this one (or null at the very end)
+  next(tape, night) {
+    if (night < 6) return { tape, night: night + 1 };
+    if (night === 6) return { tape, night: 7 };
+    return STORY_TAPES.some(t => t.tape === tape + 1) ? { tape: tape + 1, night: 1 } : null;
+  },
+  // where a step lives (from the menu, the hub or a tape page)
+  url(tape, night) { return this.root() + tape + "/?save=story&data=" + night; },
+  hub() { return this.root() + "story/"; },
+  root() { return /\/(?:[1-9]|story|workshop)\/(?:index\.html)?$/.test(location.pathname) ? "../" : "./"; },
+
+  // EXP -> level (every level needs 100 more EXP than the last: 100, 200, 300...)
+  level(exp) {
+    let lv = 1, need = 100, left = exp || 0;
+    while (left >= need) { left -= need; lv++; need += 100; }
+    return { level: lv, into: left, need };
+  },
+
+  // read exp + story from the account. Returns the data, or null (this.error says why)
+  async load() {
+    this.error = "";
+    if (!Cloud.ready() || !Cloud.signedIn()) { this.error = "signin"; return null; }
+    try {
+      const rows = await Cloud.call("/rest/v1/profiles?select=username,exp,story&id=eq." + Cloud.uid());
+      if (!rows || !rows[0]) { this.error = "Your profile could not be found."; return null; }
+      this.data = { exp: rows[0].exp || 0, story: rows[0].story || {} };
+      return this.data;
+    } catch (e) {
+      // the columns don't exist until supabase/story.sql has been run
+      this.error = /exp|story|column/i.test(e.message) ? "setup" : e.message;
+      return null;
+    }
+  },
+  // a night was beaten in Story Mode: the database adds the EXP
+  async win(tape, night) {
+    const r = await Cloud.call("/rest/v1/rpc/story_win", { method: "POST", json: { tape, night } });
+    this.data = { exp: r.exp, story: r.story };
+    return r;
+  },
+
+  /* ----- the pop-up between rounds (plain HTML on top of the game) -----
+     choice({ title, lines: [text...], buttons: [{ id, text, main }] }) -> Promise of the picked id */
+  choice(o) {
+    return new Promise(done => {
+      const old = document.getElementById("storyChoice");
+      if (old) old.remove();
+      const box = document.createElement("div");
+      box.id = "storyChoice";
+      box.setAttribute("data-nomeme", "");
+      box.innerHTML = `<style>
+        #storyChoice { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+          background: rgba(0,0,0,.72); font-family: "VCR OSD Mono", "VT323", monospace; color: #fff; }
+        #storyChoice .sc { background: #000; border: 5px solid #fff; box-shadow: 10px 10px 0 #5b16ec; padding: 26px 30px;
+          width: min(92vw, 520px); text-align: center; }
+        #storyChoice h2 { font-size: 30px; letter-spacing: 2px; margin: 0 0 10px; text-shadow: 2px 0 rgba(255,0,60,.6), -2px 0 rgba(0,200,255,.6); }
+        #storyChoice p { font-size: 20px; margin: 6px 0; color: #ccc; }
+        #storyChoice p.exp { color: #ffcf3f; font-size: 24px; }
+        #storyChoice .row { display: flex; gap: 14px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+        #storyChoice button { font: inherit; font-size: 20px; padding: 12px 18px; cursor: pointer; color: #fff; background: #111;
+          border: 4px solid #fff; box-shadow: 0 6px 0 #444; min-width: 180px; }
+        #storyChoice button.main { background: #5b16ec; }
+        #storyChoice button:hover { filter: brightness(1.25); }
+        #storyChoice button:active { transform: translateY(4px); box-shadow: 0 2px 0 #444; }
+      </style>
+      <div class="sc"><h2></h2><div class="lines"></div><div class="row"></div></div>`;
+      box.querySelector("h2").textContent = o.title;
+      for (const l of o.lines || []) {
+        const p = document.createElement("p");
+        if (typeof l === "object") { p.textContent = l.text; p.className = l.cls || ""; } else p.textContent = l;
+        box.querySelector(".lines").append(p);
+      }
+      for (const b of o.buttons) {
+        const btn = document.createElement("button");
+        btn.textContent = b.text; if (b.main) btn.className = "main";
+        btn.onclick = () => { box.remove(); done(b.id); };
+        box.querySelector(".row").append(btn);
+      }
+      document.body.append(box);
+      (box.querySelector("button.main") || box.querySelector("button")).focus();
+    });
+  },
+
+  /* ----- used by both tapes ----- */
+  // Before a Story Mode step starts: signed in, unlocked, data ok? If not, back to the hub.
+  async start(tape) {
+    if (!Cloud.signedIn()) { location.href = this.hub(); return false; }
+    await this.load();
+    if (!this.data || !this.unlocked(tape, this.night)) { location.href = this.hub(); return false; }
+    return true;
+  },
+  // After a round ends. won = the night was beaten (EXP was asked for in winPromise)
+  async after(tape, won, winPromise, quit) {
+    const name = "Tape " + tape + " " + this.nightName(this.night);
+    if (!won) {
+      const pick = await this.choice({ title: quit ? "STORY MODE" : "GAME OVER", lines: [name],
+        buttons: [{ id: "hub", text: "BACK TO HUB" }, { id: "retry", text: "TRY AGAIN", main: true }] });
+      if (pick === "retry") location.reload(); else location.href = this.hub();
+      return;
+    }
+    const lines = [name + " complete!"];
+    try {
+      const r = await winPromise;
+      lines.push({ text: "+" + r.gained + " EXP" + (r.first ? "  (first clear!)" : ""), cls: "exp" });
+      const lv = this.level(r.exp);
+      lines.push("Level " + lv.level + "  ·  " + lv.into + " / " + lv.need + " EXP");
+    } catch (e) { lines.push("EXP could not be saved: " + e.message); }
+    const nx = this.next(tape, this.night);
+    const buttons = [{ id: "hub", text: "BACK TO HUB" }];
+    if (nx && this.unlocked(nx.tape, nx.night))
+      buttons.push({ id: "next", main: true, text: "CONTINUE: " + (nx.tape !== tape ? "TAPE " + nx.tape + " " : "") + this.nightName(nx.night).toUpperCase() });
+    else if (nx && Demo.on()) lines.push("The rest of Story Mode opens " + Demo.releaseText + ".");
+    const pick = await this.choice({ title: "NIGHT COMPLETE", lines, buttons });
+    location.href = pick === "next" ? this.url(nx.tape, nx.night) : this.hub();
+  },
+};
+
 // Supabase error words -> plain words for players
 function friendlyError(msg) {
   const m = String(msg);
@@ -1401,7 +1548,7 @@ function friendlyError(msg) {
 }
 
 
-const DEVLOG = [{"date": "2026-10-14", "tapes": [1], "text": "Fried Rice at Eddie's is playable in the browser, with a game select menu."}, {"date": "2026-10-14", "tapes": [1], "text": "The title music stops when a night starts, and the bottom button bar is gone."}, {"date": "2026-10-14", "tapes": [1], "text": "Spinning rice bowl loading screen that starts by itself."}, {"date": "2026-10-14", "tapes": [1], "text": "Mods, a new Settings screen, a new menu font and real text on the custom night."}, {"date": "2026-10-14", "tapes": [1], "text": "Full character drawings everywhere, with the faces as their own files."}, {"date": "2026-10-14", "tapes": [1], "text": "Mod template: every picture as a PNG, and mods can use any image type."}, {"date": "2026-10-14", "tapes": [1], "text": "The fan-made cast is used everywhere, and the animation is smoother."}, {"date": "2026-10-14", "tapes": [1], "text": "Smooth movement, turning, resizing and fading (like TurboWarp)."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole game was rewritten by hand as a real browser game (no Scratch converter)."}, {"date": "2026-10-15", "tapes": [1], "text": "New tab icons: the rice bowl for the menu, Eddie for this tape."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole box around SETTINGS can be clicked."}, {"date": "2026-10-15", "tapes": [1], "text": "Three save files, picked on the menu. Mods are saved in the browser."}, {"date": "2026-10-15", "tapes": [1], "text": "New phone calls for nights 1 to 4, with a ringtone before each call."}, {"date": "2026-10-15", "tapes": [1], "text": "iPhone-style call banner with a green caller circle."}, {"date": "2026-10-15", "tapes": [1], "text": "Steam-style achievements (saved per file), and the camera name shows on the monitor."}, {"date": "2026-10-15", "tapes": [1], "text": "Child's Play achievement (custom night with everyone on 3 or lower) and a BACK button on the custom night."}, {"date": "2026-10-15", "tapes": [1], "text": "Debug mode: no saving and no achievements while it is on."}, {"date": "2026-10-15", "tapes": [1], "text": "The custom night is always on the title menu. Night 6 still needs nights 1 to 5 beaten."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "New Font setting (menu Settings > Visuals, and each tape's Settings): Original, Dyslexic (OpenDyslexic) and whoo hoo super mario on the ps4 (every word memified). It changes words only, never pictures."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Demo until October 31 at 4:15 PM: Tape 1 has Night 1 and Dine In, and Tape 2 shows a countdown. Everything opens on release day."}];
+const DEVLOG = [{"date": "2026-10-14", "tapes": [1], "text": "Fried Rice at Eddie's is playable in the browser, with a game select menu."}, {"date": "2026-10-14", "tapes": [1], "text": "The title music stops when a night starts, and the bottom button bar is gone."}, {"date": "2026-10-14", "tapes": [1], "text": "Spinning rice bowl loading screen that starts by itself."}, {"date": "2026-10-14", "tapes": [1], "text": "Mods, a new Settings screen, a new menu font and real text on the custom night."}, {"date": "2026-10-14", "tapes": [1], "text": "Full character drawings everywhere, with the faces as their own files."}, {"date": "2026-10-14", "tapes": [1], "text": "Mod template: every picture as a PNG, and mods can use any image type."}, {"date": "2026-10-14", "tapes": [1], "text": "The fan-made cast is used everywhere, and the animation is smoother."}, {"date": "2026-10-14", "tapes": [1], "text": "Smooth movement, turning, resizing and fading (like TurboWarp)."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole game was rewritten by hand as a real browser game (no Scratch converter)."}, {"date": "2026-10-15", "tapes": [1], "text": "New tab icons: the rice bowl for the menu, Eddie for this tape."}, {"date": "2026-10-15", "tapes": [1], "text": "The whole box around SETTINGS can be clicked."}, {"date": "2026-10-15", "tapes": [1], "text": "Three save files, picked on the menu. Mods are saved in the browser."}, {"date": "2026-10-15", "tapes": [1], "text": "New phone calls for nights 1 to 4, with a ringtone before each call."}, {"date": "2026-10-15", "tapes": [1], "text": "iPhone-style call banner with a green caller circle."}, {"date": "2026-10-15", "tapes": [1], "text": "Steam-style achievements (saved per file), and the camera name shows on the monitor."}, {"date": "2026-10-15", "tapes": [1], "text": "Child's Play achievement (custom night with everyone on 3 or lower) and a BACK button on the custom night."}, {"date": "2026-10-15", "tapes": [1], "text": "Debug mode: no saving and no achievements while it is on."}, {"date": "2026-10-15", "tapes": [1], "text": "The custom night is always on the title menu. Night 6 still needs nights 1 to 5 beaten."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "New Font setting (menu Settings > Visuals, and each tape's Settings): Original, Dyslexic (OpenDyslexic) and whoo hoo super mario on the ps4 (every word memified). It changes words only, never pictures."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Demo until October 31 at 4:15 PM: Tape 1 has Night 1 and Dine In, and Tape 2 shows a countdown. Everything opens on release day."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Story Mode (Tape 0 on the menu): play every tape in order on one path, nights 1 to 5 then the 6th night and custom night. Beat nights to earn EXP and level up your account."}];
 
 /* =====================================================================
    PICTURES AND SOUNDS
@@ -2781,9 +2928,11 @@ const NIGHT_AI = {
    --------------------------------------------------------------------- */
 const SAVE_FILES = 3;
 const saveKey = file => "frae1-save-file" + file;
+const TAPE = 1;                                  // this tape's number (Story Mode)
 
 // The file number from the address (?file=1, 2 or 3), or null if it is missing or not 1-3
 function fileFromUrl() {
+  if (Story.on) return "story";                 // Story Mode keeps its own local file (frae1-save-filestory)
   const f = Number(new URLSearchParams(location.search).get("file"));
   return Number.isInteger(f) && f >= 1 && f <= SAVE_FILES ? f : null;
 }
@@ -2983,6 +3132,7 @@ class Game {
   // First screen after loading
   async boot() {
     await Demo.check();                 // server time + who is signed in (demo or full game)
+    if (Story.on) return this.storyBoot();
     this.showTitle();
     // a 1 in 1000 surprise when the game opens: eyes stare at you for 10 seconds
     if (chance(1000)) {
@@ -2992,6 +3142,7 @@ class Game {
   }
 
   showTitle() {
+    if (Story.on) return this.storyDone();      // Story Mode has no title screen
     this.go("title");
     Sound.stopAll();
     this.sp.music.setVolume(100);
@@ -4139,7 +4290,13 @@ class Game {
     // achievements for surviving
     if (L <= 6) this.unlock("night" + L);
     if (this.n && this.n.power >= 300) this.unlock("frugal");
-    if (Demo.on()) return this.demoEnd();          // demo: Night 1 is the end
+    // Story Mode: the database adds EXP; nights 1-4 go straight to the pop-up, 5+ show their ending first
+    if (Story.on) {
+      this.storyWin = Story.win(TAPE, L);
+      this.storyWin.catch(() => {});
+      if (L < 5) return this.showTitle();
+    }
+    else if (Demo.on()) return this.demoEnd();     // demo: Night 1 is the end
     if (L < 5) { this.level = L + 1; return this.startIntro(); }
     if (L === 5) { this.progress.beat5 = true; return this.ending("beat5"); }
     if (L === 6) { this.progress.beat6 = true; return this.ending("beat6"); }
@@ -4148,6 +4305,31 @@ class Game {
     if (ai.freddy > 19 && ai.bonnie > 19 && ai.chica > 19 && ai.foxy > 19) { this.progress.beat420 = true; this.unlock("max"); }
     if (ai.freddy <= 3 && ai.bonnie <= 3 && ai.chica <= 3 && ai.foxy <= 3) this.unlock("easy");
     return this.ending("pink slip");
+  }
+
+  /* =================================================================
+     STORY MODE (?save=story&data=N, see Story in tools/global.js)
+     No title screen: the night in data starts right away (7 = custom
+     night, picked on the custom screen). When the round ends (won, lost
+     or backed out) the pop-up asks: back to the hub, or continue / retry.
+     ================================================================= */
+  async storyBoot() {
+    this.go("black");
+    if (!(await Story.start(TAPE))) return;           // not signed in or not unlocked: back to the hub
+    this.storyWin = null;
+    this.died = false;
+    if (Story.night === 7) return this.showCustom();
+    this.level = Story.night;
+    this.startIntro();
+  }
+  // called instead of the title screen in Story Mode
+  storyDone() {
+    if (this.storyOver) return;
+    this.storyOver = true;
+    const quit = this.screen === "custom";             // backed out of the custom night screen
+    this.go("black");
+    Sound.stopAll();
+    Story.after(TAPE, !!this.storyWin, this.storyWin, quit);
   }
 
   // DEMO: after Night 1, "end of the demo" with the countdown, then the title
@@ -4766,7 +4948,7 @@ function openAchievements() {
     el("div", { class: "achTop" },
       el("button", { onclick: closeAchievements }, "< " + ACH_WORD("BACK")),
       el("h2", {}, ACH_WORD("Achievements")),
-      el("div", { class: "achCount" }, `${done} / ${ACHIEVEMENTS.length} (${pct}%)  ·  ${ACH_WORD("FILE")} ${game.file}`)),
+      el("div", { class: "achCount" }, `${done} / ${ACHIEVEMENTS.length} (${pct}%)  ·  ${game.file === "story" ? ACH_WORD("STORY MODE") : ACH_WORD("FILE") + " " + game.file}`)),
     bar,
     el("div", { class: "achList" }, ...rows));
   box.hidden = false;

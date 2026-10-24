@@ -123,7 +123,7 @@ Global.load();
      - game text drawn on the canvas: fillText / strokeText / measureText are
        wrapped, so every word a tape (or a mod) draws follows the setting
    ===================================================================== */
-const FONT_ROOT = /\/(?:[1-9]|workshop)\/(?:index\.html)?$/.test(location.pathname) ? "../" : "./";
+const FONT_ROOT = /\/(?:[1-9]|story|workshop)\/(?:index\.html)?$/.test(location.pathname) ? "../" : "./";
 const DYS_FAMILY = '"OpenDyslexic", sans-serif';
 
 /* ---------------------------------------------------------------------
@@ -753,7 +753,7 @@ const Cloud = {
 
   /* ----- account ----- */
   // where email links send the player back to: the tape menu
-  home() { return location.origin + location.pathname.replace(/\/(1|2|3|4)\/(index\.html)?$/, "/").replace(/index\.html$/, ""); },
+  home() { return location.origin + location.pathname.replace(/\/(1|2|3|4|story|workshop)\/(index\.html)?$/, "/").replace(/index\.html$/, ""); },
   async usernameTaken(name) {
     return !!(await this.call("/rest/v1/rpc/username_taken", { method: "POST", json: { name }, auth: false }));
   },
@@ -1090,6 +1090,153 @@ const Demo = {
   },
   // after signing in or out (menu Settings), check again
   recheck() { this.checking = null; this.verified = null; return this.check(); },
+};
+
+/* =====================================================================
+   STORY MODE (Tape 0 on the menu, the hub is story/index.html)
+   One path through the tapes: Tape 1 nights 1-5, then its 6th night and
+   custom night, then Tape 2 the same way. Each step opens the tape with
+     ?save=story&data=N     (N = night 1-5, 6 = 6th night, 7 = custom night)
+   Beating a night in Story Mode (and only there) gives EXP. EXP and
+   which nights are beaten live on the account (profiles.exp / .story,
+   changed only by the story_win database function: supabase/story.sql).
+   ===================================================================== */
+const STORY_TAPES = [
+  { tape: 1, name: "Eddie's Riceria" },
+  { tape: 2, name: "Outcome Memories" },
+];
+const STORY_NAMES = { 6: "6th Night", 7: "Custom Night" };
+const Story = {
+  // this page was opened as a Story Mode step?
+  on: new URLSearchParams(location.search).get("save") === "story",
+  night: Math.max(1, Math.min(7, Number(new URLSearchParams(location.search).get("data")) || 1)),
+  data: null,        // { exp, story } from the account
+  error: "",
+
+  nightName(n) { return STORY_NAMES[n] || "Night " + n; },
+  beaten(tape, night) { const b = this.data && this.data.story && this.data.story.beaten; return b ? (b[tape + "-" + night] || 0) : 0; },
+  // nights 1-5 open one after another; the 6th and custom nights both open after night 5;
+  // the next tape opens after the last tape's night 5. The demo only has Tape 1 Night 1.
+  unlocked(tape, night) {
+    if (Demo.on() && !(tape === 1 && night === 1)) return false;
+    if (night === 1) return tape === 1 || this.beaten(tape - 1, 5) > 0;
+    if (night >= 6) return this.beaten(tape, 5) > 0;
+    return this.beaten(tape, night - 1) > 0;
+  },
+  // the step after this one (or null at the very end)
+  next(tape, night) {
+    if (night < 6) return { tape, night: night + 1 };
+    if (night === 6) return { tape, night: 7 };
+    return STORY_TAPES.some(t => t.tape === tape + 1) ? { tape: tape + 1, night: 1 } : null;
+  },
+  // where a step lives (from the menu, the hub or a tape page)
+  url(tape, night) { return this.root() + tape + "/?save=story&data=" + night; },
+  hub() { return this.root() + "story/"; },
+  root() { return /\/(?:[1-9]|story|workshop)\/(?:index\.html)?$/.test(location.pathname) ? "../" : "./"; },
+
+  // EXP -> level (every level needs 100 more EXP than the last: 100, 200, 300...)
+  level(exp) {
+    let lv = 1, need = 100, left = exp || 0;
+    while (left >= need) { left -= need; lv++; need += 100; }
+    return { level: lv, into: left, need };
+  },
+
+  // read exp + story from the account. Returns the data, or null (this.error says why)
+  async load() {
+    this.error = "";
+    if (!Cloud.ready() || !Cloud.signedIn()) { this.error = "signin"; return null; }
+    try {
+      const rows = await Cloud.call("/rest/v1/profiles?select=username,exp,story&id=eq." + Cloud.uid());
+      if (!rows || !rows[0]) { this.error = "Your profile could not be found."; return null; }
+      this.data = { exp: rows[0].exp || 0, story: rows[0].story || {} };
+      return this.data;
+    } catch (e) {
+      // the columns don't exist until supabase/story.sql has been run
+      this.error = /exp|story|column/i.test(e.message) ? "setup" : e.message;
+      return null;
+    }
+  },
+  // a night was beaten in Story Mode: the database adds the EXP
+  async win(tape, night) {
+    const r = await Cloud.call("/rest/v1/rpc/story_win", { method: "POST", json: { tape, night } });
+    this.data = { exp: r.exp, story: r.story };
+    return r;
+  },
+
+  /* ----- the pop-up between rounds (plain HTML on top of the game) -----
+     choice({ title, lines: [text...], buttons: [{ id, text, main }] }) -> Promise of the picked id */
+  choice(o) {
+    return new Promise(done => {
+      const old = document.getElementById("storyChoice");
+      if (old) old.remove();
+      const box = document.createElement("div");
+      box.id = "storyChoice";
+      box.setAttribute("data-nomeme", "");
+      box.innerHTML = `<style>
+        #storyChoice { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+          background: rgba(0,0,0,.72); font-family: "VCR OSD Mono", "VT323", monospace; color: #fff; }
+        #storyChoice .sc { background: #000; border: 5px solid #fff; box-shadow: 10px 10px 0 #5b16ec; padding: 26px 30px;
+          width: min(92vw, 520px); text-align: center; }
+        #storyChoice h2 { font-size: 30px; letter-spacing: 2px; margin: 0 0 10px; text-shadow: 2px 0 rgba(255,0,60,.6), -2px 0 rgba(0,200,255,.6); }
+        #storyChoice p { font-size: 20px; margin: 6px 0; color: #ccc; }
+        #storyChoice p.exp { color: #ffcf3f; font-size: 24px; }
+        #storyChoice .row { display: flex; gap: 14px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+        #storyChoice button { font: inherit; font-size: 20px; padding: 12px 18px; cursor: pointer; color: #fff; background: #111;
+          border: 4px solid #fff; box-shadow: 0 6px 0 #444; min-width: 180px; }
+        #storyChoice button.main { background: #5b16ec; }
+        #storyChoice button:hover { filter: brightness(1.25); }
+        #storyChoice button:active { transform: translateY(4px); box-shadow: 0 2px 0 #444; }
+      </style>
+      <div class="sc"><h2></h2><div class="lines"></div><div class="row"></div></div>`;
+      box.querySelector("h2").textContent = o.title;
+      for (const l of o.lines || []) {
+        const p = document.createElement("p");
+        if (typeof l === "object") { p.textContent = l.text; p.className = l.cls || ""; } else p.textContent = l;
+        box.querySelector(".lines").append(p);
+      }
+      for (const b of o.buttons) {
+        const btn = document.createElement("button");
+        btn.textContent = b.text; if (b.main) btn.className = "main";
+        btn.onclick = () => { box.remove(); done(b.id); };
+        box.querySelector(".row").append(btn);
+      }
+      document.body.append(box);
+      (box.querySelector("button.main") || box.querySelector("button")).focus();
+    });
+  },
+
+  /* ----- used by both tapes ----- */
+  // Before a Story Mode step starts: signed in, unlocked, data ok? If not, back to the hub.
+  async start(tape) {
+    if (!Cloud.signedIn()) { location.href = this.hub(); return false; }
+    await this.load();
+    if (!this.data || !this.unlocked(tape, this.night)) { location.href = this.hub(); return false; }
+    return true;
+  },
+  // After a round ends. won = the night was beaten (EXP was asked for in winPromise)
+  async after(tape, won, winPromise, quit) {
+    const name = "Tape " + tape + " " + this.nightName(this.night);
+    if (!won) {
+      const pick = await this.choice({ title: quit ? "STORY MODE" : "GAME OVER", lines: [name],
+        buttons: [{ id: "hub", text: "BACK TO HUB" }, { id: "retry", text: "TRY AGAIN", main: true }] });
+      if (pick === "retry") location.reload(); else location.href = this.hub();
+      return;
+    }
+    const lines = [name + " complete!"];
+    try {
+      const r = await winPromise;
+      lines.push({ text: "+" + r.gained + " EXP" + (r.first ? "  (first clear!)" : ""), cls: "exp" });
+      const lv = this.level(r.exp);
+      lines.push("Level " + lv.level + "  ·  " + lv.into + " / " + lv.need + " EXP");
+    } catch (e) { lines.push("EXP could not be saved: " + e.message); }
+    const nx = this.next(tape, this.night);
+    const buttons = [{ id: "hub", text: "BACK TO HUB" }];
+    if (nx && this.unlocked(nx.tape, nx.night))
+      buttons.push({ id: "next", main: true, text: "CONTINUE: " + (nx.tape !== tape ? "TAPE " + nx.tape + " " : "") + this.nightName(nx.night).toUpperCase() });
+    else if (nx && Demo.on()) lines.push("The rest of Story Mode opens " + Demo.releaseText + ".");
+    const pick = await this.choice({ title: "NIGHT COMPLETE", lines, buttons });
+    location.href = pick === "next" ? this.url(nx.tape, nx.night) : this.hub();
+  },
 };
 
 // Supabase error words -> plain words for players

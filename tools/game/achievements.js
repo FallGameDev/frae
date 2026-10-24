@@ -123,7 +123,7 @@ function openAchievements() {
     el("div", { class: "achTop" },
       el("button", { onclick: closeAchievements }, "< " + ACH_WORD("BACK")),
       el("h2", {}, ACH_WORD("Achievements")),
-      el("div", { class: "achCount" }, `${done} / ${ACHIEVEMENTS.length} (${pct}%)  ·  ${ACH_WORD("FILE")} ${game.file}`)),
+      el("div", { class: "achCount" }, `${done} / ${ACHIEVEMENTS.length} (${pct}%)  ·  ${game.file === "story" ? ACH_WORD("STORY MODE") : ACH_WORD("FILE") + " " + game.file}`)),
     bar,
     el("div", { class: "achList" }, ...rows));
   box.hidden = false;

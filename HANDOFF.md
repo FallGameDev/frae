@@ -98,6 +98,14 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Mods on the account: `TapeMods(key)` reads/writes a tape's mod store from outside the game (same layout as ModDB). One zip per mod (mod.json + files/) in private bucket `mods/<user id>/<tape>-<mod id>.zip` + a row in `mods`. CREATED = manifest author equals the username, else INSTALLED.
 - makeZip/readZip moved from ui.js into global.js.
 
+## Story Mode (Tape 0)
+- Menu: `GAMES` now has 5 cards: Tape 0 Story Mode (`story: true`, url `story/`, thumb img/game0.png), Tapes 1-4. Each card has `tape`. The menu starts on Tape 1 (`current = 1`). Save file buttons fade out on Story Mode (it's saved on the account).
+- Hub: `story/index.html` (loads ../tools/global.js). One panel per tape in `STORY_TAPES`: nights 1-5 in a row, then a fork to the 6th night (top) and custom night (bottom) in the same column (`SPOT`). Needs sign in (link to `../?account`). Red soul = next night to play.
+- Steps open `<tape>/?save=story&data=N` (N 1-5, 6 = 6th night, 7 = custom night). In the tapes: `fileFromUrl()` returns "story" (local file frae<N>-save-filestory, not synced), `boot()` -> `storyBoot()` (checks sign in + unlocked via `Story.start`, then starts the night / custom screen; no title screen), `showTitle()` -> `storyDone()` in Story Mode (every way back to the title: win, death, back out). `nightWon()` calls `Story.win(TAPE, L)`; nights 1-4 go straight to the pop-up, 5+ show their ending first.
+- Pop-up between rounds: `Story.choice()` (HTML on top of the canvas). Won: +EXP, level, BACK TO HUB / CONTINUE: next step (`Story.next`). Lost: BACK TO HUB / TRY AGAIN.
+- Unlocks (`Story.unlocked`): nights in order, 6th + custom after night 5, Tape 2 opens after Tape 1 Night 5. Demo: only Tape 1 Night 1.
+- Account data: `profiles.exp` + `profiles.story` (`{beaten: {"1-3": 2}}`), changed ONLY by the `story_win(tape, night)` database function (EXP table there: 50/75/100/150/200/300/250, Tape 2 double, replays a quarter). Players can only update their username column. SQL: `supabase/story.sql` (also at the end of setup.sql). Levels: `Story.level(exp)` (level n needs n*100 EXP).
+
 ## Demo (until the release)
 - `DEMO` / `Demo` in tools/global.js: until `DEMO.until` (2026-10-31 4:15 PM EDT) the game is a demo, unless signed in as a `DEMO.bypass` username (FallGameDev, Jfor; any capitals). `Demo.check()` (awaited by both tapes' `boot()` and the menu) takes the clock from the web server's Date header and re-asks Supabase for the profile (a fake/expired session = no bypass); 4 s max. `Demo.on()`, `Demo.left()` (countdown), `Demo.recheck()` (menu runs it when Settings closes).
 - Tape 1: `menuItems()` shows only Dine In + New Game, beating Night 1 goes to `demoEnd()` (END OF THE DEMO card + countdown), DEMO countdown top right of the title. Tape 1 overlays now also take `paint` like Tape 2.

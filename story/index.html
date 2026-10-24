@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Story Mode</title>
+<link rel="icon" type="image/png" href="../favicon.png">
+<link rel="icon" href="../favicon.ico" sizes="any">
+<!-- Same pixel fonts as the tape menu -->
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     STORY MODE HUB (Tape 0)
+     The path through every tape: nights 1-5 in a line, then the
+     6th night and the custom night stacked in the same column.
+     Same look as the tape menu (black, white boxes, purple).
+     ========================================================= */
+  :root {
+    --bg: #000;
+    --line: #fff;
+    --text: #fff;
+    --dim: #8a8a99;
+    --locked: #2b2b38;
+    --purple: #5b16ec;
+    --purple-hi: #8a4dff;
+    --gold: #ffcf3f;
+    --soul: #ff2a3c;
+    --glow-r: rgba(255, 0, 60, .55);
+    --glow-b: rgba(0, 200, 255, .55);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'VT323', monospace; font-size: 22px;
+    user-select: none;
+  }
+
+  /* VHS overlays (like the menu) */
+  .fx { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+  .scanlines { background: repeating-linear-gradient(to bottom, rgba(255,255,255,.035) 0 1px, transparent 2px 4px); }
+  .vignette { background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.85) 100%); }
+
+  .wrap { width: min(1100px, 100%); margin: 0 auto; padding: 20px 16px 60px; }
+
+  /* ----- top bar: back button, title, account + level ----- */
+  .top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .btn {
+    font: inherit; font-size: 22px; color: var(--text); background: #000; cursor: pointer;
+    border: 4px solid var(--line); padding: 6px 14px; box-shadow: 0 5px 0 #333; text-decoration: none; display: inline-block;
+  }
+  .btn:hover { background: #111; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #333; }
+  .btn.main { background: var(--purple); }
+  .btn.main:hover { background: var(--purple-hi); }
+  h1 {
+    font-family: 'Press Start 2P', monospace; font-size: clamp(18px, 4vw, 34px); letter-spacing: 2px; flex: 1;
+    text-shadow: 3px 0 var(--glow-r), -3px 0 var(--glow-b);
+  }
+  .me { border: 4px solid var(--line); padding: 8px 14px; min-width: 260px; }
+  .me .name { color: var(--dim); }
+  .me .lv { font-family: 'Press Start 2P', monospace; font-size: 14px; color: var(--gold); margin: 4px 0 6px; }
+  .bar { height: 14px; border: 3px solid var(--line); background: #111; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .6s; }
+  .me .num { font-size: 18px; color: var(--dim); margin-top: 3px; }
+
+  /* ----- messages (sign in, demo, setup) ----- */
+  .note { border: 4px solid var(--line); padding: 14px 18px; margin-bottom: 18px; box-shadow: 8px 8px 0 var(--purple); }
+  .note h2 { font-family: 'Press Start 2P', monospace; font-size: 15px; margin-bottom: 8px; line-height: 1.5; }
+  .note p { color: #ccc; margin-bottom: 10px; }
+  .note.demo { box-shadow: 8px 8px 0 #f7931e; }
+  .note.demo h2 { color: #f7931e; }
+  .note[hidden] { display: none; }
+
+  /* ----- one panel per tape ----- */
+  .tape { border: 5px solid var(--line); margin-bottom: 26px; position: relative; }
+  .tape .head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    border-bottom: 5px solid var(--line); padding: 10px 16px;
+  }
+  .tape .head b { font-family: 'Press Start 2P', monospace; font-size: clamp(11px, 2vw, 15px); font-weight: normal; }
+  .tape .head span { color: var(--dim); }
+  .tape.closed { border-color: var(--locked); }
+  .tape.closed .head { border-color: var(--locked); color: #555; }
+  svg { display: block; width: 100%; height: auto; }
+
+  /* path lines */
+  .road { stroke: var(--line); stroke-width: 6; fill: none; stroke-linecap: square; }
+  .road.off { stroke: var(--locked); stroke-dasharray: 10 10; }
+  /* nodes */
+  .node rect { stroke-width: 6; }
+  .node text { font-family: 'Press Start 2P', monospace; text-anchor: middle; dominant-baseline: central; }
+  .node .label { font-family: 'VT323', monospace; font-size: 24px; fill: var(--text); }
+  .node .exp { font-family: 'VT323', monospace; font-size: 19px; fill: var(--gold); }
+  .node.locked rect { fill: #050507; stroke: var(--locked); }
+  .node.locked text, .node.locked .label { fill: #3a3a4a; }
+  .node.locked .exp { fill: #3a3a4a; }
+  .node.open rect { fill: var(--purple); stroke: var(--line); }
+  .node.open text.big { fill: #fff; }
+  .node.done rect { fill: #fff; stroke: var(--line); }
+  .node.done text.big { fill: #000; }
+  .node.next rect { animation: pulse 1.2s infinite steps(2); }
+  @keyframes pulse { 50% { fill: var(--purple-hi); } }
+  a.node { cursor: pointer; outline: none; }
+  a.node:hover rect, a.node:focus rect { stroke: var(--gold); }
+  .count { font-family: 'VT323', monospace !important; font-size: 20px; fill: var(--gold) !important; }
+  .soul { fill: var(--soul); }
+
+  /* the screen shrinks to a line when a night starts (like the menu's START) */
+  #tvoff { position: fixed; inset: 0; background: #000; z-index: 60; pointer-events: none; opacity: 0; }
+  #tvoff.go { animation: off .6s forwards; }
+  @keyframes off { 0% { opacity: 0; } 30% { opacity: 1; clip-path: inset(49.5% 0 49.5% 0); background: #fff; } 100% { opacity: 1; background: #000; } }
+
+  @media (max-width: 600px) {
+    body { font-size: 20px; }
+    .me { min-width: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="fx scanlines"></div>
+<div class="fx vignette"></div>
+<div id="tvoff"></div>
+
+<div class="wrap">
+  <div class="top">
+    <a class="btn" href="../">&lt; MENU</a>
+    <h1>STORY MODE</h1>
+    <div class="me" id="me">
+      <div class="name" id="meName">NOT SIGNED IN</div>
+      <div class="lv" id="meLv">LV 1</div>
+      <div class="bar"><i id="meBar"></i></div>
+      <div class="num" id="meNum">0 / 100 EXP</div>
+    </div>
+  </div>
+
+  <!-- shown when needed -->
+  <div class="note" id="signin" hidden>
+    <h2>SIGN IN TO PLAY STORY MODE</h2>
+    <p>Story Mode saves your EXP and which nights you beat to your account, so it follows you to any device.</p>
+    <a class="btn main" href="../?account">SIGN IN / SIGN UP</a>
+  </div>
+  <div class="note" id="setup" hidden>
+    <h2>STORY MODE ISN'T SET UP YET</h2>
+    <p id="setupText">The account database needs the Story Mode update (supabase/story.sql).</p>
+  </div>
+  <div class="note demo" id="demo" hidden>
+    <h2>DEMO</h2>
+    <p>Only Tape 1 Night 1 can be played until <span id="demoWhen"></span>. <span id="demoLeft"></span></p>
+  </div>
+
+  <!-- one panel per tape, built by JavaScript -->
+  <div id="tapes"></div>
+</div>
+
+<script src="../tools/global.js"></script>
+<script>
+/* =====================================================================
+   STORY MODE HUB
+   Reads exp + beaten nights from the account (Story.load in global.js),
+   draws each tape's path, and opens a night with
+     ../<tape>/?save=story&data=<night>   (6 = 6th night, 7 = custom)
+   ===================================================================== */
+"use strict";
+
+// EXP for a first clear (same numbers as story_win in supabase/story.sql; replays give a quarter)
+const EXP_TABLE = [0, 50, 75, 100, 150, 200, 300, 250];
+const expFor = (tape, night) => EXP_TABLE[night] * (tape === 2 ? 2 : 1);
+
+// where each step sits on the path (SVG units). Nights 1-5 in a row,
+// the 6th night and the custom night in the same column (6th on top).
+const VIEW_W = 760, VIEW_H = 330;
+const SPOT = {
+  1: [60, 170], 2: [180, 170], 3: [300, 170], 4: [420, 170], 5: [540, 170],
+  6: [690, 96],  7: [690, 244],
+};
+const FORK_X = 615;   // where the path splits after night 5
+const BOX = 66;       // node size
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// a little 8-bit padlock (drawn at x, y)
+const lockSvg = (x, y) => `<path transform="translate(${x - 12} ${y - 14}) scale(3)" fill="#3a3a4a"
+  d="M2 0h4v1h1v3h1v5H0V4h1V1h1zM2 1v3h4V1z"/>`;
+// the red soul heart (marks the next night to play)
+const soulSvg = (x, y) => `<path class="soul" transform="translate(${x - 15} ${y - 13}) scale(3)"
+  d="M1 0h3v1h2V0h3v1h1v3H9v1H8v1H7v1H6v1H4V7H3V6H2V5H1V4H0V1h1z"/>`;
+
+// a piece of road through some points (solid when the night it leads to is open)
+function line(points, on) {
+  return `<polyline class="road${on ? "" : " off"}" points="${points.map(p => p.join(",")).join(" ")}"/>`;
+}
+
+// One tape's path as SVG
+function tapeSvg(tape, nextStep) {
+  const open = n => Story.unlocked(tape, n), done = n => Story.beaten(tape, n) > 0;
+  let roads = "";
+  // 1-2, 2-3, 3-4, 4-5
+  for (let n = 1; n < 5; n++) roads += line([SPOT[n], SPOT[n + 1]], open(n + 1));
+  // 5 -> fork -> up to the 6th night, down to the custom night (same x)
+  const [x5, y5] = SPOT[5];
+  roads += line([[x5, y5], [FORK_X, y5]], open(6));
+  roads += line([[FORK_X, y5], [FORK_X, SPOT[6][1]], SPOT[6]], open(6));
+  roads += line([[FORK_X, y5], [FORK_X, SPOT[7][1]], SPOT[7]], open(7));
+
+  let nodes = "";
+  for (let n = 1; n <= 7; n++) {
+    const [x, y] = SPOT[n], o = open(n), d = done(n);
+    const isNext = nextStep && nextStep.tape === tape && nextStep.night === n;
+    const cls = "node " + (!o ? "locked" : d ? "done" : "open") + (isNext ? " next" : "");
+    const big = n <= 5 ? String(n) : n === 6 ? "6" : "C";
+    const label = n <= 5 ? "NIGHT " + n : n === 6 ? "6TH NIGHT" : "CUSTOM";
+    const labelY = n === 6 ? y - BOX / 2 - 12 : y + BOX / 2 + 22;       // the 6th night's words go above it
+    const inside = `
+      <rect x="${x - BOX / 2}" y="${y - BOX / 2}" width="${BOX}" height="${BOX}"/>
+      ${o ? `<text class="big" x="${x}" y="${y + 1}" font-size="24">${big}</text>` : lockSvg(x, y)}
+      ${d ? `<text class="count" x="${x + BOX / 2 - 2}" y="${n === 6 ? y + BOX / 2 + 16 : y - BOX / 2 - 10}" text-anchor="end">★ ${Story.beaten(tape, n) > 1 ? "x" + Story.beaten(tape, n) : ""}</text>` : ""}
+      <text class="label" x="${x}" y="${labelY}">${label}</text>
+      <text class="exp" x="${x}" y="${labelY + (n === 6 ? -20 : 20)}">+${expFor(tape, n)} EXP</text>
+      ${isNext ? soulSvg(x - BOX / 2 - 22, y) : ""}`;
+    nodes += o
+      ? `<a class="${cls}" href="${esc(Story.url(tape, n))}" data-tape="${tape}" data-night="${n}" tabindex="0"><title>${label}</title>${inside}</a>`
+      : `<g class="${cls}">${inside}</g>`;
+  }
+  return `<svg viewBox="0 0 ${VIEW_W} ${VIEW_H}" role="img" aria-label="Tape ${tape} path">${roads}${nodes}</svg>`;
+}
+
+// The first open night that hasn't been beaten yet (gets the soul heart)
+function findNext() {
+  for (const t of STORY_TAPES) for (const n of [1, 2, 3, 4, 5, 6, 7])
+    if (Story.unlocked(t.tape, n) && !Story.beaten(t.tape, n)) return { tape: t.tape, night: n };
+  return null;
+}
+
+function draw() {
+  const next = Story.data ? findNext() : null;
+  document.getElementById("tapes").innerHTML = STORY_TAPES.map(t => {
+    const closed = !Story.unlocked(t.tape, 1);
+    const why = closed ? (Demo.on() && t.tape > 1 ? "Opens " + Demo.releaseText : "Beat Tape " + (t.tape - 1) + " Night 5 to open") : "";
+    const beaten = [1, 2, 3, 4, 5, 6, 7].filter(n => Story.beaten(t.tape, n)).length;
+    return `<section class="tape${closed ? " closed" : ""}">
+      <div class="head"><b>TAPE ${t.tape} · ${esc(t.name.toUpperCase())}</b><span>${closed ? esc(why) : beaten + " / 7 BEATEN"}</span></div>
+      ${tapeSvg(t.tape, next)}
+    </section>`;
+  }).join("");
+  // clicking a night: the screen switches off, then the tape opens on that night
+  document.querySelectorAll("a.node").forEach(a => a.addEventListener("click", e => {
+    e.preventDefault();
+    beep(880, .08); setTimeout(() => beep(1320, .12), 80);
+    document.getElementById("tvoff").classList.add("go");
+    setTimeout(() => { location.href = a.getAttribute("href"); }, 650);
+  }));
+}
+
+function drawMe() {
+  const signed = Cloud.signedIn() && Cloud.profile;
+  document.getElementById("meName").textContent = signed ? Cloud.profile.username : "NOT SIGNED IN";
+  const exp = Story.data ? Story.data.exp : 0, lv = Story.level(exp);
+  document.getElementById("meLv").textContent = "LV " + lv.level;
+  document.getElementById("meBar").style.width = (lv.into / lv.need * 100) + "%";
+  document.getElementById("meNum").textContent = lv.into + " / " + lv.need + " EXP  ·  " + exp + " TOTAL";
+}
+
+function drawDemo() {
+  const box = document.getElementById("demo");
+  box.hidden = !Demo.on();
+  document.getElementById("demoWhen").textContent = Demo.releaseText;
+  document.getElementById("demoLeft").textContent = "(" + Demo.left() + " left)";
+}
+
+// little menu blips (Web Audio, like the tape menu)
+let ac;
+function beep(f, len, type = "square") {
+  try {
+    ac = ac || new AudioContext();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(.05, ac.currentTime); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + len);
+    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + len);
+  } catch (e) {}
+}
+
+(async () => {
+  draw(); drawMe(); drawDemo();                  // everything locked until the account answers
+  await Demo.check();
+  drawDemo();
+  if (!Cloud.signedIn()) { document.getElementById("signin").hidden = false; draw(); return; }
+  await Story.load();
+  if (Story.error === "setup") document.getElementById("setup").hidden = false;
+  else if (Story.error === "signin") document.getElementById("signin").hidden = false;
+  else if (Story.error) { document.getElementById("setup").hidden = false; document.getElementById("setupText").textContent = Story.error; }
+  draw(); drawMe();
+  setInterval(drawDemo, 30000);
+})();
+</script>
+</body>
+</html>

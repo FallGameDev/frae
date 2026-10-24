@@ -105,9 +105,11 @@ const NIGHT_AI = {
    --------------------------------------------------------------------- */
 const SAVE_FILES = 3;
 const saveKey = file => "frae1-save-file" + file;
+const TAPE = 1;                                  // this tape's number (Story Mode)
 
 // The file number from the address (?file=1, 2 or 3), or null if it is missing or not 1-3
 function fileFromUrl() {
+  if (Story.on) return "story";                 // Story Mode keeps its own local file (frae1-save-filestory)
   const f = Number(new URLSearchParams(location.search).get("file"));
   return Number.isInteger(f) && f >= 1 && f <= SAVE_FILES ? f : null;
 }
@@ -307,6 +309,7 @@ class Game {
   // First screen after loading
   async boot() {
     await Demo.check();                 // server time + who is signed in (demo or full game)
+    if (Story.on) return this.storyBoot();
     this.showTitle();
     // a 1 in 1000 surprise when the game opens: eyes stare at you for 10 seconds
     if (chance(1000)) {
@@ -316,6 +319,7 @@ class Game {
   }
 
   showTitle() {
+    if (Story.on) return this.storyDone();      // Story Mode has no title screen
     this.go("title");
     Sound.stopAll();
     this.sp.music.setVolume(100);
@@ -1463,7 +1467,13 @@ class Game {
     // achievements for surviving
     if (L <= 6) this.unlock("night" + L);
     if (this.n && this.n.power >= 300) this.unlock("frugal");
-    if (Demo.on()) return this.demoEnd();          // demo: Night 1 is the end
+    // Story Mode: the database adds EXP; nights 1-4 go straight to the pop-up, 5+ show their ending first
+    if (Story.on) {
+      this.storyWin = Story.win(TAPE, L);
+      this.storyWin.catch(() => {});
+      if (L < 5) return this.showTitle();
+    }
+    else if (Demo.on()) return this.demoEnd();     // demo: Night 1 is the end
     if (L < 5) { this.level = L + 1; return this.startIntro(); }
     if (L === 5) { this.progress.beat5 = true; return this.ending("beat5"); }
     if (L === 6) { this.progress.beat6 = true; return this.ending("beat6"); }
@@ -1472,6 +1482,31 @@ class Game {
     if (ai.freddy > 19 && ai.bonnie > 19 && ai.chica > 19 && ai.foxy > 19) { this.progress.beat420 = true; this.unlock("max"); }
     if (ai.freddy <= 3 && ai.bonnie <= 3 && ai.chica <= 3 && ai.foxy <= 3) this.unlock("easy");
     return this.ending("pink slip");
+  }
+
+  /* =================================================================
+     STORY MODE (?save=story&data=N, see Story in tools/global.js)
+     No title screen: the night in data starts right away (7 = custom
+     night, picked on the custom screen). When the round ends (won, lost
+     or backed out) the pop-up asks: back to the hub, or continue / retry.
+     ================================================================= */
+  async storyBoot() {
+    this.go("black");
+    if (!(await Story.start(TAPE))) return;           // not signed in or not unlocked: back to the hub
+    this.storyWin = null;
+    this.died = false;
+    if (Story.night === 7) return this.showCustom();
+    this.level = Story.night;
+    this.startIntro();
+  }
+  // called instead of the title screen in Story Mode
+  storyDone() {
+    if (this.storyOver) return;
+    this.storyOver = true;
+    const quit = this.screen === "custom";             // backed out of the custom night screen
+    this.go("black");
+    Sound.stopAll();
+    Story.after(TAPE, !!this.storyWin, this.storyWin, quit);
   }
 
   // DEMO: after Night 1, "end of the demo" with the countdown, then the title

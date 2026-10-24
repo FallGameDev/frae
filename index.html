@@ -228,6 +228,9 @@
   .card.locked .right h2, .card.locked .right p, .card.locked .right .tag { color: #333342; text-shadow: none; }
   .card.locked .right p::before { color: #222230; }
 
+  /* Story Mode is saved on the account, so the save file buttons fade out while it's picked */
+  .files.storyon { opacity: .3; pointer-events: none; }
+
   /* DEMO (before Oct 31): Tape 2 looks locked but keeps its name; Tape 1's tag says DEMO */
   .card.demo .start { background: #0d0d14; border-color: #2b2b38; color: #ffcf3f; box-shadow: 0 7px 0 #000; cursor: not-allowed; font-size: .8em; }
   .card.demo .start .soul { display: none; }
@@ -482,7 +485,21 @@
      ========================================================= */
   const GAMES = [
     {
+      // Tape 0: Story Mode, a hub (story/) with one path through every tape, EXP on the account
+      title: "STORY MODE",
+      tape: 0,
+      tag: "Tape 0",
+      subtitle: "Story Mode",
+      desc: "Play every tape in order, night by night. Beat nights to earn EXP for your account.",
+      color: "#5b16ec",
+      thumb: "img/game0.png",
+      url: "story/",
+      story: true,                    // opens the hub (no save file: Story Mode is saved on the account)
+      unlocked: true
+    },
+    {
       title: "FRIED RICE AT EDDIE'S",
+      tape: 1,
       tag: "Episode 1",
       subtitle: "Eddie's Riceria",
       pronounce: "rye-sir-ee-ah",
@@ -495,6 +512,7 @@
     },
     {
       title: "FRIED RICE AT EDDIE'S 2",
+      tape: 2,
       tag: "Episode 2",
       subtitle: "Outcome Memories",
       desc: "Eddie's is back, bigger and shinier than ever. No doors this time: just a mask, a flashlight and a music box that must never stop.",
@@ -506,6 +524,7 @@
     },
     {
       title: "FRIED RICE AT EDDIE'S 3",
+      tape: 3,
       tag: "Coming soon",
       desc: "This tape has not been recorded yet.",
       color: "#46e0ff",
@@ -515,6 +534,7 @@
     },
     {
       title: "FRIED RICE AT EDDIE'S 4",
+      tape: 4,
       tag: "Coming soon",
       desc: "This tape has not been recorded yet.",
       color: "#ff6b4a",
@@ -524,7 +544,7 @@
     }
   ];
 
-  let current = 0;   // which game is in the middle
+  let current = 1;   // which game is in the middle (starts on Tape 1; Story Mode is to its left)
   const stage = document.getElementById("stage");
   const dotsBox = document.getElementById("dots");
   const cards = [];
@@ -552,7 +572,7 @@
     card.innerHTML = `
       <div class="left">
         <div class="thumb" style="${thumbStyle}">
-          ${game.thumb && game.unlocked ? "" : `<div class="ph">${game.unlocked ? i + 1 : "?"}</div>`}
+          ${game.thumb && game.unlocked ? "" : `<div class="ph">${game.unlocked ? game.tape : "?"}</div>`}
         </div>
         <button class="start">${SOUL_SVG}${game.unlocked ? "START" : "LOCKED"}</button>
       </div>
@@ -644,6 +664,7 @@
     });
     dots.forEach((d, i) => d.classList.toggle("on", i === current));
     showFiles();
+    document.getElementById("files").classList.toggle("storyon", !!GAMES[current].story);   // save files don't apply to Story Mode
     document.getElementById("prev").disabled = current === 0;
     document.getElementById("next").disabled = current === GAMES.length - 1;
   }
@@ -676,7 +697,8 @@
     // After the TV-off effect, open the game (once its url is filled in)
     setTimeout(() => {
       if (game.url) {
-        location.href = game.url + "?file=" + file;      // the game opens on the picked save file
+        // Story Mode opens its hub; a tape opens on the picked save file
+        location.href = game.story ? game.url : game.url + "?file=" + file;
       } else {
         document.getElementById("tvoff").classList.remove("go");
         alert(game.title + " is not hooked up yet. Set its url in the GAMES list.");
@@ -1191,11 +1213,11 @@
     GAMES.forEach((g, i) => {
       if (!g.unlocked) return;
       const card = cards[i], tag = card.querySelector(".tag"), p = card.querySelector(".right p"), btn = card.querySelector(".start");
-      const notOut = on && i > 0;                // every tape after the first waits for the release
+      const notOut = on && g.tape >= 2;          // every tape after the first waits for the release
       g.demoLocked = notOut;
       card.classList.toggle("demo", notOut);
       tag.classList.toggle("demotag", on);
-      tag.textContent = on ? (i === 0 ? "DEMO: NIGHT 1 + DINE IN" : "OUT IN " + Demo.left()) : demoText[i].tag;
+      tag.textContent = !on ? demoText[i].tag : g.story ? "DEMO: TAPE 1 NIGHT 1" : g.tape === 1 ? "DEMO: NIGHT 1 + DINE IN" : "OUT IN " + Demo.left();
       p.textContent = notOut ? "Opens " + Demo.releaseText + "." : demoText[i].desc;
       btn.innerHTML = SOUL_SVG + (notOut ? "OCT 31" : "START");
     });
