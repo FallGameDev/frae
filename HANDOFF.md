@@ -121,7 +121,7 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Tape 1 stuns: `n[k].stunUntil` checked in each AI loop; `n.time` counts night seconds (both tapes).
 
 ## Demo (until the release)
-- `DEMO` / `Demo` in tools/global.js: until `DEMO.until` (2026-10-31 4:15 PM EDT) the game is a demo, unless signed in as a `DEMO.bypass` username (FallGameDev, Jfor, omizio; any capitals). `Demo.check()` (awaited by both tapes' `boot()` and the menu) takes the clock from the web server's Date header and re-asks Supabase for the profile (a fake/expired session = no bypass); 4 s max. `Demo.on()`, `Demo.left()` (countdown), `Demo.recheck()` (menu runs it when Settings closes).
+- `DEMO` / `Demo` in tools/global.js: until `DEMO.until` (2026-10-31 1 PM EDT) the game is a demo, unless signed in as a `DEMO.bypass` username (FallGameDev, Jfor, omizio; any capitals). `Demo.check()` (awaited by both tapes' `boot()` and the menu) takes the clock from the web server's Date header and re-asks Supabase for the profile (a fake/expired session = no bypass); 4 s max. `Demo.on()`, `Demo.left()` (countdown), `Demo.recheck()` (menu runs it when Settings closes).
 - Tape 1: `menuItems()` shows only Dine In + New Game, beating Night 1 goes to `demoEnd()` (END OF THE DEMO card + countdown), DEMO countdown top right of the title. Tape 1 overlays now also take `paint` like Tape 2.
 - Tape 2: `boot()` -> `demoLocked()` (TAPE 2 IS NOT OUT YET + countdown, click = back to the menu).
 - Menu: `applyDemo()` (every 30 s): Tape 1 tag "DEMO: NIGHT 1 + DINE IN", later tapes greyed with "OUT IN ..." and an OCT 31 button (`game.demoLocked`).

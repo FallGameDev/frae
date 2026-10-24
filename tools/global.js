@@ -1031,7 +1031,7 @@ const Cloud = {
 Cloud.loadSession();
 
 /* =====================================================================
-   DEMO (until the release on October 31, 2026 at 4:15 PM Eastern)
+   DEMO (until the release on October 31, 2026 at 1:00 PM Eastern)
    Before the release, only the demo can be played:
      Tape 1: Night 1 and Dine In. Tape 2: locked.
    Signed in as one of the BYPASS accounts = the whole game.
@@ -1044,7 +1044,7 @@ Cloud.loadSession();
    player can still get around it. It stops normal players, not hackers.
    ===================================================================== */
 const DEMO = {
-  until: Date.parse("2026-10-31T16:15:00-04:00"),   // Oct 31, 4:15 PM in Florida (EDT)
+  until: Date.parse("2026-10-31T13:00:00-04:00"),   // Oct 31, 1:00 PM in Florida (EDT)
   bypass: ["fallgamedev", "jfor", "omizio"],         // usernames (any capitals) that can play everything
 };
 const Demo = {
@@ -1066,7 +1066,7 @@ const Demo = {
     const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
     return d ? `${d}d ${h}h ${m}m` : h ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
   },
-  releaseText: "October 31 at 4:15 PM (Eastern)",
+  releaseText: "October 31 at 1 PM (Eastern)",
 
   check() {
     if (this.checking) return this.checking;
