@@ -32,6 +32,7 @@ const ACHIEVEMENTS = [
   { id: "honk",     icon: "!",  colors: ["#d94ac8", "#5a0d50"], name: "Honk",                    desc: "Honk the poster's nose.", hidden: true },
   { id: "golden",   icon: "?",  colors: ["#e6c34a", "#5a4a0d"], name: "It's Me",                 desc: "Meet Golden Eddie.", hidden: true },
   { id: "minigame", icon: "▣",  colors: ["#6a6aff", "#12125a"], name: "Insert Coin",             desc: "Play one of the strange 8-bit games.", hidden: true },
+  { id: "yay",      icon: "✓",  colors: ["#3a8cff", "#0d2f6b"], name: "yay",                     desc: "Somehow hit the yay button at 6 AM.", hidden: true },
   { id: "cake",     icon: "🎂", colors: ["#e68ab4", "#5a1d38"], name: "Take Cake",               desc: "Give cake to every child.", hidden: true },
 ];
 

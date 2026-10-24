@@ -44,6 +44,7 @@ const PICTURE_NAMES = {
   "Plush": ["Sprite61", "Sprite65"],
   "Custom": ["star"],
   "Riceria": ["crying"],
+  "Outcome": ["popup"],
   "Newspaper": ["page"],
   "Stare": ["ring", "ring-red", "head"],
   "Loading": ["icon"],

@@ -1331,11 +1331,74 @@ class Game {
       for (let t = 0; t <= 1; t += TICK / 2) { this.smooth.set("roll", t); yield; }
       this.smooth.set("roll", 1);
       this.sp.chime.play("Ambience", "CROWD_SMALL_CHIL_EC049202");
-      yield 4;
+      yield 1.5;
+      // the XP pop-up bounces around; true = the player somehow hit "yay" (skip right away)
+      const skipped = yield* this.winPopup();
+      if (skipped) { this.removeOverlay(card); return this.nightWon(); }
       yield* this.fade(card, 0, 30);
       this.nightWon();
     }.call(this));
     this.scripts.run("6am", function* () { yield 1; if (this.screen === "night") this.screen = "black"; }.call(this));
+  }
+
+  /* -----------------------------------------------------------------
+     6 AM pop-up: Aidan's Windows XP "Outcome Memories" window.
+     It pops up at a random spot, then falls and bounces off the bottom of
+     the screen like the cards in the Windows XP Solitaire win, leaving a
+     trail of copies behind it. Then again from another random spot.
+     If the player somehow clicks its "yay" button, the screen is skipped
+     at once and they get the hidden "yay" achievement.
+     Returns true when skipped (use with yield*).
+     ----------------------------------------------------------------- */
+  *winPopup() {
+    const p = pic("Outcome", "popup");
+    if (!p) return false;                       // picture missing (old mod): just carry on
+    const W2 = p.w / 2, H2 = p.h / 2;
+    // where "yay" is on the picture (fractions of its width and height, measured on outcome_win.png)
+    const YAY_BOX = [0.382, 0.687, 0.620, 0.873];
+    // the trail: a see-through canvas the copies get stamped on (2 device px per game pixel)
+    const trail = document.createElement("canvas");
+    trail.width = 960; trail.height = 720;
+    const tctx = trail.getContext("2d");
+    tctx.setTransform(2, 0, 0, 2, 0, 0);
+    const box = { x: 240, y: 180, shown: false };
+    this.smooth.jump("winX", box.x); this.smooth.jump("winY", box.y);
+    const layer = this.overlay(null, null, { paint: (ctx, a) => {
+      ctx.drawImage(trail, 0, 0, 480, 360);
+      if (box.shown) draw(ctx, p, this.smooth.at("winX", a), this.smooth.at("winY", a));
+    } });
+    // did a click land on "yay" right now?
+    const hitYay = () => this.clicks.some(c => {
+      const x0 = box.x - W2 + p.w * YAY_BOX[0], x1 = box.x - W2 + p.w * YAY_BOX[2];
+      const y0 = box.y - H2 + p.h * YAY_BOX[1], y1 = box.y - H2 + p.h * YAY_BOX[3];
+      return box.shown && c.x >= x0 && c.x <= x1 && c.y >= y0 && c.y <= y1;
+    });
+    const done = () => { this.removeOverlay(layer); return true; };
+    const rand = (a, b) => a + Math.random() * (b - a);
+    for (let throwNo = 0; throwNo < 3; throwNo++) {
+      // pop up somewhere random (anywhere it fits on screen)
+      box.x = rand(W2, 480 - W2); box.y = rand(H2, 360 - H2 - 40);
+      this.smooth.jump("winX", box.x); this.smooth.jump("winY", box.y);
+      box.shown = true;
+      this.sp.blip.play("Sprite10", "COMPUTER_DIGITAL_L2076605");
+      for (let t = 0; t < 0.6; t += TICK) { if (hitYay()) { this.unlock("yay"); return done(); } yield; }
+      // the Solitaire throw: sideways speed, a little hop, gravity, bouncy floor
+      let vx = rand(3.5, 6.5) * (Math.random() < 0.5 ? -1 : 1), vy = rand(-7, -1);
+      while (box.x + W2 > 0 && box.x - W2 < 480) {
+        if (hitYay()) { this.unlock("yay"); return done(); }
+        draw(tctx, p, box.x, box.y);              // leave a copy behind (the trail)
+        vy += 0.9;                                // gravity (game px per tick, per tick)
+        box.x += vx; box.y += vy;
+        if (box.y + H2 > 360) { box.y = 360 - H2; vy = -vy * 0.78; }   // bounce, losing some height
+        this.smooth.set("winX", box.x); this.smooth.set("winY", box.y);
+        yield;
+      }
+      box.shown = false;
+    }
+    yield 0.8;
+    yield* this.fade(layer, 0, 30);
+    this.removeOverlay(layer);
+    return false;
   }
 
   nightWon() {
