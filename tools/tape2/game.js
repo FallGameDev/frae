@@ -191,6 +191,11 @@ const SAVE_FILES = 3;
 const saveKey = file => "frae2-save-file" + file;
 const TAPE = 2;                                  // this tape's number (Story Mode)
 const CAM_TIME_SPEED = 1.15;                     // the clock runs this much faster while the cameras are up
+// THE MASK'S OXYGEN: it runs out after OXYGEN_SECONDS of wearing it and fills back up in OXYGEN_REFILL seconds.
+// Out of air: the mask comes off and can't go back on for OUT_OF_AIR seconds, everyone takes 1-2 steps closer,
+// and the screen goes dark red at the edges for that long.
+const OXYGEN_SECONDS = 14, OXYGEN_REFILL = 8, OUT_OF_AIR = 15;
+const MASK_MUSIC_SPEED = 1.35;                   // the music box winds down this much faster while the mask is on
 
 function fileFromUrl() {
   if (Story.on) return "story";                 // Story Mode keeps its own local file (frae2-save-filestory)
@@ -633,6 +638,9 @@ class Game {
     n.placingTrap = false;
     n.glassesUntil = 0;
     n.stopwatchUsed = false;
+    n.oxygen = 1;                // 1 = full, 0 = out of air (the mask)
+    n.maskLock = 0;              // seconds until the mask can go back on (after running out of air)
+    n.hurt = 0;                  // seconds of the dark red "can't breathe" edges left
     ItemBar.attach(this);
     ItemBar.show(true);
     Pause.attach(this);
@@ -1060,7 +1068,7 @@ class Game {
     if (n.puppet > 0) return;
     const ai = n.ai.puppet;
     const secondsToEmpty = 150 - ai * 5;
-    n.musicBox -= TICK / secondsToEmpty * Global.drain();     // (chicken mode: 3x slower)
+    n.musicBox -= TICK / secondsToEmpty * Global.drain() * (n.maskUp ? MASK_MUSIC_SPEED : 1);   // (chicken mode: 3x slower; faster under the mask)
     // the tune plays only while you watch camera 11
     this.sp.musicbox.setVolume(n.camsUp && n.cam === 11 ? 55 : 0);
     if (n.musicBox <= 0) { n.musicBox = 0; this.puppetComes(); }
@@ -1121,6 +1129,7 @@ class Game {
   toggleMask() {
     const n = this.n;
     if (n.monitorUp || n.monitorFrame || n.maskFrame) return;
+    if (!n.maskUp && n.maskLock > 0) { Items.sfx("no"); return; }      // still catching your breath
     n.maskUp = !n.maskUp;
     this.sp.mask.play("Sprite4", n.maskUp ? "mask.show" : "mask.hide");
     const up = n.maskUp;
@@ -1128,6 +1137,81 @@ class Game {
       for (let f = 1; f <= 6; f++) { n.maskFrame = up ? f : 7 - f; yield; }
       n.maskFrame = 0;
     }.call(this));
+  }
+
+  /* --------------------------------------------------------------
+     OXYGEN: the mask uses it up, taking the mask off fills it again
+     -------------------------------------------------------------- */
+  updateOxygen() {
+    const n = this.n;
+    if (n.maskLock > 0) n.maskLock = Math.max(0, n.maskLock - TICK);
+    if (n.hurt > 0) n.hurt = Math.max(0, n.hurt - TICK);
+    if (n.maskUp && !n.maskFrame) {
+      n.oxygen -= TICK / OXYGEN_SECONDS * Global.drain();        // (chicken mode: 3x slower)
+      if (n.oxygen <= 0) { n.oxygen = 0; this.outOfAir(); }
+    } else if (!n.maskUp) n.oxygen = Math.min(1, n.oxygen + TICK / OXYGEN_REFILL);
+  }
+  // Out of air: the mask comes off, everyone gets closer, and you can't breathe for a while
+  outOfAir() {
+    const n = this.n, sp = this.sp;
+    n.maskUp = false;
+    sp.mask.play("Sprite4", "mask.hide");
+    this.scripts.run("mask", function* () {
+      for (let f = 1; f <= 6; f++) { n.maskFrame = 7 - f; yield; }
+      n.maskFrame = 0;
+    }.call(this));
+    n.maskLock = OUT_OF_AIR;
+    n.hurt = OUT_OF_AIR;
+    this.gasp();
+    // everyone moving tonight takes 1 or 2 steps closer
+    for (const who of Object.keys(PATHS)) {
+      if (n.ai[who] <= 0) continue;
+      for (let i = rand(1, 2); i > 0; i--) if (n.at[who] !== "office" && n.at[who] !== "gone") this.step(who);
+    }
+    // and Withered Endo comes out to the hallway
+    const f = n.foxy;
+    if (n.ai.foxy > 0 && !f.hall && !this.taken("hall", "foxy")) {
+      f.hall = true; n.at.foxy = "hall"; f.flashes = 0;
+      f.need = rand(4, 6) + Math.floor(n.ai.foxy / 5);
+      f.timer = randFloat(14, 22) - n.ai.foxy * 0.3;
+      f.retreat = 0;
+      this.trapCheck("foxy", "hall");
+    }
+  }
+  // a gasp for air (made with Web Audio noise)
+  gasp() {
+    try {
+      const ac = Sound.ctx, t = ac.currentTime, len = 0.9;
+      const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * len), ac.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      for (const [start, dur, freq] of [[0, 0.45, 1100], [0.5, 0.4, 700]]) {
+        const src = ac.createBufferSource(), bp = ac.createBiquadFilter(), g = ac.createGain();
+        src.buffer = buf; bp.type = "bandpass"; bp.frequency.value = freq; bp.Q.value = 0.8;
+        g.gain.setValueAtTime(0.0001, t + start);
+        g.gain.exponentialRampToValueAtTime(0.5, t + start + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + start + dur);
+        src.connect(bp).connect(g).connect(Sound.sfxBus);
+        src.start(t + start); src.stop(t + start + dur + 0.05);
+      }
+    } catch (e) {}
+  }
+  // the dark red edges while you can't breathe (heartbeat pulse, fades out at the end)
+  drawHurt(ctx) {
+    const n = this.n;
+    if (!(n.hurt > 0)) return;
+    const fade = Math.min(1, n.hurt / 3);
+    const beat = Math.pow(Math.abs(Math.sin(this.tick / 9)), 6);         // a thump about once a second
+    const inner = 30 + 60 * (1 - fade) - beat * 14;
+    const g = ctx.createRadialGradient(240, 180, inner, 240, 180, 270);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(0.35, `rgba(90,0,0,${(0.45 + beat * 0.2) * fade})`);
+    g.addColorStop(0.75, `rgba(40,0,0,${(0.88 + beat * 0.1) * fade})`);
+    g.addColorStop(1, `rgba(5,0,0,${fade})`);
+    ctx.save();
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 480, 360);
+    ctx.fillStyle = `rgba(0,0,0,${(0.25 + beat * 0.15) * fade})`; ctx.fillRect(0, 0, 480, 360);   // everything darker (half blind)
+    if (n.hurt > OUT_OF_AIR - 0.4) { ctx.fillStyle = `rgba(200,0,0,${(n.hurt - OUT_OF_AIR + 0.4) * 1.2})`; ctx.fillRect(0, 0, 480, 360); }
+    ctx.restore();
   }
 
   /* --------------------------------------------------------------
@@ -1212,6 +1296,7 @@ class Game {
     }
 
     this.updateBars();
+    this.updateOxygen();
     this.updateLights();
     this.updateCharacters();
     this.updateVisit();
@@ -1379,10 +1464,13 @@ class Game {
     const mech = [
       { name: "The mask", pix: "mask", text: ["Q (or the bottom-left bar). When the lights flicker someone is in the office: mask on until they leave.", "Mask on while someone sits in a vent opening sends them all the way back."],
         tips: ["It does nothing against Withered Endo or the Puppet."] },
+      { name: "Oxygen", pix: "skull", text: ["The mask uses up air (the O2 bar, top left). It runs out after about 14 seconds and fills back up when you take the mask off.",
+          "Run out and the mask comes off: you can't wear it for 15 seconds, everyone moves 1 or 2 steps closer, and you can barely see."],
+        tips: ["Take the mask off as soon as they leave, so the bar can fill back up."] },
       { name: "Flashlight", pix: "flash", text: ["Hold SPACE, F or Ctrl (or click and hold) to light the hallway. It uses battery (top left)."] },
       { name: "Vent lights", pix: "vent", text: ["Hold A or D (or the LIGHT buttons) to see who's in the left or right vent opening."] },
       { name: "The monitor", pix: "monitor", text: ["E (or the bottom-right bar). Nobody gets in while you look at the office, only while the monitor is up.", "The night moves a little faster while it's up."] },
-      { name: "The music box", pix: "music", text: ["On CAM 11. Hold WIND UP to wind it. If it runs out, the Puppet comes."] },
+      { name: "The music box", pix: "music", text: ["On CAM 11. Hold WIND UP to wind it. If it runs out, the Puppet comes.", "It winds down a little faster while you wear the mask."] },
       { name: "The clock", pix: "clock", text: ["12 AM to 6 AM, 70 seconds an hour. Everyone gets more active at 3 and 5 AM."] },
       { name: "Phone calls", pix: "phone", text: ["The phone rings when a night starts. Pick up for advice, or hang up."] },
     ];
@@ -1401,7 +1489,7 @@ class Game {
           Math.round(n.battery) + "% battery  ·  music box " + Math.round(n.musicBox * 100) + "%" : "",
         text: [tonight.length ? "Who's moving tonight:" : "Nobody is moving tonight."], list: tonight },
       { name: "Quick rules", pix: "star", list: [
-          ["Lights flicker", "mask on"], ["Someone in a vent", "mask on"], ["Withered Endo", "flashlight, again and again"],
+          ["Lights flicker", "mask on"], ["Someone in a vent", "mask on"], ["O2 bar", "mask off before it runs out"], ["Withered Endo", "flashlight, again and again"],
           ["CAM 11", "keep the music box wound"], ["The monster gets in", "no more lights"], ["6 AM", "you win"]] },
       { name: "Your file", pix: "eye", sub: Story.on ? "Story Mode" : "Save file " + this.file, list: [
           ["Night reached", String(p.night)], ["Stars", "★".repeat((p.beat5 ? 1 : 0) + (p.beat6 ? 1 : 0) + (p.beat420 ? 1 : 0)) || "-"],
@@ -2065,6 +2153,7 @@ class Game {
       const bob = Math.sin(this.tick / 9) * 3;
       draw(ctx, pic("Sprite3", "88"), SX(-15), SY(15) + bob, { size: 150 });
     }
+    this.drawHurt(ctx);                       // out of air: dark red edges
     this.drawHud(ctx, a);
     if (n.halluc && !n.camsUp) {
       if (n.halluc === "bbEyes") drawSpot(ctx, EXTRA_SPOTS.bbEyes, SX(pan + 100), SY(-150), 50);
@@ -2192,6 +2281,19 @@ class Game {
     // flashlight battery (4 bars)
     const bars = n.battery <= 0 ? 0 : Math.min(4, Math.ceil(n.battery / 25));
     draw(ctx, pic("Sprite12", String(bars)), SX(-215), SY(145), { size: 50 });
+    // the mask's oxygen (shows while you wear it, while it fills back up, and while you can't put it on)
+    if (n.maskUp || n.oxygen < 1 || n.maskLock > 0) {
+      const w = 80, h = 7, x = SX(-120) - w / 2, y = 318, low = n.oxygen < 0.25;       // just above the mask bar
+      this.text(ctx, "O2", x - 4, y + 7, { size: 9, align: "right", shadow: "#000", color: low ? "#ff5040" : "#fff" });
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+      ctx.fillStyle = n.maskLock > 0 ? "#552020" : low ? (Math.floor(this.tick / 6) % 2 ? "#ff3020" : "#802010") : "#7ff6ff";
+      ctx.fillRect(x, y, w * (n.maskLock > 0 ? 1 - n.maskLock / OUT_OF_AIR : n.oxygen), h);
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
+      ctx.restore();
+      if (n.maskLock > 0) this.text(ctx, W("Office", "NO AIR") + " " + Math.ceil(n.maskLock), x + w + 6, y + 7, { size: 9, color: "#ff5040", shadow: "#000" });
+      else if (n.maskUp && low && Math.floor(this.tick / 8) % 2) this.text(ctx, W("Office", "LOW AIR!"), 240, 300, { size: 14, align: "center", color: "#ff5040", font: "Press Start 2P", shadow: "#000" });
+    }
     // the two bars at the bottom (hidden while you use them)
     if (!n.camsUp && !n.monitorFrame && !n.maskFrame) draw(ctx, pic("Sprite2", "119"), SX(-120), SY(-165), { size: 50, alpha: n.maskUp ? 0.8 : 1 });
     if (!n.maskUp && !n.maskFrame && !n.monitorFrame) draw(ctx, pic("Sprite1", "95"), SX(120), SY(-165), { size: 50 });
@@ -2215,6 +2317,7 @@ class Game {
       out.battery = Math.round(n.battery) + "%";
       out["music box"] = Math.round(n.musicBox * 100) + "%" + (n.puppet ? " (Puppet " + n.puppet + ")" : "");
       out.view = n.camsUp ? "CAM " + n.cam : n.maskUp ? "mask" : "office";
+      out.oxygen = Math.round(n.oxygen * 100) + "%" + (n.maskLock > 0 ? " (no air " + Math.ceil(n.maskLock) + "s)" : "");
       for (const k of Object.keys(PATHS)) out[CAST[k].name] = `${n.at[k]} (AI ${n.ai[k]})`;
       out[CAST.foxy.name] = n.foxy.hall ? `hall ${n.foxy.flashes}/${n.foxy.need} flashes, ${n.foxy.timer.toFixed(1)}s` : `8 (AI ${n.ai.foxy})`;
       if (n.visit) out["in office"] = CAST[n.visit.who].name + (n.visit.started ? "" : " (waiting)");
