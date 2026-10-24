@@ -7,7 +7,7 @@
      Everything stops: the game's updates (game.paused) and every sound
      (the Web Audio clock is suspended).
 
-   JOURNAL (like the one in DOORS): a book with chapters on tabs:
+   JOURNAL (works like the one in DOORS, looks like the blue VHS guide screen) with chapters:
      Entities, Mechanics, Items, Cameras, Summary
    Each tape writes its own pages: game.journal() returns
      { title, chapters: [{ id, name, entries: [entry...] }] }
@@ -137,6 +137,51 @@ const Pause = {
 };
 
 /* ---------------------------------------------------------------------
+   Little pixel pictures for the journal (12 x 12, same colors as ITEMS)
+   --------------------------------------------------------------------- */
+const JOURNAL_ICONS = {
+  door:    [".##########.", ".#........#.", ".#.######.#.", ".#.#....#.#.", ".#.#....#.#.", ".#.#....#.#.", ".#.#..g.#.#.", ".#.#....#.#.", ".#.#....#.#.", ".#.######.#.", ".#........#.", "############"],
+  light:   ["....####....", "...#gggg#...", "..#gggggg#..", "..#gggggg#..", "..#gggggg#..", "...#gggg#...", "....#gg#....", "....####....", "....#dd#....", "....####....", ".....##.....", "............"],
+  power:   [".......gg...", "......gg....", ".....gg.....", "....gg......", "...gggggg...", "......gg....", ".....gg.....", "....gg......", "...gg.......", "..gg........", "............", "............"],
+  clock:   ["...######...", "..#......#..", ".#...#....#.", "#....#.....#", "#....#.....#", "#....###...#", "#..........#", "#..........#", ".#........#.", "..#......#..", "...######...", "............"],
+  phone:   ["............", ".##......##.", "#gg#....#gg#", "#gg######gg#", ".##.#..#.##.", "...#....#...", "..#..##..#..", "..#.#..#.#..", "..#..##..#..", "..#......#..", "..########..", "............"],
+  mask:    ["..########..", ".#gggggggg#.", "#gggggggggg#", "#g##gggg##g#", "#gggggggggg#", "#gggggggggg#", "#g#gggggg#g#", "#gg######gg#", ".#gggggggg#.", "..#gggggg#..", "...######...", "............"],
+  flash:   ["...........g", ".........g..", ".##.....g...", "#dd######..g", "#dd#gggggg..", "#dd#gggggg.g", "#dd######...", ".##.....g...", ".........g..", "...........g", "............", "............"],
+  vent:    ["############", "#..........#", "#.########.#", "#..........#", "#.########.#", "#..........#", "#.########.#", "#..........#", "#.########.#", "#..........#", "############", "............"],
+  monitor: ["############", "#bbbbbbbbbb#", "#bbbbbbbbbb#", "#bb##bbbbbb#", "#bbbbbbbbbb#", "#bbbbbbbbbb#", "#bbbbbbbbbb#", "############", ".....##.....", "....####....", "............", "............"],
+  music:   [".....######.", ".....#....#.", ".....######.", ".....#....#.", ".....#....#.", ".....#....#.", "..####..####", ".#gggg.#gggg", ".#gggg.#gggg", "..####..####", "............", "............"],
+  cam:     ["............", "............", ".#######....", "#ddddddd#.##", "#d##ddddd###", "#d##dddd####", "#ddddddd####", "#ddddddd#.##", ".#######....", "............", "............", "............"],
+  radio:   ["............", ".........#..", "........#...", ".#########..", "#dddddddd#..", "#d##dd####..", "#d##dddddd#.", "#dddd#dd#d#.", "#dddd#dd#d#.", ".##########.", "............", "............"],
+  eye:     ["............", "............", "....####....", "..##....##..", ".#...##...#.", "#...####...#", "#...####...#", ".#...##...#.", "..##....##..", "....####....", "............", "............"],
+  skull:   ["...######...", "..#......#..", ".#........#.", ".#.##..##.#.", ".#.##..##.#.", ".#........#.", "..#..##..#..", "...#....#...", "...#.#.#.#..", "....####....", "............", "............"],
+  star:    [".....gg.....", ".....gg.....", "....gggg....", "gggggggggggg", ".gggggggggg.", "..gggggggg..", "...gggggg...", "..ggg..ggg..", ".gg......gg.", "............", "............", "............"],
+};
+function journalIcon(name, size = 24) {
+  const grid = JOURNAL_ICONS[name];
+  if (!grid) return "";
+  let rects = "";
+  grid.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ITEM_COLORS[ch]) rects += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${ITEM_COLORS[ch]}"/>`;
+  }));
+  return `<svg viewBox="0 0 12 12" width="${size}" height="${size}" shape-rendering="crispEdges">${rects}</svg>`;
+}
+// A tiny camera map: cams = [{ x, y, label, on }] in any units (fitted to the box), you = { x, y }
+function journalMap(map) {
+  const pts = [...map.cams, ...(map.you ? [map.you] : [])];
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  const bw = span * 0.11, bh = bw * 0.58, fs = bh * 0.62, u = span / 120;      // box, letters and line sizes follow the map's size
+  const x0 = Math.min(...xs) - bw, x1 = Math.max(...xs) + bw, y0 = Math.min(...ys) - bh * 1.2, y1 = Math.max(...ys) + bh * 2;
+  const box = c => `<g><rect x="${c.x - bw / 2}" y="${c.y - bh / 2}" width="${bw}" height="${bh}" fill="${c.on ? "#fff" : "rgba(0,0,40,.5)"}" stroke="#fff" stroke-width="${u}"/>
+    <text x="${c.x}" y="${c.y + fs * 0.36}" font-size="${fs}" text-anchor="middle" fill="${c.on ? "#0d2fb8" : "#fff"}" font-family="VCR OSD Mono, monospace">${c.label}</text></g>`;
+  const ys2 = bh * 0.7;
+  return `<svg class="minimap" viewBox="${x0} ${y0} ${x1 - x0} ${y1 - y0}">
+    ${map.cams.map(box).join("")}
+    ${map.you ? `<rect x="${map.you.x - ys2 / 2}" y="${map.you.y - ys2 / 2}" width="${ys2}" height="${ys2}" fill="#ff2a3c"/><text x="${map.you.x}" y="${map.you.y + ys2 + fs * 0.8}" font-size="${fs * 0.9}" text-anchor="middle" fill="#fff" font-family="VCR OSD Mono, monospace">YOU</text>` : ""}
+  </svg>`;
+}
+
+/* ---------------------------------------------------------------------
    THE JOURNAL (an old notebook: chapter tabs, a list of pages, the page)
    --------------------------------------------------------------------- */
 const Journal = {
@@ -156,96 +201,129 @@ const Journal = {
 
   build() {
     if (this.el) return;
+    // Looks like the blue VHS guide screen (vhs.js): blue picture, VCR letters with red/cyan edges, scan lines
     const css = document.createElement("style");
     css.textContent = `
       #journal { position: fixed; inset: 0; z-index: 95; display: flex; align-items: center; justify-content: center;
-        background: rgba(0,0,0,.8); padding: 14px; }
+        background: rgba(0,0,0,.85); padding: 14px; }
       #journal[hidden] { display: none; }
-      #journal .book { position: relative; width: min(980px, calc(100% - 120px)); margin-right: 104px; height: min(640px, 92vh); display: flex;
-        background: #3b2414; padding: 14px; border-radius: 8px; box-shadow: 0 18px 50px #000, inset 0 0 0 3px #1d1008; }
-      #journal .page { flex: 1; overflow-y: auto; padding: 22px 26px; color: #2b1d10; font-family: "Courier Prime", monospace;
-        background: #e9dcc0; background-image: repeating-linear-gradient(to bottom, transparent 0 27px, rgba(80,60,30,.13) 27px 28px),
-          radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.35), transparent 60%), radial-gradient(ellipse at 80% 90%, rgba(120,80,30,.25), transparent 55%); }
-      #journal .left { border-radius: 4px 0 0 4px; box-shadow: inset -14px 0 18px -12px rgba(60,30,0,.5); max-width: 36%; }
-      #journal .right { border-radius: 0 4px 4px 0; box-shadow: inset 14px 0 18px -12px rgba(60,30,0,.5); }
-      #journal h1 { font: 28px "VCR OSD Mono", monospace; letter-spacing: 2px; color: #3b2414; margin: 0 0 4px; }
-      #journal .chap { font-size: 14px; color: #7a5a35; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 1px; }
-      #journal .list button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer;
-        background: none; border: none; border-bottom: 1px dashed rgba(80,60,30,.35); padding: 7px 4px; font: 17px "Courier Prime", monospace; color: #2b1d10; }
-      #journal .list button:hover { background: rgba(120,80,30,.12); }
-      #journal .list button.on { background: rgba(120,80,30,.22); font-weight: bold; }
-      #journal .list button.locked { color: #9a8463; }
-      #journal .list img, #journal .list .noimg { width: 34px; height: 34px; flex: none; border-radius: 50%; border: 2px solid #3b2414; background: #1a120a; object-fit: cover; }
-      #journal .list .noimg { display: flex; align-items: center; justify-content: center; color: #e9dcc0; font: 16px "VCR OSD Mono", monospace; }
-      #journal .entry h2 { font: 30px "VCR OSD Mono", monospace; margin: 0; color: #3b2414; }
-      #journal .entry .sub { color: #7a5a35; font-size: 15px; margin: 2px 0 14px; }
-      #journal .entry .photo { float: right; width: 150px; height: 150px; margin: 0 0 12px 16px; border: 6px solid #fff;
-        box-shadow: 3px 4px 8px rgba(0,0,0,.45); transform: rotate(3deg); background: #111; object-fit: cover; }
-      #journal .entry .photo.lockedimg { display: flex; align-items: center; justify-content: center; color: #555; font: 60px "VCR OSD Mono", monospace; }
-      #journal .entry p { font-size: 17px; line-height: 28px; margin: 0 0 12px; }
-      #journal .entry .tips { margin: 14px 0 0; padding: 10px 14px; border: 2px solid #b8402a; color: #8c2a17; transform: rotate(-.6deg);
-        font-size: 16px; line-height: 24px; background: rgba(184,64,42,.06); }
-      #journal .entry .tips b { display: block; font: 15px "VCR OSD Mono", monospace; letter-spacing: 1px; }
-      #journal .entry table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 16px; }
-      #journal .entry td { border-bottom: 1px dashed rgba(80,60,30,.35); padding: 5px 4px; vertical-align: top; }
-      #journal .entry td:first-child { font-weight: bold; white-space: nowrap; padding-right: 14px; }
-      #journal .tabs { position: absolute; right: -2px; top: 26px; transform: translateX(100%); display: flex; flex-direction: column; gap: 6px; }
-      #journal .tabs button { font: 14px "VCR OSD Mono", monospace; padding: 10px 12px 10px 10px; border: none; cursor: pointer;
-        border-radius: 0 6px 6px 0; color: #2b1d10; box-shadow: 3px 3px 0 rgba(0,0,0,.4); text-align: left; min-width: 104px; }
-      #journal .tabs button.on { transform: translateX(6px); font-weight: bold; }
-      #journal .close { position: absolute; top: -12px; right: -12px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
-        background: #b8402a; color: #fff; border: 3px solid #1d1008; font: 20px "VCR OSD Mono", monospace; z-index: 2; }
+      #journal .tv { position: relative; width: min(1000px, 100%); height: min(660px, 94vh); display: flex; flex-direction: column;
+        background: linear-gradient(#1846e0, #0d2fb8); border: 4px solid #fff; box-shadow: 10px 10px 0 #000; overflow: hidden;
+        color: #fff; font-family: "VCR OSD Mono", "Share Tech Mono", monospace; }
+      #journal .tv::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+        background: repeating-linear-gradient(to bottom, rgba(0,0,30,.16) 0 1px, transparent 1px 3px); }
+      #journal .band { position: absolute; left: 0; right: 0; height: 26px; pointer-events: none; z-index: 1;
+        background: linear-gradient(transparent, rgba(255,255,255,.07), transparent); animation: jroll 9s linear infinite; }
+      @keyframes jroll { from { top: -40px; } to { top: 105%; } }
+      #journal .vt { text-shadow: -1px 0 rgba(255,40,80,.55), 1px 0 rgba(60,255,255,.55); }
+      #journal .top { display: flex; align-items: center; gap: 12px; padding: 14px 20px 8px; }
+      #journal .top .play { font-size: 26px; flex: 1; }
+      #journal .top .play::before { content: "\\25B6  "; }
+      #journal .top .count { font-size: 18px; }
+      #journal .tabs { display: flex; gap: 8px; padding: 0 20px 12px; flex-wrap: wrap; border-bottom: 2px solid rgba(255,255,255,.8); }
+      #journal .tabs button, #journal .eject { font: 15px "VCR OSD Mono", monospace; color: #fff; background: transparent; cursor: pointer;
+        border: 2px solid #fff; padding: 6px 12px; text-shadow: -1px 0 rgba(255,40,80,.55), 1px 0 rgba(60,255,255,.55); }
+      #journal .tabs button:hover, #journal .eject:hover { background: rgba(255,255,255,.15); }
+      #journal .tabs button.on { background: #fff; color: #0d2fb8; text-shadow: none; }
+      #journal .body { flex: 1; display: flex; min-height: 0; }
+      #journal .left { width: 34%; overflow-y: auto; padding: 12px 14px 12px 20px; border-right: 2px solid rgba(255,255,255,.35); }
+      #journal .right { flex: 1; overflow-y: auto; padding: 14px 22px; }
+      #journal .chap { font-size: 14px; color: #7ff6ff; margin-bottom: 8px; letter-spacing: 1px; }
+      #journal .list button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer; background: none;
+        border: none; padding: 6px 6px; font: 17px "VCR OSD Mono", monospace; color: #fff; text-shadow: -1px 0 rgba(255,40,80,.5), 1px 0 rgba(60,255,255,.5); }
+      #journal .list button:hover { background: rgba(255,255,255,.12); }
+      #journal .list button.on { background: rgba(255,255,255,.22); }
+      #journal .list button.on::after { content: " \\25C0"; margin-left: auto; }
+      #journal .list button.locked { color: rgba(255,255,255,.45); }
+      #journal .list img, #journal .list .noimg { width: 32px; height: 32px; flex: none; border: 2px solid #fff; background: #0a1a66; object-fit: cover; }
+      #journal .list .noimg { display: flex; align-items: center; justify-content: center; font-size: 14px; text-shadow: none; }
+      #journal .list .noimg svg { width: 24px; height: 24px; }
+      #journal .entry { animation: jtrack .35s steps(4); }
+      @keyframes jtrack { 0% { opacity: 0; transform: translateX(-6px); filter: blur(1px); } 60% { opacity: 1; transform: translateX(2px); } 100% { transform: none; } }
+      #journal .entry h2 { font-size: 28px; margin: 0; font-weight: normal; }
+      #journal .entry .sub { color: #7ff6ff; font-size: 15px; margin: 2px 0 6px; }
+      #journal .entry hr { border: none; border-top: 2px solid rgba(255,255,255,.8); margin: 6px 0 14px; }
+      #journal .entry .photo { float: right; width: 140px; height: 140px; margin: 0 0 12px 16px; border: 3px solid #fff; background: #0a1a66;
+        object-fit: cover; filter: saturate(.8) contrast(1.1); }
+      #journal .entry .photo.lockedimg { display: flex; align-items: center; justify-content: center; font-size: 60px; }
+      #journal .entry p { font-size: 16px; line-height: 24px; margin: 0 0 10px; }
+      #journal .entry .tips { margin: 12px 0 0; color: #7ff6ff; font-size: 15px; line-height: 22px; }
+      #journal .entry table { width: 100%; border-collapse: collapse; margin: 4px 0 12px; font-size: 15px; }
+      #journal .entry td { border-bottom: 1px dashed rgba(255,255,255,.35); padding: 5px 4px; vertical-align: top; }
+      #journal .entry td:first-child { color: #7ff6ff; white-space: nowrap; padding-right: 14px; }
+      #journal .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 2px 0 12px; }
+      #journal .chips .lbl { color: #7ff6ff; font-size: 13px; width: 100%; margin-bottom: 2px; }
+      #journal .chip { display: inline-flex; align-items: center; gap: 6px; border: 2px solid #fff; padding: 3px 7px; font-size: 13px; background: rgba(0,0,40,.35); }
+      #journal .chip.end { background: #fff; color: #0d2fb8; text-shadow: none; }
+      #journal .arrow { color: #7ff6ff; font-size: 13px; }
+      #journal .minimap { display: block; width: auto; height: 170px; max-width: 100%; margin: 4px 0 14px; border: 2px solid rgba(255,255,255,.6); background: rgba(0,0,40,.3); }
+      #journal .bigicon { float: right; width: 140px; height: 140px; margin: 0 0 12px 16px; border: 3px solid #fff; background: #0a1a66;
+        display: flex; align-items: center; justify-content: center; }
+      #journal .foot { display: flex; justify-content: space-between; align-items: center; padding: 8px 20px 12px; border-top: 2px solid rgba(255,255,255,.8);
+        font-size: 13px; color: rgba(255,255,255,.7); }
+      #journal .eject::before { content: "\\23CF  "; }
       @media (max-width: 760px) {
-        #journal .book { flex-direction: column; height: 92vh; padding: 10px; padding-top: 52px; width: 100%; margin-right: 0; }
-        #journal .left { max-width: none; max-height: 34%; }
-        #journal .tabs { top: 8px; left: 10px; right: 10px; transform: none; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; }
-        #journal .tabs button { border-radius: 6px 6px 0 0; min-width: 0; }
-        #journal .tabs button.on { transform: translateY(3px); }
-        #journal .entry .photo { width: 96px; height: 96px; }
+        #journal { padding: 6px; }
+        #journal .tv { height: 96vh; }
+        #journal .tabs { flex-wrap: nowrap; overflow-x: auto; }
+        #journal .body { flex-direction: column; }
+        #journal .left { width: auto; max-height: 30%; border-right: none; border-bottom: 2px solid rgba(255,255,255,.35); }
+        #journal .entry .photo { width: 90px; height: 90px; }
+        #journal .foot .keys { display: none; }
+        #journal .top .title { display: none; }
+        #journal .top .play { font-size: 20px; }
       }`;
     document.head.append(css);
     const el = this.el = document.createElement("div");
     el.id = "journal"; el.hidden = true; el.setAttribute("data-nomeme", "");
-    el.innerHTML = `<div class="book"><button class="close" title="Close (Esc)">X</button>
-      <div class="page left"></div><div class="page right"></div><div class="tabs"></div></div>`;
-    el.querySelector(".close").onclick = () => this.close();
+    el.innerHTML = `<div class="tv"><div class="band"></div>
+      <div class="top"><span class="play vt">PLAY</span><span class="title vt"></span><span class="count vt"></span></div>
+      <div class="tabs"></div>
+      <div class="body"><div class="left"></div><div class="right"></div></div>
+      <div class="foot"><span class="keys">TABS = CHAPTERS · ESC = BACK TO THE PAUSE MENU</span><button class="eject">EJECT</button></div></div>`;
+    el.querySelector(".eject").onclick = () => this.close();
     el.addEventListener("click", e => { if (e.target === el) this.close(); });
     document.body.append(el);
+    // the tape counter ticks while the journal is open
+    const t0 = Date.now();
+    setInterval(() => { if (this.isOpen()) el.querySelector(".count").textContent = "SP " + vhsCounter((Date.now() - t0) / 1000); }, 500);
   },
 
   draw() {
     const d = this.data, ch = d.chapters[this.chapter], en = ch.entries[this.entry] || ch.entries[0];
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    const TAB_COLORS = ["#d9a441", "#8fb36a", "#6fa3c9", "#c97a6f", "#b08fc9"];
-    // tabs
+    this.el.querySelector(".title").textContent = String(d.title).toUpperCase();
+    // chapter buttons
     const tabs = this.el.querySelector(".tabs");
-    tabs.innerHTML = d.chapters.map((c, i) =>
-      `<button data-i="${i}" class="${i === this.chapter ? "on" : ""}" style="background:${TAB_COLORS[i % TAB_COLORS.length]}">${esc(c.name.toUpperCase())}</button>`).join("");
+    tabs.innerHTML = d.chapters.map((c, i) => `<button data-i="${i}" class="${i === this.chapter ? "on" : ""}">${esc(c.name.toUpperCase())}</button>`).join("");
     tabs.querySelectorAll("button").forEach(b => b.onclick = () => { this.chapter = +b.dataset.i; this.entry = 0; this.draw(); });
-    // left page: the list
+    // left: the list of pages
     const left = this.el.querySelector(".left");
-    left.innerHTML = `<h1>${esc(d.title)}</h1><div class="chap">${esc(ch.name)}${ch.note ? " · " + esc(ch.note) : ""}</div>
+    left.innerHTML = `<div class="chap">${esc(ch.name.toUpperCase())}${ch.note ? " · " + esc(ch.note.toUpperCase()) : ""}</div>
       <div class="list">${ch.entries.map((e, i) => `<button data-i="${i}" class="${i === this.entry ? "on" : ""}${e.locked ? " locked" : ""}">
-        ${e.img && !e.locked ? `<img src="${e.img}" alt="">` : e.icon ? `<span class="noimg">${e.icon}</span>` : `<span class="noimg">${e.locked ? "?" : i + 1}</span>`}
-        <span>${esc(e.locked ? "???" : e.name)}</span></button>`).join("")}</div>`;
+        ${e.img && !e.locked ? `<img src="${e.img}" alt="">` : e.pix ? `<span class="noimg">${journalIcon(e.pix, 24)}</span>` : e.icon ? `<span class="noimg">${e.icon}</span>` : `<span class="noimg">${e.locked ? "?" : i + 1}</span>`}
+        <span>${esc(e.locked ? "???" : e.name.toUpperCase())}</span></button>`).join("")}</div>`;
     left.querySelectorAll(".list button").forEach(b => b.onclick = () => { this.entry = +b.dataset.i; this.draw(); });
-    // right page: the entry
+    // right: the page
     const right = this.el.querySelector(".right");
     if (!en) { right.innerHTML = ""; return; }
     if (en.locked) {
-      right.innerHTML = `<div class="entry"><div class="photo lockedimg">?</div><h2>???</h2>
-        <div class="sub">Not met yet</div>
+      right.innerHTML = `<div class="entry vt"><div class="photo lockedimg">?</div><h2>???</h2>
+        <div class="sub">NO SIGNAL</div><hr>
         <p>You haven't run into this one yet. Keep your eyes on the cameras.</p>
-        <p>This page fills itself in once you've seen them, or once they've caught you.</p></div>`;
+        <p>This tape records them once you've seen them, or once they've caught you.</p></div>`;
       right.scrollTop = 0;
       return;
     }
-    right.innerHTML = `<div class="entry">
-      ${en.img ? `<img class="photo" src="${en.img}" alt="">` : en.iconBig ? `<div class="photo" style="display:flex;align-items:center;justify-content:center;background:#111">${en.iconBig}</div>` : ""}
-      <h2>${esc(en.name)}</h2>${en.sub ? `<div class="sub">${esc(en.sub)}</div>` : ""}
+    right.innerHTML = `<div class="entry vt">
+      ${en.img ? `<img class="photo" src="${en.img}" alt="">` : en.iconBig ? `<div class="bigicon">${en.iconBig}</div>` : en.pix ? `<div class="bigicon">${journalIcon(en.pix, 110)}</div>` : ""}
+      <h2>${esc(en.name.toUpperCase())}</h2>${en.sub ? `<div class="sub">${esc(en.sub.toUpperCase())}</div>` : ""}<hr>
+      ${en.route ? `<div class="chips"><span class="lbl">ROUTE</span>${en.route.map((r, i) => `<span class="chip${i === en.route.length - 1 ? " end" : ""}">${esc(r)}</span>`).join('<span class="arrow">&#9654;</span>')}</div>` : ""}
+      ${en.counters ? `<div class="chips"><span class="lbl">HOW TO STOP THEM</span>${en.counters.map(([ic, t]) => `<span class="chip">${journalIcon(ic, 16)}${esc(t)}</span>`).join("")}</div>` : ""}
       ${(en.text || []).map(p => `<p>${esc(p)}</p>`).join("")}
+      ${en.map ? journalMap(en.map) : ""}
       ${en.list ? `<table>${en.list.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join("")}</table>` : ""}
-      ${en.tips && en.tips.length ? `<div class="tips"><b>SURVIVAL NOTES</b>${en.tips.map(t => "&bull; " + esc(t)).join("<br>")}</div>` : ""}
+      ${en.tips && en.tips.length ? `<div class="tips">${en.tips.map(t => "TIP: " + esc(t)).join("<br>")}</div>` : ""}
     </div>`;
     right.scrollTop = 0;
   },
@@ -278,12 +356,11 @@ function journalPicture(paint, size = 160) {
 function journalItems(extra) {
   return {
     id: "items", name: "Items",
-    note: Items.loaded ? "you own " + ITEMS.reduce((a, it) => a + Items.count(it.id), 0) : "sign in to use items",
+    note: Items.loaded ? "you own " + ITEMS.reduce((a, it) => a + Items.count(it.id), 0) : "sign in to use them",
     entries: [
-      { name: "How items work", icon: "?", text: [
-        "Items come from the SHOP in the Story Mode hub. You pay with the EXP you earn by beating nights in Story Mode. Spending EXP never lowers your level.",
-        "While you're signed in, every item you own shows down the LEFT side of the screen during a night, in Story Mode and in the normal game.",
-        "Click an item, or press its number (1 to 6), to use it. The frying pan works by itself."],
+      { name: "How items work", pix: "star", text: [
+        "Buy them with EXP in the SHOP (Story Mode hub). Spending EXP never lowers your level.",
+        "Signed in, your items show down the LEFT side during any night. Click one or press 1 to 6. The frying pan works by itself."],
         tips: ["Items you don't use stay on your account for the next night."] },
       ...ITEMS.map(it => ({
         name: it.name, iconBig: itemIcon(it.id, 110), icon: itemIcon(it.id, 26),

@@ -1321,24 +1321,6 @@ class Game {
   }
 
   /* =================================================================
-     GAME OVER (blue VHS screen) and TRY AGAIN
-     ================================================================= */
-  *vhsGameOver(who, hour) {
-    const g = new VhsGameOver({ who, night: this.level > 6 ? W("Game over", "CUSTOM NIGHT") : W("Game over", "NIGHT") + " " + this.level,
-                                time: (hour === 0 ? 12 : hour) + " AM" });
-    const L = this.overlay(null, null, { paint: ctx => g.draw(ctx) });
-    let pick = null;
-    yield () => (pick = g.step(this.clicks, this.keys));
-    this.removeOverlay(L);
-    return pick;
-  }
-  // The same night again (Story Mode reloads its step)
-  retryNight() {
-    if (Story.on) { location.reload(); return; }
-    this.startIntro();
-  }
-
-  /* =================================================================
      THE JOURNAL (pause menu > JOURNAL, see pause.js)
      ================================================================= */
   // Remember who you've met (their journal page opens up)
@@ -1366,73 +1348,71 @@ class Game {
   journal() {
     const n = this.n, p = this.progress;
     const ORDER = ["tfreddy", "tbonnie", "tchica", "mangle", "bb", "puppet", "wfreddy", "wbonnie", "wchica", "foxy", "golden"];
-    const SUB = { tfreddy: "Toy", tbonnie: "Toy", tchica: "Toy", mangle: "Toy, broken", bb: "The vents", puppet: "The music box",
-                  wfreddy: "Withered", wbonnie: "Withered", wchica: "Withered", foxy: "Withered", golden: "Very rare" };
-    const head = who => journalPicture((g, s) => drawActor(g, who, [6, 6, s - 6, s - 6], { mode: "head", still: true }));
-    const entities = ORDER.map(who => {
-      const { text, tips } = journalFromSlides(deathGuide(who));
-      return { name: CAST[who].name, sub: SUB[who], locked: !this.met(who), img: head(who), text, tips };
+    const short = s => typeof s === "number" ? "CAM " + String(s).padStart(2, "0") : { hall: "HALL", ventL: "L VENT", ventR: "R VENT", office: "YOU" }[s] || s;
+    // the camera map (map units, like MAP_BUTTONS) with some spots lit up
+    const SPOTS = { hall: "HALL", ventL: "L VT", ventR: "R VT" };
+    const map = on => ({
+      cams: [...Object.entries(MAP_BUTTONS).map(([c, r]) => ({ x: r[0] + r[2] / 2, y: r[1] + r[3] / 2, label: String(c).padStart(2, "0"), on: on.includes(Number(c)) })),
+             ...Object.entries(MAP_SPOTS).map(([k, [sx, sy]]) => ({ x: (sx - SX(139)) / 0.45, y: (sy - SY(-73)) / 0.45, label: SPOTS[k], on: on.includes(k) }))],
+      you: { x: (340 - SX(139)) / 0.45, y: (318 - SY(-73)) / 0.45 },
     });
-    // who walks through each camera (from PATHS and DETOURS)
+    const head = who => journalPicture((g, s) => drawActor(g, who, [6, 6, s - 6, s - 6], { mode: "head", still: true }));
+    const INFO = {
+      tfreddy: ["Toy", [["flash", "See him"], ["mask", "Mask on"]], ["Walks down the hallway, then slips in while your monitor is up."], "When the lights flicker, mask on within a second."],
+      tbonnie: ["Toy", [["vent", "Right vent light"], ["mask", "Mask on"]], ["Crawls in through the RIGHT vent."], "Mask on while she's in the vent opening and she goes all the way back."],
+      tchica:  ["Toy", [["vent", "Left vent light"], ["mask", "Mask on"]], ["Crawls in through the LEFT vent. Sometimes stops in the hallway first."], "Mask on while she's in the vent opening and she goes all the way back."],
+      mangle:  ["Toy, broken", [["radio", "Listen"], ["vent", "Right vent light"], ["mask", "Mask on"]], ["Her radio static gets louder the closer she is. Once inside she hangs from the ceiling."], "If she's in, flip the monitor as little as you can."],
+      bb:      ["The vents", [["vent", "Left vent light"], ["mask", "Mask on"]], ["Doesn't hurt you, but if he gets in your lights break until 6 AM."], "Without lights you can't stop Withered Endo."],
+      puppet:  ["The music box", [["music", "Wind it up"]], ["Sleeps while the music box on CAM 11 plays. When it runs out, he comes and nothing stops him."], "Never let the music box get under half."],
+      wfreddy: ["Withered", [["flash", "See him"], ["mask", "Mask on"]], ["Walks down the hallway, then slips in while your monitor is up."], "When the lights flicker, mask on within a second."],
+      wbonnie: ["Withered", [["vent", "Left vent light"], ["mask", "Mask on"]], ["Crawls in through the LEFT vent, or cuts through the hallway."], "Mask on while he's in the vent opening and he goes all the way back."],
+      wchica:  ["Withered", [["vent", "Right vent light"], ["mask", "Mask on"]], ["Crawls in through the RIGHT vent."], "Mask on while she's in the vent opening and she goes all the way back."],
+      foxy:    ["Withered", [["flash", "Flash, flash, flash"]], ["Stands in your hallway. Flash him again and again until he walks away. The mask does nothing."], "If he lunges, tap to keep his head inside the outline."],
+      golden:  ["Very rare", [["mask", "Mask on"], ["monitor", "Lift the monitor"]], ["Slumped in your office when you put the monitor down."], "Mask on or lift the monitor within 1.5 seconds."],
+    };
+    const ROUTE = { puppet: [11], foxy: [8, "hall"], golden: ["office"] };
+    const entities = ORDER.map(who => {
+      const [sub, counters, text, tip] = INFO[who];
+      const route = ROUTE[who] || PATHS[who];
+      return { name: CAST[who].name, sub, img: head(who), route: route.map(short), counters, map: map(route), text, tips: [tip] };
+    });
+    const mech = [
+      { name: "The mask", pix: "mask", text: ["Q (or the bottom-left bar). When the lights flicker someone is in the office: mask on until they leave.", "Mask on while someone sits in a vent opening sends them all the way back."],
+        tips: ["It does nothing against Withered Endo or the Puppet."] },
+      { name: "Flashlight", pix: "flash", text: ["Hold SPACE, F or Ctrl (or click and hold) to light the hallway. It uses battery (top left)."] },
+      { name: "Vent lights", pix: "vent", text: ["Hold A or D (or the LIGHT buttons) to see who's in the left or right vent opening."] },
+      { name: "The monitor", pix: "monitor", text: ["E (or the bottom-right bar). Nobody gets in while you look at the office, only while the monitor is up.", "The night moves a little faster while it's up."] },
+      { name: "The music box", pix: "music", text: ["On CAM 11. Hold WIND UP to wind it. If it runs out, the Puppet comes."] },
+      { name: "The clock", pix: "clock", text: ["12 AM to 6 AM, 70 seconds an hour. Everyone gets more active at 3 and 5 AM."] },
+      { name: "Phone calls", pix: "phone", text: ["The phone rings when a night starts. Pick up for advice, or hang up."] },
+    ];
     const through = c => Object.keys(PATHS).filter(w => PATHS[w].includes(c) || Object.entries(DETOURS[w] || {}).some(([a, b]) => String(a) === String(c) || b === c)).map(w => CAST[w].name);
-    const NOTE = { 5: "The left vent tunnel: next stop is the left vent opening.", 6: "The right vent tunnel: next stop is the right vent opening.",
-                   7: "The hallway is right after this camera.", 8: "Withered Endo waits here before he comes to your hallway.",
-                   9: "The toys start here.", 11: "The music box. Hold WIND UP here to keep the Puppet asleep.", 12: "Meyg starts here." };
-    const cams = [{ name: W("Items", "Using the cameras"), icon: "?", text: [
-        "Press E (or touch the bottom-right bar) to lift the monitor. Click a camera on the map to look at it. Hold the flashlight to light up the room.",
-        "Nobody can get into your office while you're looking at the office: they only slip in while the monitor is UP.",
-        "The night goes a little faster while the cameras are up."],
-        tips: ["Stay on the cameras too long while someone is in the office and they pull the monitor down themselves."] },
-      ...Object.keys(CAMS).map(Number).map(c => ({ name: "CAM " + String(c).padStart(2, "0") + "  " + CAMS[c], icon: String(c),
-        text: [NOTE[c] || "", through(c).length ? "Walks through here: " + through(c).join(", ") + "." : (c === 8 ? "" : "Nobody walks through here.")].filter(Boolean) })),
-      { name: W("Items", "Hall and vents"), icon: "H", text: [
-        "The hallway in front of you: the flashlight shows who is standing there.",
-        "The two vent openings, left and right: the vent lights (A and D) show who is crawling in. Mask on while someone sits in an opening and they go all the way back."] }];
+    const NOTE = { 5: "Left vent tunnel.", 6: "Right vent tunnel.", 7: "The hallway is right after this.", 8: "Withered Endo waits here.",
+                   9: "The toys start here.", 11: "The music box: hold WIND UP.", 12: "Meyg starts here." };
+    const cams = [{ name: "The map", pix: "cam", map: map([]), text: ["You're the red square. HALL is in front of you, L VT and R VT are the vent openings."],
+        tips: ["Stay on the cameras too long while someone is in the office and they pull the monitor down."] },
+      ...Object.keys(CAMS).map(Number).map(c => ({ name: "CAM " + String(c).padStart(2, "0") + "  " + CAMS[c], pix: "cam", map: map([c]),
+        text: [[NOTE[c], through(c).length ? "Walks through: " + through(c).join(", ") + "." : ""].filter(Boolean).join(" ") || "Nobody walks through here."] }))];
     const tonight = [];
-    if (n) for (const who of ORDER) if ((n.ai[who] || 0) > 0 && who !== "golden") {
-      const { text } = journalFromSlides(deathGuide(who));
-      tonight.push([CAST[who].name, (deathGuide(who)[0] && deathGuide(who)[0].tip) || (text[1] || text[0] || "")]);
-    }
+    if (n) for (const who of ORDER) if ((n.ai[who] || 0) > 0 && who !== "golden") tonight.push([CAST[who].name, INFO[who][1].map(c => c[1]).join(", ")]);
     const got = ACHIEVEMENTS.filter(a => p.achievements[a.id]).length;
     const summary = [
-      { name: W("Items", "Tonight"), icon: "!", sub: n ? (this.level > 6 ? "Custom Night" : "Night " + this.level) + "  ·  " + (n.hour === 0 ? 12 : n.hour) + " AM  ·  " +
+      { name: "Tonight", pix: "clock", sub: n ? (this.level > 6 ? "Custom Night" : "Night " + this.level) + "  ·  " + (n.hour === 0 ? 12 : n.hour) + " AM  ·  " +
           Math.round(n.battery) + "% battery  ·  music box " + Math.round(n.musicBox * 100) + "%" : "",
-        text: tonight.length ? ["Who's moving tonight:"] : ["Nobody is moving tonight."], list: tonight,
-        tips: ["Survive until 6 AM. Each hour is 70 seconds (a bit less while you watch the cameras).", "Wind the music box on CAM 11 between every other job."] },
-      { name: W("Items", "Quick rules"), icon: "#", list: [
-          ["Toys and withered", "they walk in while your monitor is up: MASK ON when the lights flicker"],
-          ["Vents", "vent light, then MASK ON while someone sits in the opening"],
-          ["Withered Endo", "flashlight in the hallway, again and again (no mask)"],
-          ["The Puppet", "keep the music box on CAM 11 wound"],
-          ["The monster", "mask on at the left vent, or your lights break"],
-          ["Meyg", "mask on at the right vent; once she's in, flip the monitor as little as you can"],
-          ["6 AM", "you win the night"]] },
-      { name: W("Items", "Your file"), icon: "*", sub: Story.on ? "Story Mode" : "Save file " + this.file, list: [
+        text: [tonight.length ? "Who's moving tonight:" : "Nobody is moving tonight."], list: tonight },
+      { name: "Quick rules", pix: "star", list: [
+          ["Lights flicker", "mask on"], ["Someone in a vent", "mask on"], ["Withered Endo", "flashlight, again and again"],
+          ["CAM 11", "keep the music box wound"], ["The monster gets in", "no more lights"], ["6 AM", "you win"]] },
+      { name: "Your file", pix: "eye", sub: Story.on ? "Story Mode" : "Save file " + this.file, list: [
           ["Night reached", String(p.night)], ["Stars", "★".repeat((p.beat5 ? 1 : 0) + (p.beat6 ? 1 : 0) + (p.beat420 ? 1 : 0)) || "-"],
-          ["Achievements", got + " / " + ACHIEVEMENTS.length], ["Met", ORDER.filter(w => this.met(w)).length + " / " + ORDER.length],
-          ["Caught by", p.caughtBy.map(k => CAST[k] ? CAST[k].name : k).join(", ") || "-"]] },
-    ];
-    const mech = [
-      { name: "The mask", icon: "M", text: ["Q (or move the mouse over the bottom-left bar) puts the mask on or takes it off.",
-          "When someone is in the office (the lights flicker), the mask makes them think you're one of them. Keep it on until they leave.",
-          "Mask on while someone sits in a vent opening and they crawl all the way back."], tips: ["The mask does nothing against Withered Endo or the Puppet."] },
-      { name: "Flashlight + battery", icon: "F", text: ["Hold SPACE, F or Ctrl (or click and hold) to light up the hallway. On the cameras it lights up the room.",
-          "The flashlight and the vent lights use battery (top left). An empty battery means no light at all."] },
-      { name: "Vent lights", icon: "V", text: ["Hold A or D (or the LIGHT buttons) to light up the left or right vent opening and see who's crawling in."] },
-      { name: "The monitor", icon: "E", text: ["E (or the bottom-right bar) lifts the camera monitor. Nobody gets into the office while you're looking at the office.",
-          "When you put the monitor down and the lights flicker, someone is in here: mask on, fast."] },
-      { name: "The music box", icon: "♫", text: ["The music box on CAM 11 winds down all night. Hold WIND UP there to wind it back.",
-          "When it runs out the Puppet comes, and nothing stops him."] },
-      { name: "The clock", icon: "T", text: ["The night starts at 12 AM. Each hour is 70 seconds, and the clock runs a little faster while the cameras are up.",
-          "At 3 AM and 5 AM everyone gets a bit more active. Reach 6 AM to win."] },
-      { name: "Phone calls", icon: "P", text: ["The phone rings when a night starts. Pick up to hear the call, or hang up."] },
+          ["Achievements", got + " / " + ACHIEVEMENTS.length], ["Caught by", p.caughtBy.map(k => CAST[k] ? CAST[k].name : k).join(", ") || "-"]] },
     ];
     return {
       title: "Journal  ·  Tape 2",
       chapters: [
-        { id: "entities", name: "Entities", note: ORDER.filter(w => this.met(w)).length + " / " + ORDER.length + " met", entries: entities },
+        { id: "entities", name: "Entities", entries: entities },
         { id: "mechanics", name: "Mechanics", entries: mech },
-        journalItems({ battery: ["Tape 2: it fills the flashlight battery."], trap: ["Tape 2: you can also set it on the HALL or a VENT spot on the map."] }),
+        journalItems({ battery: ["Tape 2: it fills the flashlight battery."], trap: ["Tape 2: you can also set it on the HALL or a VENT."] }),
         { id: "cameras", name: "Cameras", entries: cams },
         { id: "summary", name: "Summary", entries: summary },
       ],
@@ -1618,16 +1598,16 @@ class Game {
   // then (sometimes) a strange little 8-bit game, then the title
   dead() {
     this.died = true;
-    const hour = this.n ? this.n.hour : 0;
     this.go("black");
     Sound.stopAll();
     this.scripts.run("dead", function* () {
       yield* this.playGuide(this.killer);
       // 1 in 3 deaths go to a minigame, picked by who caught you
       if (chance(3)) return this.startMinigame(MINIGAME_FOR[this.killer]);
-      // GAME OVER on the blue VHS screen: TRY AGAIN or EJECT
-      const pick = yield* this.vhsGameOver(CAST[this.killer] ? CAST[this.killer].name : this.killer, hour);
-      if (pick === "retry") return this.retryNight();
+      const over = this.overlay(null, null, { fade: 0, paint: ctx => this.text(ctx, W("Game over", "GAME OVER"), 470, 350,
+        { size: 20, align: "right", font: "Press Start 2P" }) });
+      yield* this.fade(over, 1, 20);
+      yield 3;
       this.showTitle();
     }.call(this));
   }

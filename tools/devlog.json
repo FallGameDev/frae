@@ -7,7 +7,6 @@
  {"date": "2026-10-14", "tapes": [1], "text": "Mod template: every picture as a PNG, and mods can use any image type."},
  {"date": "2026-10-14", "tapes": [1], "text": "The fan-made cast is used everywhere, and the animation is smoother."},
  {"date": "2026-10-14", "tapes": [1], "text": "Smooth movement, turning, resizing and fading (like TurboWarp)."},
-
  {"date": "2026-10-15", "tapes": [1], "text": "The whole game was rewritten by hand as a real browser game (no Scratch converter)."},
  {"date": "2026-10-15", "tapes": [1], "text": "New tab icons: the rice bowl for the menu, Eddie for this tape."},
  {"date": "2026-10-15", "tapes": [1], "text": "The whole box around SETTINGS can be clicked."},
@@ -18,12 +17,10 @@
  {"date": "2026-10-15", "tapes": [1], "text": "Child's Play achievement (custom night with everyone on 3 or lower) and a BACK button on the custom night."},
  {"date": "2026-10-15", "tapes": [1], "text": "Debug mode: no saving and no achievements while it is on."},
  {"date": "2026-10-15", "tapes": [1], "text": "The custom night is always on the title menu. Night 6 still needs nights 1 to 5 beaten."},
-
  {"date": "2026-10-16", "tapes": [2], "text": "Tape 2 is here: Fried Rice at Eddie's 2, a FNaF 2 style night."},
  {"date": "2026-10-16", "tapes": [2], "text": "Rigged 3D models for Toy Eddy, Toy Weddy, Toy Cheddy and Toy Endo."},
  {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."},
  {"date": "2026-10-16", "tapes": [2], "text": "The toys are drawn from their 3D models."},
-
  {"date": "2026-10-17", "tapes": [2], "text": "Characters are drawn live from the models folder, with less lag. Fred makes the phone calls."},
  {"date": "2026-10-17", "tapes": [2], "text": "Fixed the stutter once characters start moving."},
  {"date": "2026-10-17", "tapes": [2], "text": "Aidan's own office."},
@@ -45,7 +42,6 @@
  {"date": "2026-10-17", "tapes": [2], "text": "No idle animation on the title screen and custom night portraits."},
  {"date": "2026-10-17", "tapes": [2], "text": "Custom night: < on 0 jumps to 20 and > on 20 jumps to 0 (not when held or spammed)."},
  {"date": "2026-10-17", "tapes": [2], "text": "The toys crawl in the vents and walk down the hall. Sharp close-up on the title screen."},
-
  {"date": "2026-10-18", "tapes": [2], "text": "No static noise on the cameras or the flashlight. New fan sound with rain."},
  {"date": "2026-10-18", "tapes": [2], "text": "No more vent light hum."},
  {"date": "2026-10-18", "tapes": [2], "text": "Aidan's newspaper ad at the start of a new game."},
@@ -61,7 +57,6 @@
  {"date": "2026-10-18", "tapes": [2], "text": "A warning screen when the game starts: sensitive content on or off. Off turns jumpscares off. It can skip itself on that save file."},
  {"date": "2026-10-18", "tapes": [2], "text": "A new phone call on night 1."},
  {"date": "2026-10-18", "tapes": [2], "text": "The Puppet's music box on CAM 11 plays a new song."},
-
  {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."},
  {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."},
  {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."},
@@ -77,7 +72,6 @@
  {"date": "2026-10-24", "tapes": [1, 2], "text": "Story Mode (Tape 0 on the menu): play every tape in order on one path, nights 1 to 5 then the 6th night and custom night. Beat nights to earn EXP and level up your account."},
  {"date": "2026-10-24", "tapes": [1, 2], "text": "Shop in Story Mode: trade EXP for items that work in every night while signed in: Frying Pan, Stopwatch, Battery Pack, X-Ray Glasses, Bear Trap and Air Horn. Spending EXP never lowers your level."},
  {"date": "2026-10-24", "tapes": [1, 2], "text": "Pause menu: press Esc (or the II button in the corner) during a night. Resume, Journal, Settings or Quit. The night also pauses itself when you switch tabs."},
- {"date": "2026-10-24", "tapes": [1, 2], "text": "The Journal (in the pause menu): a help guide with Entities, Mechanics, Items, Cameras and Summary chapters. Entity pages stay ??? until you've met them."},
- {"date": "2026-10-24", "tapes": [1, 2], "text": "The night goes a little faster while the cameras are up."},
- {"date": "2026-10-24", "tapes": [1, 2], "text": "Game over is now on the blue VHS screen, with TRY AGAIN (same night) or EJECT."}
+ {"date": "2026-10-24", "tapes": [1, 2], "text": "The Journal (in the pause menu): a help guide on the blue VHS screen with Entities, Mechanics, Items, Cameras and Summary chapters, with routes, how to stop each one, little camera maps and pixel icons."},
+ {"date": "2026-10-24", "tapes": [1, 2], "text": "The night goes a little faster while the cameras are up."}
 ]

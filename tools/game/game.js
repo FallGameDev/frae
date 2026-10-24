@@ -1406,18 +1406,17 @@ class Game {
     this.died = true;              // the phone guy stops calling until you win a night
     this.go("black");
     Sound.stopAll();
-    const hour = this.n ? this.n.hour : 0;
+    const js = settings.jumpscares === "1";
     this.scripts.run("gameover", function* () {
       // the VHS STOP screen and the survival guide (vhs.js, guide.js)
       yield* this.playGuide(this.killer, this.killedByPowerOut);
-      // a tiny chance of something worse while you look at the game over screen
-      this.scripts.run("creepy", function* () {
+      const card = this.overlay("Backdrop", js ? "mike stuffed" : "NoJS" + this.killer, { fade: 0 });
+      // a tiny chance of something worse while you look at it
+      this.scripts.run("gameover", function* () {
         for (let i = 0; i < 10; i++) { yield 1; if (chance(10000)) return this.creepyEnd(); }
       }.call(this));
-      // GAME OVER on the blue VHS screen: TRY AGAIN or EJECT
-      const pick = yield* this.vhsGameOver(deathGuide(this.killer, this.killedByPowerOut).name, hour);
-      this.scripts.stop("creepy");
-      if (pick === "retry") return this.retryNight();
+      yield* this.fade(card, 1);
+      yield js ? 15 : 3;
       this.showTitle();
     }.call(this));
   }
@@ -1742,25 +1741,6 @@ class Game {
   }
 
   /* =================================================================
-     GAME OVER (blue VHS screen) and TRY AGAIN
-     ================================================================= */
-  *vhsGameOver(who, hour) {
-    const g = new VhsGameOver({ who: ACH_WORD(who), night: this.level > 6 ? ACH_WORD("CUSTOM NIGHT") : ACH_WORD("NIGHT") + " " + this.level,
-                                time: (hour === 0 ? 12 : hour) + " AM" });
-    const L = { draw: ctx => g.draw(ctx) };
-    this.layers.push(L);
-    let pick = null;
-    yield () => (pick = g.step(this.clicks, this.keys));
-    this.removeOverlay(L);
-    return pick;
-  }
-  // The same night again (Story Mode reloads its step)
-  retryNight() {
-    if (Story.on) { location.reload(); return; }
-    this.startIntro();
-  }
-
-  /* =================================================================
      THE JOURNAL (pause menu > JOURNAL, see pause.js)
      ================================================================= */
   // Remember who you've met (their journal page opens up)
@@ -1781,71 +1761,81 @@ class Game {
   met(key) { return this.progress.seen.includes(key) || this.progress.caughtBy.includes(key); }
 
   journal() {
-    const n = this.n, W1 = ACH_WORD;
-    const ENT = [
-      ["Bonnie", "bonnie", "The left side"], ["Chica", "chica", "The right side"], ["Freddy", "freddy", "The leader"],
-      ["Foxy", "foxy", "Pirate Cove"], ["Golden", null, "Very rare"],
-    ];
+    const n = this.n, p = this.progress, W1 = ACH_WORD;
+    const label = c => c.button.replace("CAM", "");
+    // a little camera map with some rooms lit up
+    const map = rooms => ({ cams: CAMERAS.map(c => ({ x: c.x, y: c.y, label: label(c), on: rooms.includes(c.room) })), you: { x: 387, y: 300 } });
     const face = k => journalPicture((g, s) => k ? this.drawFace(g, k, s / 2, s / 2, s) : draw(g, pic("Golden", "YellowBear"), s / 2, s / 2 + 10, { size: 45 }));
-    const entities = ENT.map(([key, k, sub]) => {
-      const { text, tips } = journalFromSlides(deathGuide(key).slides);
-      return { name: W1(GUIDE_NAMES[key]), sub: W1(sub), locked: !this.met(key), img: face(k), text: text.slice(1), tips: [text[0], ...tips] };
-    });
-    // who walks through each camera
+    const E = (k, name, sub, route, rooms, counters, text, tip) =>
+      ({ name: W1(name), sub: W1(sub), img: face(k), route, counters, map: map(rooms), text, tips: tip ? [tip] : [] });
+    const entities = [
+      E("bonnie", "Weddy", "Left side", ["Stage", "Dining / Backstage", "West Hall", "Corner / Closet", "LEFT DOOR"],
+        ["Show Stage", "Dining Area", "Backstage", "West Hall", "W. Hall Corner", "Supply Closet"],
+        [["light", "Left light"], ["door", "Left door"]],
+        ["Wanders down the LEFT side to your left doorway.", "Check the left light. If she's standing there, shut the left door until she leaves."],
+        "If the left buttons stop working, she's already inside."),
+      E("chica", "Cheddy", "Right side", ["Stage", "Dining", "Kitchen / Restrooms", "East Hall", "E. Corner", "RIGHT DOOR"],
+        ["Show Stage", "Dining Area", "Kitchen", "Restrooms", "East Hall", "E. Hall Corner"],
+        [["light", "Right light"], ["door", "Right door"]],
+        ["Wanders down the RIGHT side to your right doorway.", "Check the right light. If she's standing there, shut the right door until she leaves."],
+        "If the right buttons stop working, she's already inside."),
+      E("freddy", "Eddie", "The leader", ["Stage", "Dining", "Restrooms", "Kitchen", "East Hall", "E. Corner", "RIGHT DOOR"],
+        ["Show Stage", "Dining Area", "Restrooms", "Kitchen", "East Hall", "E. Hall Corner"],
+        [["eye", "Watch him"], ["door", "Right door"]],
+        ["Waits until Weddy AND Cheddy leave the stage. Never moves while you watch his camera.", "Listen for his laugh: it means he moved."],
+        "At the E. Hall Corner, shut the right door before you switch cameras."),
+      E("foxy", "Endo", "Pirate Cove", ["Pirate Cove", "West Hall", "LEFT DOOR"], ["Pirate Cove", "West Hall"],
+        [["cam", "Check the cove"], ["door", "Left door"]],
+        ["Hides behind the curtain. Looking at the cameras keeps him there longer.", "Once he's out, he RUNS down the West Hall to your left door."],
+        "Every bang on the shut door costs you power."),
+      E(null, "Golden Eddie", "Very rare", ["W. Corner poster", "YOUR OFFICE"], ["W. Hall Corner"],
+        [["monitor", "Lift the monitor"]],
+        ["A strange poster in the W. Hall Corner. Put the monitor down and he's sitting in your office."],
+        "Lift the monitor back up within 5 seconds."),
+    ];
+    const mech = [
+      { name: W1("Power"), pix: "power", text: ["Doors, lights and cameras all use power. The bars at the bottom left show how much right now.", "Hit 0% and the lights go out."],
+        tips: ["Check, react, open again. Don't keep doors shut 'just in case'."] },
+      { name: W1("Doors"), pix: "door", text: ["The top button by each door shuts it. Nobody gets through a shut door, but it drains a lot of power."] },
+      { name: W1("Lights"), pix: "light", text: ["The bottom button by each door lights the doorway, so you can see who's there."] },
+      { name: W1("Cameras"), pix: "monitor", text: ["SPACE (or the bar at the bottom) lifts the monitor. Click a camera on the map to look.", "The night moves a little faster while it's up."] },
+      { name: W1("The clock"), pix: "clock", text: ["12 AM to 6 AM, 90 seconds an hour. Everyone gets more active at 2, 3 and 4 AM."] },
+      { name: W1("Phone calls"), pix: "phone", text: ["On nights 1 to 5 the phone rings at the start. Pick up for advice, or hang up."] },
+      { name: W1("Power out"), pix: "skull", text: ["Everything shuts off and the doors open. Eddie's song plays in the left doorway, then he comes in."],
+        tips: ["Nothing stops him now. Hope 6 AM comes first (or use a battery pack)."] },
+    ];
     const WHO = {
-      "Show Stage": "Weddy, Cheddy and Eddie all start here.", "Entrance": "Nobody walks through here.",
-      "Dining Area": "Weddy, Cheddy and Eddie.", "Pirate Cove": "Endo's home. Watch the curtain.",
+      "Show Stage": "Weddy, Cheddy and Eddie start here.", "Entrance": "Nobody walks through here.",
+      "Dining Area": "Weddy, Cheddy and Eddie.", "Pirate Cove": "Endo's curtain.",
       "West Hall": "Weddy, and Endo when he runs.", "W. Hall Corner": "Weddy, right before your LEFT door.",
       "Supply Closet": "Weddy, right before your LEFT door.", "East Hall": "Cheddy and Eddie.",
       "E. Hall Corner": "Cheddy and Eddie, right before your RIGHT door.", "Backstage": "Weddy.",
       "Kitchen": "Cheddy and Eddie.", "Restrooms": "Cheddy and Eddie.",
     };
-    const cams = [{ name: W1("Using the cameras"), icon: "?", text: [
-        "Press SPACE (or touch the bar at the bottom) to lift the monitor. Click a camera on the map to look at it.",
-        "The cameras use power while they're up, and the night goes a little faster while you watch them.",
-        "When someone walks into or out of the camera you're watching, the picture cuts out for a moment."],
-        tips: ["Watching the cameras keeps Endo behind his curtain longer.", "Eddie never moves while you're looking right at him."] },
-      ...CAMERAS.map(c => ({ name: W1("CAM") + " " + c.button.replace("CAM", "") + "  " + W1(c.room), icon: c.button.replace("CAM", ""),
-        text: [WHO[c.room] || ""] }))];
+    const cams = [{ name: W1("The map"), pix: "cam", map: map([]), text: ["Your office is the red square. The left hall leads to your LEFT door, the right hall to your RIGHT door."],
+        tips: ["Watching the cameras keeps Endo behind his curtain longer."] },
+      ...CAMERAS.map(c => ({ name: W1("CAM") + " " + label(c) + "  " + W1(c.room), pix: "cam", map: map([c.room]), text: [WHO[c.room] || ""] }))];
     const tonight = [];
-    if (n) {
-      const ai = n.ai;
-      const TIP = { bonnie: "check the LEFT light, shut the LEFT door if she's there.", chica: "check the RIGHT light, shut the RIGHT door if she's there.",
-                    freddy: "once he's at the E. Hall Corner, shut the RIGHT door.", foxy: "peek at Pirate Cove now and then; shut the LEFT door if he's out." };
-      for (const k of ["bonnie", "chica", "freddy", "foxy"]) if (ai[k] > 0) tonight.push([this.itemName(k), TIP[k]]);
-    }
-    const p = this.progress, got = ACHIEVEMENTS.filter(a => p.achievements[a.id]).length;
+    const TIP = { bonnie: "left light, left door", chica: "right light, right door", freddy: "watch the E. Hall Corner", foxy: "peek at Pirate Cove" };
+    if (n) for (const k of ["bonnie", "chica", "freddy", "foxy"]) if (n.ai[k] > 0) tonight.push([this.itemName(k), W1(TIP[k])]);
+    const got = ACHIEVEMENTS.filter(a => p.achievements[a.id]).length;
     const summary = [
-      { name: W1("Tonight"), icon: "!", sub: n ? (this.level > 6 ? W1("Custom Night") : W1("Night") + " " + this.level) + "  ·  " + (n.hour === 0 ? 12 : n.hour) + " AM  ·  " + Math.max(0, Math.floor(n.power / 10)) + "% " + W1("power") : "",
-        text: tonight.length ? [W1("Who's moving tonight:")] : [W1("Nobody is moving tonight. Just watch your power.")],
-        list: tonight,
-        tips: [W1("Survive until 6 AM. Each hour is 90 seconds (a bit less while you watch the cameras).")] },
-      { name: W1("Quick rules"), icon: "#", list: [
+      { name: W1("Tonight"), pix: "clock", sub: n ? (this.level > 6 ? W1("Custom Night") : W1("Night") + " " + this.level) + "  ·  " + (n.hour === 0 ? 12 : n.hour) + " AM  ·  " + Math.max(0, Math.floor(n.power / 10)) + "% " + W1("power") : "",
+        text: [tonight.length ? W1("Who's moving tonight:") : W1("Nobody is moving tonight. Just watch your power.")], list: tonight },
+      { name: W1("Quick rules"), pix: "star", list: [
           [W1("LEFT side"), W1("Weddy and Endo")], [W1("RIGHT side"), W1("Cheddy and Eddie")],
-          [W1("Doors"), W1("stop anyone at that door, but drain power")], [W1("Lights"), W1("show who is standing at the door")],
-          [W1("Power"), W1("runs out = lights out, and Eddie comes")], [W1("6 AM"), W1("you win the night")]] },
-      { name: W1("Your file"), icon: "*", sub: Story.on ? W1("Story Mode") : W1("Save file") + " " + this.file, list: [
+          [W1("Doors"), W1("stop them, but drain power")], [W1("Lights"), W1("show who's at the door")],
+          [W1("0% power"), W1("lights out, Eddie comes")], [W1("6 AM"), W1("you win")]] },
+      { name: W1("Your file"), pix: "eye", sub: Story.on ? W1("Story Mode") : W1("Save file") + " " + this.file, list: [
           [W1("Night reached"), String(p.night)], [W1("Stars"), "★".repeat((p.beat5 ? 1 : 0) + (p.beat6 ? 1 : 0) + (p.beat420 ? 1 : 0)) || "-"],
-          [W1("Achievements"), got + " / " + ACHIEVEMENTS.length], [W1("Met"), p.seen.length + " / 5"], [W1("Caught by"), p.caughtBy.map(k => W1(GUIDE_NAMES[k] || k)).join(", ") || "-"]] },
-    ];
-    const mech = [
-      { name: W1("Power"), icon: "%", text: ["Everything runs on power: the doors, the door lights and the cameras. The bars at the bottom left show how much you're using right now.",
-          "On later nights the power drains a little faster on its own."], tips: [W1("Don't keep doors shut 'just in case'. Check, react, open again.")] },
-      { name: W1("Doors"), icon: "D", text: ["The top button next to each door shuts it. A shut door stops anyone standing there from getting in.",
-          "A shut door uses a lot of power."] },
-      { name: W1("Lights"), icon: "L", text: ["The bottom button next to each door turns on the light in the doorway, so you can see who is standing there.",
-          "If someone is there, shut the door. If the door was open when they moved, they're already inside."] },
-      { name: W1("The clock"), icon: "T", text: ["The night starts at 12 AM. Each hour is 90 seconds, and the clock runs a little faster while the cameras are up.",
-          "At 2, 3 and 4 AM everyone gets a bit more active. Reach 6 AM to win."] },
-      { name: W1("Phone calls"), icon: "P", text: ["On nights 1 to 5 the phone rings when the night starts. Pick up to hear the call, or hang up."] },
-      { name: W1("Power out"), icon: "!", ...(() => { const r = journalFromSlides(deathGuide("Freddy", true).slides); return { text: r.text, tips: r.tips }; })() },
+          [W1("Achievements"), got + " / " + ACHIEVEMENTS.length], [W1("Caught by"), p.caughtBy.map(k => W1(GUIDE_NAMES[k] || k)).join(", ") || "-"]] },
     ];
     return {
       title: W1("Journal") + "  ·  " + W1("Tape 1"),
       chapters: [
-        { id: "entities", name: W1("Entities"), note: p.seen.length + " / 5 " + W1("met"), entries: entities },
+        { id: "entities", name: W1("Entities"), entries: entities },
         { id: "mechanics", name: W1("Mechanics"), entries: mech },
-        journalItems({ battery: ["Tape 1: it even brings the power back after a power out."], trap: ["Tape 1: click a camera on the map to set it. Endo is caught in the West Hall."] }),
+        journalItems({ battery: ["Tape 1: it even brings the power back after a power out."], trap: ["Tape 1: click a camera on the map. Endo gets caught in the West Hall."] }),
         { id: "cameras", name: W1("Cameras"), entries: cams },
         { id: "summary", name: W1("Summary"), entries: summary },
       ],
