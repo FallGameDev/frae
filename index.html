@@ -1118,7 +1118,8 @@
     for (const g of GAMES.filter(g => g.saveKey)) for (const n of [1, 2, 3]) {
       try {
         const sv = JSON.parse(localStorage.getItem(g.saveKey + n) || "null");
-        if (sv) { saves++; trophies += sv.achievements ? Object.keys(sv.achievements).filter(k => k !== "og").length : 0;   // OG is a bonus, it doesn't count }
+        // OG is a bonus, so it doesn't count toward the achievement total
+        if (sv) { saves++; trophies += sv.achievements ? Object.keys(sv.achievements).filter(k => k !== "og").length : 0; }
       } catch (e) {}
     }
     return `${saves} save${saves === 1 ? "" : "s"} · ${trophies} achievement${trophies === 1 ? "" : "s"}` +
