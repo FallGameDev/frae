@@ -426,12 +426,12 @@ class Game {
     }
     draw(ctx, pic("SettingsButton", this.settingsHover ? "Selected" : "Deselected"), 30, 305, { size: 10 });
     // "Achievements 3/19" in the bottom right corner
-    const got = ACHIEVEMENTS.filter(x => this.progress.achievements[x.id]).length;
+    const got = countedAchievements(this.progress.achievements);     // (bonus ones like OG don't count)
     ctx.save();
     ctx.font = '8px "Share Tech Mono"';
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
     ctx.fillStyle = this.achHover ? "#f7931e" : "#fff";
-    ctx.fillText(ACH_WORD("Achievements") + "  " + got + "/" + ACHIEVEMENTS.length, 472, 305);
+    ctx.fillText(ACH_WORD("Achievements") + "  " + got + "/" + COUNTED_ACHIEVEMENTS.length, 472, 305);
     // DEMO tag + countdown in the top right corner
     if (Demo.on()) {
       ctx.textBaseline = "top"; ctx.font = '10px "Share Tech Mono"'; ctx.fillStyle = "#f7931e";
@@ -1821,7 +1821,7 @@ class Game {
     const tonight = [];
     const TIP = { bonnie: "left light, left door", chica: "right light, right door", freddy: "watch the E. Hall Corner", foxy: "peek at Pirate Cove" };
     if (n) for (const k of ["bonnie", "chica", "freddy", "foxy"]) if (n.ai[k] > 0) tonight.push([this.itemName(k), W1(TIP[k])]);
-    const got = ACHIEVEMENTS.filter(a => p.achievements[a.id]).length;
+    const got = countedAchievements(p.achievements);
     const summary = [
       { name: W1("Tonight"), pix: "clock", sub: n ? (this.level > 6 ? W1("Custom Night") : W1("Night") + " " + this.level) + "  ·  " + (n.hour === 0 ? 12 : n.hour) + " AM  ·  " + Math.max(0, Math.floor(n.power / 10)) + "% " + W1("power") : "",
         text: [tonight.length ? W1("Who's moving tonight:") : W1("Nobody is moving tonight. Just watch your power.")], list: tonight },
@@ -1831,7 +1831,7 @@ class Game {
           [W1("0% power"), W1("lights out, Eddie comes")], [W1("6 AM"), W1("you win")]] },
       { name: W1("Your file"), pix: "eye", sub: Story.on ? W1("Story Mode") : W1("Save file") + " " + this.file, list: [
           [W1("Night reached"), String(p.night)], [W1("Stars"), "★".repeat((p.beat5 ? 1 : 0) + (p.beat6 ? 1 : 0) + (p.beat420 ? 1 : 0)) || "-"],
-          [W1("Achievements"), got + " / " + ACHIEVEMENTS.length], [W1("Caught by"), p.caughtBy.map(k => W1(GUIDE_NAMES[k] || k)).join(", ") || "-"]] },
+          [W1("Achievements"), got + " / " + COUNTED_ACHIEVEMENTS.length], [W1("Caught by"), p.caughtBy.map(k => W1(GUIDE_NAMES[k] || k)).join(", ") || "-"]] },
     ];
     return {
       title: W1("Journal") + "  ·  " + W1("Tape 1"),

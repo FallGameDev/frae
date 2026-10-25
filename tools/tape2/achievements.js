@@ -107,6 +107,12 @@ function achievementChime() {
   });
 }
 
+// The achievements that COUNT toward your progress (the "3/21" counters, the % bar).
+// Limited ones (OG) are a bonus: you can still get them and they show in the list,
+// but they never count, so players who missed the window can still reach 100%.
+const COUNTED_ACHIEVEMENTS = ACHIEVEMENTS.filter(a => !a.limited);
+function countedAchievements(got) { return COUNTED_ACHIEVEMENTS.filter(a => got && got[a.id]).length; }
+
 /* ---------------------------------------------------------------------
    The list (opened from the title screen)
    --------------------------------------------------------------------- */
@@ -114,8 +120,8 @@ function openAchievements() {
   const got = game.progress.achievements;
   // a limited one (OG) only shows while it can still be earned, or once you have it
   const LIST = ACHIEVEMENTS.filter(a => !a.limited || got[a.id] || OG.open());
-  const done = LIST.filter(a => got[a.id]).length;
-  const pct = Math.round(done / LIST.length * 100);
+  const done = countedAchievements(got);                        // bonus ones (OG) don't count
+  const pct = Math.round(done / COUNTED_ACHIEVEMENTS.length * 100);
   const box = $("#achPanel");
   box.innerHTML = "";
   const date = t => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -126,7 +132,8 @@ function openAchievements() {
     return el("div", { class: "achRow" + (unlocked ? "" : " locked") },
       achievementIcon(a, !unlocked),
       el("div", { class: "achText" },
-        el("div", { class: "achName" }, secret ? ACH_WORD("Hidden achievement") : ACH_WORD(a.name)),
+        el("div", { class: "achName" }, secret ? ACH_WORD("Hidden achievement") : ACH_WORD(a.name),
+          a.limited ? el("span", { class: "achBonus" }, ACH_WORD("BONUS")) : ""),
         el("div", { class: "achDesc" }, secret ? ACH_WORD("Keep playing to find it.") : ACH_WORD(a.desc))),
       el("div", { class: "achDate" }, unlocked ? ACH_WORD("Unlocked") + " " + date(got[a.id]) : ""));
   });
@@ -136,7 +143,7 @@ function openAchievements() {
     el("div", { class: "achTop" },
       el("button", { onclick: closeAchievements }, "< " + ACH_WORD("BACK")),
       el("h2", {}, ACH_WORD("Achievements")),
-      el("div", { class: "achCount" }, `${done} / ${LIST.length} (${pct}%)  ·  ${game.file === "story" ? ACH_WORD("STORY MODE") : ACH_WORD("FILE") + " " + game.file}`)),
+      el("div", { class: "achCount" }, `${done} / ${COUNTED_ACHIEVEMENTS.length} (${pct}%)  ·  ${game.file === "story" ? ACH_WORD("STORY MODE") : ACH_WORD("FILE") + " " + game.file}`)),
     bar,
     el("div", { class: "achList" }, ...rows));
   box.hidden = false;

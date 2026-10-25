@@ -156,5 +156,6 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 ## OG window (Oct 24 to Nov 10, 2026, Eastern)
 - `OG` in tools/global.js: `OG.open()` (server time via Demo), `OG.claim()` (rpc `og_bonus`, +500 EXP once per account, pop-up banner, remembered in localStorage `frae-og-<uid>`).
 - Achievement `og` (`limited: true`) in both tapes' achievements.js; `game.claimOG()` runs in each boot(). After the window it's hidden from the list unless unlocked.
+- OG is a BONUS: it never counts toward progress. `COUNTED_ACHIEVEMENTS` (every achievement without `limited`) + `countedAchievements(got)` in each achievements.js drive the title counters, the list's `N / M (%)` bar and the journal Summary; the list tags limited ones with a yellow BONUS label (`.achBonus` in each shell). The menu's account line skips `og` too.
 - Called from: both tapes' boot (Tape 2 demo lock only claims EXP), the menu after Demo.check, the Story hub after Items.load.
 - SQL: `og` column + `og_bonus()` at the end of supabase/story.sql and setup.sql (the database checks the date itself).

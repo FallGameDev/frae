@@ -527,8 +527,8 @@ class Game {
         this.text(ctx, W("Title menu", "Night") + " " + Math.min(5, this.level), it.x + 1, it.y + 12, { size: 9, color: "#bbb" });
     }
     this.text(ctx, W("Settings", "Settings"), 14, 350, { size: 11, color: this.settingsHover ? "#f7931e" : "#fff" });
-    const got = ACHIEVEMENTS.filter(x => this.progress.achievements[x.id]).length;
-    this.text(ctx, ACH_WORD("Achievements") + "  " + got + "/" + ACHIEVEMENTS.length, 470, 350,
+    const got = countedAchievements(this.progress.achievements);     // (bonus ones like OG don't count)
+    this.text(ctx, ACH_WORD("Achievements") + "  " + got + "/" + COUNTED_ACHIEVEMENTS.length, 470, 350,
       { size: 11, align: "right", color: this.achHover ? "#f7931e" : "#fff" });
     ctx.restore();
   }
@@ -1486,7 +1486,7 @@ class Game {
         text: [[NOTE[c], through(c).length ? "Walks through: " + through(c).join(", ") + "." : ""].filter(Boolean).join(" ") || "Nobody walks through here."] }))];
     const tonight = [];
     if (n) for (const who of ORDER) if ((n.ai[who] || 0) > 0 && who !== "golden") tonight.push([CAST[who].name, INFO[who][1].map(c => c[1]).join(", ")]);
-    const got = ACHIEVEMENTS.filter(a => p.achievements[a.id]).length;
+    const got = countedAchievements(p.achievements);
     const summary = [
       { name: "Tonight", pix: "clock", sub: n ? (this.level > 6 ? "Custom Night" : "Night " + this.level) + "  ·  " + (n.hour === 0 ? 12 : n.hour) + " AM  ·  " +
           Math.round(n.battery) + "% battery  ·  music box " + Math.round(n.musicBox * 100) + "%" : "",
@@ -1496,7 +1496,7 @@ class Game {
           ["CAM 11", "keep the music box wound"], ["The monster gets in", "no more lights"], ["6 AM", "you win"]] },
       { name: "Your file", pix: "eye", sub: Story.on ? "Story Mode" : "Save file " + this.file, list: [
           ["Night reached", String(p.night)], ["Stars", "★".repeat((p.beat5 ? 1 : 0) + (p.beat6 ? 1 : 0) + (p.beat420 ? 1 : 0)) || "-"],
-          ["Achievements", got + " / " + ACHIEVEMENTS.length], ["Caught by", p.caughtBy.map(k => CAST[k] ? CAST[k].name : k).join(", ") || "-"]] },
+          ["Achievements", got + " / " + COUNTED_ACHIEVEMENTS.length], ["Caught by", p.caughtBy.map(k => CAST[k] ? CAST[k].name : k).join(", ") || "-"]] },
     ];
     return {
       title: "Journal  ·  Tape 2",
