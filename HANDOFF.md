@@ -152,3 +152,9 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Meme mode = `MEME_PHRASES` (whole phrases the player sees, kid-friendly) + `MEME_WORDS` (word swaps, keeps ALL CAPS / Capitalized) + sometimes a lowercase ending on sentences of 4+ words (" lol", " (real)", " fr fr"...). Same text always gives the same result (cached).
 - Tape Settings panel: rows are tighter, it scrolls if something is ever too tall, and in Dyslexic labels stay on one line.
 
+
+## OG window (Oct 24 to Nov 10, 2026, Eastern)
+- `OG` in tools/global.js: `OG.open()` (server time via Demo), `OG.claim()` (rpc `og_bonus`, +500 EXP once per account, pop-up banner, remembered in localStorage `frae-og-<uid>`).
+- Achievement `og` (`limited: true`) in both tapes' achievements.js; `game.claimOG()` runs in each boot(). After the window it's hidden from the list unless unlocked.
+- Called from: both tapes' boot (Tape 2 demo lock only claims EXP), the menu after Demo.check, the Story hub after Items.load.
+- SQL: `og` column + `og_bonus()` at the end of supabase/story.sql and setup.sql (the database checks the date itself).
