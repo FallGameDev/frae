@@ -2,8 +2,13 @@
    pause.js: the PAUSE MENU and the JOURNAL (help guide). Used by both
    tapes (the builds paste it in after vhs.js).
 
-   PAUSE (Esc, or the II button in the top-left corner during a night)
-     RESUME / JOURNAL / SETTINGS / QUIT (to the title, or the Story hub)
+   PAUSE (Esc, or the II button in the TOP-RIGHT corner of the game screen)
+     Works on the title screen, the custom night screen and during a night
+     (SCREENS below). Buttons:
+       RESUME / JOURNAL / SETTINGS
+       QUIT TO TITLE   (main game, night or custom screen only)
+       BACK TO HUB     (Story Mode: the Story hub. Main game: the tape
+                        select menu, ../index.html)
      Everything stops: the game's updates (game.paused) and every sound
      (the Web Audio clock is suspended).
 
@@ -22,18 +27,24 @@ const Pause = {
   game: null,
   open: false,
   el: null, btn: null,
+  // screens where you can pause (each tape's go() shows/hides the II button with allowed())
+  SCREENS: ["title", "custom", "night"],
 
   attach(game) { this.game = game; this.build(); },
+  allowed(screen) { return this.SCREENS.includes(screen); },
 
-  // the II button is only there during a night
+  // the II button shows on the title, custom night and night screens
   showButton(on) {
     this.build();
     this.btn.hidden = !on;
     if (!on && this.open) this.close(true);
   },
   canPause() {
-    const g = this.game, n = g && g.n;
-    return !!g && g.screen === "night" && !!n && !n.frozen && !n.jumpscare;
+    const g = this.game;
+    if (!g || !this.allowed(g.screen)) return false;
+    if (g.screen !== "night") return true;            // title / custom night screen: always
+    const n = g.n;
+    return !!n && !n.frozen && !n.jumpscare;          // a night: not mid-jumpscare
   },
 
   // Esc from the tape's page: true if the pause menu dealt with it
@@ -51,10 +62,17 @@ const Pause = {
     try { Sound.ctx.suspend(); } catch (e) {}
     ItemBar.show(false);
     this.el.hidden = false;
-    this.el.querySelector(".quit").textContent = Story.on ? "BACK TO HUB" : "QUIT TO TITLE";
-    const n = this.game.n;
-    this.el.querySelector(".where").textContent =
-      (Story.on ? "STORY MODE  ·  " : "") + "NIGHT " + (this.game.level > 6 ? "C" : this.game.level) + "  ·  " + (n.hour === 0 ? 12 : n.hour) + " AM";
+    const g = this.game, n = g.n;
+    // QUIT TO TITLE only makes sense in the main game when you're not on the title already
+    // (Story Mode has no title screen, so its only way out is BACK TO HUB)
+    this.el.querySelector(".quit").hidden = Story.on || g.screen === "title";
+    this.el.querySelector(".hub").textContent = Story.on ? "BACK TO HUB" : "BACK TO TAPE SELECT";
+    // the little line under PAUSE: where you are
+    let where = "TAPE " + TAPE;
+    if (g.screen === "night") where += "  ·  NIGHT " + (g.level > 6 ? "C" : g.level) + "  ·  " + (n.hour === 0 ? 12 : n.hour) + " AM";
+    else if (g.screen === "custom") where += "  ·  CUSTOM NIGHT";
+    else where += "  ·  TITLE";
+    this.el.querySelector(".where").textContent = (Story.on ? "STORY MODE  ·  " : "") + where;
     this.el.querySelector(".resume").focus();
   },
   // quiet = closing because the night ended (no sound, no resume)
@@ -75,6 +93,7 @@ const Pause = {
     this.game.paused = true;
     this.el.hidden = false;
   },
+  // QUIT TO TITLE (main game only)
   quit() {
     this.close(true);
     this.game.paused = false;
@@ -82,14 +101,23 @@ const Pause = {
     if (Story.on) location.href = Story.hub();
     else { this.game.died = false; this.game.showTitle(); }
   },
+  // BACK TO HUB: the Story hub in Story Mode, the tape select menu in the main game
+  // (the menu remembers your save file by itself, localStorage frae-file)
+  toHub() {
+    this.close(true);
+    location.href = Story.on ? Story.hub() : Story.root() + "index.html";
+  },
 
   build() {
     if (this.el) return;
     const css = document.createElement("style");
     css.textContent = `
-      #pauseBtn { position: fixed; left: 8px; top: 8px; z-index: 42; width: 46px; height: 46px; cursor: pointer;
-        background: rgba(0,0,0,.7); border: 3px solid #fff; box-shadow: 0 4px 0 #333; color: #fff;
-        font: 20px "VCR OSD Mono", monospace; display: flex; align-items: center; justify-content: center; }
+      /* the II button sits in the top-right corner of the game screen (inside #frame, so the
+         settings / mods panels cover it). --u = 1 game pixel, set by each shell's fit() */
+      #pauseBtn { position: absolute; right: calc(var(--u, 2px) * 3); top: calc(var(--u, 2px) * 3); z-index: 4;
+        width: calc(var(--u, 2px) * 15); height: calc(var(--u, 2px) * 15); min-width: 26px; min-height: 26px; cursor: pointer;
+        background: rgba(0,0,0,.7); border: 2px solid #fff; box-shadow: 0 2px 0 #333; color: #fff; padding: 0;
+        font: calc(var(--u, 2px) * 7) "VCR OSD Mono", monospace; display: flex; align-items: center; justify-content: center; }
       #pauseBtn:hover { border-color: #ffcf3f; }
       #pauseBtn[hidden] { display: none; }
       #pauseMenu { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center;
@@ -104,6 +132,7 @@ const Pause = {
       #pauseMenu button { display: block; width: 100%; margin: 10px 0; font: 22px "VCR OSD Mono", monospace; color: #fff; cursor: pointer;
         background: transparent; border: 3px solid #fff; padding: 9px; text-align: left; }
       #pauseMenu button:hover, #pauseMenu button:focus { background: rgba(255,255,255,.15); outline: none; }
+      #pauseMenu button[hidden] { display: none; }
       #pauseMenu button::before { content: "\\25B6  "; font-size: 15px; }
       #pauseMenu .hint { font-size: 13px; color: rgba(255,255,255,.65); margin-top: 10px; }`;
     document.head.append(css);
@@ -113,7 +142,7 @@ const Pause = {
     this.btn.setAttribute("data-nomeme", "");
     this.btn.onpointerdown = e => e.stopPropagation();
     this.btn.onclick = e => { e.stopPropagation(); this.btn.blur(); this.show(); };
-    document.body.append(this.btn);
+    (document.getElementById("frame") || document.body).append(this.btn);
 
     const el = this.el = document.createElement("div");
     el.id = "pauseMenu"; el.hidden = true; el.setAttribute("data-nomeme", "");
@@ -122,17 +151,19 @@ const Pause = {
         <button class="resume">RESUME</button>
         <button class="journal">JOURNAL (HELP GUIDE)</button>
         <button class="settings">SETTINGS</button>
-        <button class="quit">QUIT</button>
+        <button class="quit">QUIT TO TITLE</button>
+        <button class="hub">BACK TO HUB</button>
         <div class="hint">Esc = resume</div>
       </div>`;
     el.querySelector(".resume").onclick = () => this.close();
     el.querySelector(".journal").onclick = () => Journal.open(this.game.journal());
     el.querySelector(".settings").onclick = () => { el.hidden = true; openSettings(); };
     el.querySelector(".quit").onclick = () => this.quit();
+    el.querySelector(".hub").onclick = () => this.toHub();
     document.body.append(el);
 
-    // a night pauses by itself when you switch tabs or windows
-    document.addEventListener("visibilitychange", () => { if (document.hidden) this.show(); });
+    // a night pauses by itself when you switch tabs or windows (not the title / custom screens)
+    document.addEventListener("visibilitychange", () => { if (document.hidden && this.game && this.game.screen === "night") this.show(); });
   },
 };
 

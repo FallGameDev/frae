@@ -243,7 +243,9 @@ class Game {
 
   // Changes screen: stops every script and sound of the old one
   go(screen) {
-    if (screen !== "night") { ItemBar.show(false); Pause.showButton(false); }   // item bar + pause button: nights only
+    if (screen !== "night") ItemBar.show(false);          // item bar: nights only
+    Pause.game = this;
+    Pause.showButton(Pause.allowed(screen));              // II button: title, custom night and nights
     this.scripts.stopAll();
     this.layers = [];
     this.screen = screen;
@@ -433,7 +435,7 @@ class Game {
     // DEMO tag + countdown in the top right corner
     if (Demo.on()) {
       ctx.textBaseline = "top"; ctx.font = '10px "Share Tech Mono"'; ctx.fillStyle = "#f7931e";
-      ctx.fillText(ACH_WORD("DEMO") + "  ·  " + ACH_WORD("full game in") + " " + Demo.left(), 472, 8);
+      ctx.fillText(ACH_WORD("DEMO") + "  ·  " + ACH_WORD("full game in") + " " + Demo.left(), 452, 8);       // (left of the II pause button)
     }
     ctx.restore();
   }

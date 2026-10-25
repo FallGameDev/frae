@@ -298,7 +298,9 @@ class Game {
   }
 
   go(screen) {
-    if (screen !== "night") { ItemBar.show(false); Pause.showButton(false); }   // item bar + pause button: nights only
+    if (screen !== "night") ItemBar.show(false);          // item bar: nights only
+    Pause.game = this;
+    Pause.showButton(Pause.allowed(screen));              // II button: title, custom night and nights
     this.scripts.stopAll();
     this.layers = [];
     this.screen = screen;
