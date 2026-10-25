@@ -114,10 +114,13 @@ const Pause = {
     css.textContent = `
       /* the II button sits in the top-right corner of the game screen (inside #frame, so the
          settings / mods panels cover it). --u = 1 game pixel, set by each shell's fit() */
-      #pauseBtn { position: absolute; right: calc(var(--u, 2px) * 3); top: calc(var(--u, 2px) * 3); z-index: 4;
-        width: calc(var(--u, 2px) * 15); height: calc(var(--u, 2px) * 15); min-width: 26px; min-height: 26px; cursor: pointer;
-        background: rgba(0,0,0,.7); border: 2px solid #fff; box-shadow: 0 2px 0 #333; color: #fff; padding: 0;
-        font: calc(var(--u, 2px) * 7) "VCR OSD Mono", monospace; display: flex; align-items: center; justify-content: center; }
+      #pauseBtn { position: absolute; right: calc(var(--u, 2px) * 4); top: calc(var(--u, 2px) * 4); z-index: 4;
+        width: calc(var(--u, 2px) * 22); height: calc(var(--u, 2px) * 22); min-width: 36px; min-height: 36px; cursor: pointer;
+        background: rgba(0,0,0,.7); border: 3px solid #fff; border-radius: calc(var(--u, 2px) * 3); box-shadow: 0 3px 0 #333; padding: 0;
+        display: flex; align-items: center; justify-content: center; gap: 22%; }
+      /* the pause icon: two rounded white bars (real shapes, not the letters II) */
+      #pauseBtn .bar { display: block; width: 18%; height: 52%; background: #fff; border-radius: 2px; }
+      #pauseBtn:hover .bar { background: #ffcf3f; }
       #pauseBtn:hover { border-color: #ffcf3f; }
       #pauseBtn[hidden] { display: none; }
       #pauseMenu { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center;
@@ -138,7 +141,9 @@ const Pause = {
     document.head.append(css);
 
     this.btn = document.createElement("button");
-    this.btn.id = "pauseBtn"; this.btn.title = "Pause (Esc)"; this.btn.textContent = "II"; this.btn.hidden = true;
+    this.btn.id = "pauseBtn"; this.btn.title = "Pause (Esc)"; this.btn.hidden = true;
+    this.btn.innerHTML = '<span class="bar"></span><span class="bar"></span>';     // the pause icon (CSS bars)
+    this.btn.setAttribute("aria-label", "Pause");
     this.btn.setAttribute("data-nomeme", "");
     this.btn.onpointerdown = e => e.stopPropagation();
     this.btn.onclick = e => { e.stopPropagation(); this.btn.blur(); this.show(); };

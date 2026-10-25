@@ -2279,8 +2279,8 @@ class Game {
   drawHud(ctx, a) {
     const n = this.n;
     // clock and night
-    this.text(ctx, (n.hour === 0 ? 12 : n.hour) + " AM", 462, 36, { size: 20, align: "right", font: "Press Start 2P", shadow: "#000" });
-    this.text(ctx, W("Office", "Night") + " " + this.level, 462, 52, { size: 10, align: "right", shadow: "#000" });
+    this.text(ctx, (n.hour === 0 ? 12 : n.hour) + " AM", 462, 46, { size: 20, align: "right", font: "Press Start 2P", shadow: "#000" });   // (below the pause button)
+    this.text(ctx, W("Office", "Night") + " " + this.level, 462, 62, { size: 10, align: "right", shadow: "#000" });
     // flashlight battery (4 bars)
     const bars = n.battery <= 0 ? 0 : Math.min(4, Math.ceil(n.battery / 25));
     draw(ctx, pic("Sprite12", String(bars)), SX(-215), SY(145), { size: 50 });

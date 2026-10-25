@@ -435,7 +435,7 @@ class Game {
     // DEMO tag + countdown in the top right corner
     if (Demo.on()) {
       ctx.textBaseline = "top"; ctx.font = '10px "Share Tech Mono"'; ctx.fillStyle = "#f7931e";
-      ctx.fillText(ACH_WORD("DEMO") + "  ·  " + ACH_WORD("full game in") + " " + Demo.left(), 452, 8);       // (left of the II pause button)
+      ctx.fillText(ACH_WORD("DEMO") + "  ·  " + ACH_WORD("full game in") + " " + Demo.left(), 444, 8);       // (left of the pause button)
     }
     ctx.restore();
   }
