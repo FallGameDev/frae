@@ -80,5 +80,9 @@
  {"date": "2026-10-24", "tapes": [1, 2], "text": "You can pause on the title screen and the custom night screen too. The pause button moved to the top right corner, and the pause menu has a new button that takes you back to the tape select menu (or the Story Mode hub)."},
  {"date": "2026-10-25", "tapes": [1, 2], "text": "The pause button is bigger and shows a real pause symbol."},
  {"date": "2026-10-25", "tapes": [1, 2], "text": "The OG achievement is now a BONUS: you can still get it, but it no longer counts in your achievement total, so everyone can still reach 100%."},
- {"date": "2026-10-25", "tapes": [1, 2], "text": "Fixed the tape select menu showing nothing after the last update."}
+ {"date": "2026-10-25", "tapes": [1, 2], "text": "Fixed the tape select menu showing nothing after the last update."},
+ {"date": "2026-10-25", "tapes": [2], "text": "\"It's Me\" now unlocks only when you actually see Golden Eddie."},
+ {"date": "2026-10-25", "tapes": [2], "text": "Give Gifts, Give Life ends by itself after 45 seconds, so it can't get stuck."},
+ {"date": "2026-10-25", "tapes": [1, 2], "text": "A click that changes the screen no longer also clicks something on the next screen."},
+ {"date": "2026-10-25", "tapes": [2], "text": "New custom night challenge: OMG!! IM TURNING TRANS!! (Meyg alone, on 41)."}
 ]

@@ -86,7 +86,8 @@ Object.assign(Game.prototype, {
         if (m.phase === "life" && !k.face) { k.face = k.who; m.score += 100; this.blip(); }
       }
       if (m.phase === "gifts" && m.kids.every(k => k.gift)) m.phase = "life";
-      if (m.phase === "life" && m.kids.every(k => k.face) && !m.done) {
+      // finished, or out of time (45 s): the ending plays either way, so it can't sit there forever
+      if (((m.phase === "life" && m.kids.every(k => k.face)) || m.t > 45) && !m.done) {
         m.done = true;
         this.scripts.run("mini", function* () {
           yield 1.5;

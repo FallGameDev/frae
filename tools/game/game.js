@@ -249,6 +249,9 @@ class Game {
     this.scripts.stopAll();
     this.layers = [];
     this.screen = screen;
+    // a click or key that changed the screen is used up: it must not also land on the new screen
+    this.clicks.length = 0;
+    this.keys.length = 0;
   }
 
   // Adds a picture that covers the screen, with its own fade (0 = see-through, 1 = solid)

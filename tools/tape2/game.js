@@ -171,6 +171,7 @@ const PRESETS = [
   { name: W("Custom night", "Eddie Fever"), ai: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10], prize: "Sprite65" },
   { name: W("Custom night", "Golden Eddie"), ai: [1, 9, 8, 7, 1, 9, 8, 7, 1, 9], prize: "Sprite64" },
   { name: W("Custom night", "F*CK NO!"), ai: [20, 20, 20, 20, 20, 20, 20, 20, 20, 20] },        // everyone on 20
+  { name: W("Custom night", "OMG!! IM TURNING TRANS!!"), ai: [0, 0, 0, 0, 0, 0, 0, 0, 41, 0] },  // only Meyg, somehow on 41 (past the usual 20 cap, no prize)
 ];
 // where each prize plush sits (Scratch spot, next to the desk)
 const PRIZE_SPOT = {
@@ -304,6 +305,10 @@ class Game {
     this.scripts.stopAll();
     this.layers = [];
     this.screen = screen;
+    // a click or key that changed the screen is used up: it must not also land on the new screen
+    // (a click on the ending card used to start the 6th Night on the title that replaced it)
+    this.clicks.length = 0;
+    this.keys.length = 0;
   }
 
   // A layer on top of everything: a picture, or any drawing function, with its own fade
@@ -1115,13 +1120,15 @@ class Game {
     if (rand(1, odds) === 1 && Global.letMove()) {
       n.golden = "office";
       n.goldenTimer = 1.6;
-      this.unlock("golden");
+      // (no achievement here: raiseMonitor() rolls too and clears him at once, so he may never be seen.
+      //  "It's Me" unlocks in updateGolden / updateLights when he is really on screen)
     }
   }
   updateGolden() {
     const n = this.n;
     if (n.golden !== "office") return;
     if (n.maskUp || n.camsUp) { n.golden = null; return; }
+    if (!n.monitorFrame) this.unlock("golden");          // the monitor is all the way down: you can see him
     n.goldenTimer -= TICK;
     if (n.goldenTimer <= 0) { n.golden = null; this.jumpscare("golden"); }
   }
@@ -1351,7 +1358,7 @@ class Game {
     const hall = office && ok && want && !ventL && !ventR;
     if (hall && !n.flash) {
       this.flashedHall();
-      if (this.level >= 3 && !n.golden && chance(45)) n.golden = "hall";
+      if (this.level >= 3 && !n.golden && chance(45)) { n.golden = "hall"; this.unlock("golden"); }   // his head in the lit hall
     }
     if (!hall && n.golden === "hall") n.golden = null;
     n.flash = hall;
