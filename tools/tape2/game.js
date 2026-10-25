@@ -371,8 +371,9 @@ class Game {
   // (Tape 2 asks about sensitive content first, once per save file unless they say otherwise: warning.js)
   async boot() {
     await Promise.all([Demo.check(), loadItemsQuick()]);   // server time + who is signed in + shop items
+    if (Demo.on() && !Story.on) { OG.claim(); return this.demoLocked(); }   // locked tape: only the account bonus
+    this.claimOG();                                         // OG achievement + bonus EXP (until Nov 10)
     if (Story.on) { const go = () => this.storyBoot(); return needsWarning(this.file) ? showWarning(go) : go(); }
-    if (Demo.on()) return this.demoLocked();
     if (needsWarning(this.file)) showWarning(() => this.showTitle()); else this.showTitle();
   }
 

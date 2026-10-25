@@ -32,11 +32,20 @@ const ACHIEVEMENTS = [
   { id: "golden",   icon: "?",  colors: ["#e6c34a", "#5a4a0d"], name: "It's Me",                 desc: "Meet Golden Eddie.", hidden: true },
   { id: "fired",    icon: "✉",  colors: ["#e68ab4", "#5a1d38"], name: "You're Fired",            desc: "Enter 1 / 2 / 2 / 7 on the custom night.", hidden: true },
   { id: "rice",     icon: "🍚", colors: ["#e6dcc8", "#6b5a3a"], name: "Dine In",                 desc: "Find the secret song.", hidden: true },
+  // limited: only during the OG window (OG in tools/global.js); hidden from the list afterwards unless you got it
+  { id: "og",       icon: "OG", colors: ["#ffd84a", "#7a3ad9"], name: "OG",                      desc: "Play the game between Oct 24 and Nov 10, 2026.", limited: true },
 ];
 
 const ACH_WORD = s => (TEXTS[s] !== undefined ? String(TEXTS[s]) : s);
 
 Object.assign(Game.prototype, {
+
+  // OG window (Oct 24 to Nov 10, 2026): the OG achievement on this save file
+  // + the one-time 500 EXP account bonus (OG in tools/global.js)
+  claimOG() {
+    if (OG.open()) this.unlock("og");
+    OG.claim();
+  },
 
   // Unlock an achievement (once per save file) and show the pop-up
   unlock(id) {
@@ -101,13 +110,15 @@ function achievementChime() {
    --------------------------------------------------------------------- */
 function openAchievements() {
   const got = game.progress.achievements;
-  const done = ACHIEVEMENTS.filter(a => got[a.id]).length;
-  const pct = Math.round(done / ACHIEVEMENTS.length * 100);
+  // a limited one (OG) only shows while it can still be earned, or once you have it
+  const LIST = ACHIEVEMENTS.filter(a => !a.limited || got[a.id] || OG.open());
+  const done = LIST.filter(a => got[a.id]).length;
+  const pct = Math.round(done / LIST.length * 100);
   const box = $("#achPanel");
   box.innerHTML = "";
   const date = t => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   // unlocked first (newest on top), then locked
-  const order = [...ACHIEVEMENTS].sort((p, q) => (got[q.id] || 0) - (got[p.id] || 0));
+  const order = [...LIST].sort((p, q) => (got[q.id] || 0) - (got[p.id] || 0));
   const rows = order.map(a => {
     const unlocked = !!got[a.id], secret = !unlocked && a.hidden;
     return el("div", { class: "achRow" + (unlocked ? "" : " locked") },
@@ -123,7 +134,7 @@ function openAchievements() {
     el("div", { class: "achTop" },
       el("button", { onclick: closeAchievements }, "< " + ACH_WORD("BACK")),
       el("h2", {}, ACH_WORD("Achievements")),
-      el("div", { class: "achCount" }, `${done} / ${ACHIEVEMENTS.length} (${pct}%)  ·  ${game.file === "story" ? ACH_WORD("STORY MODE") : ACH_WORD("FILE") + " " + game.file}`)),
+      el("div", { class: "achCount" }, `${done} / ${LIST.length} (${pct}%)  ·  ${game.file === "story" ? ACH_WORD("STORY MODE") : ACH_WORD("FILE") + " " + game.file}`)),
     bar,
     el("div", { class: "achList" }, ...rows));
   box.hidden = false;

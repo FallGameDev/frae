@@ -313,6 +313,7 @@ class Game {
   // First screen after loading
   async boot() {
     await Promise.all([Demo.check(), loadItemsQuick()]);   // server time + who is signed in + shop items
+    this.claimOG();                                         // OG achievement + bonus EXP (until Nov 10)
     if (Story.on) return this.storyBoot();
     this.showTitle();
     // a 1 in 1000 surprise when the game opens: eyes stare at you for 10 seconds

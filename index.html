@@ -1223,7 +1223,7 @@
     });
   }
   applyDemo();
-  Demo.check().then(applyDemo);
+  Demo.check().then(() => { applyDemo(); OG.claim(); });   // OG bonus: 500 EXP until Nov 10
   setInterval(applyDemo, 30000);
 
   layout();

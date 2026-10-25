@@ -1093,6 +1093,65 @@ const Demo = {
 };
 
 /* =====================================================================
+   OG (launch window: Oct 24 to the end of Nov 10, 2026, Eastern time)
+   Playing during the window gives:
+   - the "OG" achievement in whichever save file you boot (both tapes,
+     game.unlock("og") in each boot())
+   - 500 EXP on your account, once (the og_bonus database function in
+     supabase/story.sql decides, with the database's own clock)
+   - OG.open()   true while the window is open (uses Demo's server time)
+   - OG.claim()  asks the database for the bonus; shows a pop-up if given.
+                 Called by the menu, the Story hub and both tapes.
+   After Nov 10 the achievement is hidden from players who missed it.
+   ===================================================================== */
+const OG = {
+  from: Date.parse("2026-10-24T00:00:00-04:00"),
+  until: Date.parse("2026-11-11T00:00:00-05:00"),   // end of Nov 10 (EST: clocks go back Nov 1)
+  bonus: 500,
+  claiming: null,
+
+  open() { const t = Demo.now(); return t >= this.from && t < this.until; },
+
+  // remembered per account so we only ask the database once per device
+  doneKey() { return "frae-og-" + Cloud.uid(); },
+
+  claim() {
+    if (this.claiming) return this.claiming;
+    this.claiming = (async () => {
+      if (!this.open() || !Cloud.ready() || !Cloud.signedIn()) return 0;
+      try { if (localStorage.getItem(this.doneKey())) return 0; } catch (e) {}
+      try {
+        const r = await Cloud.call("/rest/v1/rpc/og_bonus", { method: "POST", json: {} });
+        if (r && (r.gained > 0 || r.reason === "claimed")) {
+          try { localStorage.setItem(this.doneKey(), "1"); } catch (e) {}
+        }
+        if (!r || !r.gained) return 0;
+        // keep the EXP numbers on this page up to date
+        if (Items.loaded) Items.exp = r.exp;
+        if (Story.data) Story.data.exp = r.exp;
+        this.popup();
+        return r.gained;
+      } catch (e) { return 0; }        // offline, or supabase/story.sql not run yet: try next time
+    })();
+    return this.claiming;
+  },
+
+  // "OG BONUS +500 EXP" banner at the top of the page (plain HTML, any page)
+  popup() {
+    const box = document.createElement("div");
+    box.setAttribute("data-nomeme", "");
+    box.style.cssText = "position:fixed;left:50%;top:18px;transform:translate(-50%,-140%);z-index:99999;" +
+      "background:#2a1d5a;color:#fff;border:4px solid #0d0820;border-radius:18px;box-shadow:0 8px 0 #0d0820;" +
+      "padding:12px 22px;font:bold 20px 'VCR OSD Mono',monospace;text-align:center;transition:transform .45s cubic-bezier(.2,1.4,.4,1);";
+    box.innerHTML = `<div style="color:#ffd84a;font-size:26px">★ OG BONUS ★</div>` +
+      `<div>+${this.bonus} EXP for playing before Nov 10!</div>`;
+    document.body.append(box);
+    requestAnimationFrame(() => requestAnimationFrame(() => { box.style.transform = "translate(-50%,0)"; }));
+    setTimeout(() => { box.style.transform = "translate(-50%,-140%)"; setTimeout(() => box.remove(), 600); }, 5500);
+  },
+};
+
+/* =====================================================================
    STORY MODE (Tape 0 on the menu, the hub is story/index.html)
    One path through the tapes: Tape 1 nights 1-5, then its 6th night and
    custom night, then Tape 2 the same way. Each step opens the tape with

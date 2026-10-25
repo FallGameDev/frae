@@ -369,6 +369,7 @@ function beep(f, len, type = "square") {
   else if (Story.error === "signin") document.getElementById("signin").hidden = false;
   else if (Story.error) { document.getElementById("setup").hidden = false; document.getElementById("setupText").textContent = Story.error; }
   shopReady = await Items.load();
+  await OG.claim();                              // OG bonus: 500 EXP until Nov 10 (updates Items/Story EXP)
   draw(); drawMe();
   setInterval(drawDemo, 30000);
 })();

@@ -304,3 +304,32 @@ begin
 end $$;
 revoke execute on function public.use_item(text) from anon;
 grant execute on function public.use_item(text) to authenticated;
+
+-- =====================================================================
+-- OG BONUS: play between Oct 24 and Nov 10, 2026 (Eastern time) and get
+-- 500 EXP, once per account. The database checks the date with its own
+-- clock, so changing the computer's clock does nothing.
+--   og  true once the bonus was given
+-- Only og_bonus() can change it. Safe to run again.
+-- =====================================================================
+alter table public.profiles add column if not exists og boolean not null default false;
+
+create or replace function public.og_bonus()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  got boolean;
+  new_exp int;
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+  -- the window: Oct 24 12:00 AM EDT to the end of Nov 10 (EST, clocks go back Nov 1)
+  if now() < '2026-10-24 00:00:00-04'::timestamptz or now() >= '2026-11-11 00:00:00-05'::timestamptz then
+    return jsonb_build_object('gained', 0, 'reason', 'closed');
+  end if;
+  select og into got from public.profiles where id = auth.uid() for update;
+  if got then return jsonb_build_object('gained', 0, 'reason', 'claimed'); end if;
+  update public.profiles set og = true, exp = exp + 500
+   where id = auth.uid() returning exp into new_exp;
+  return jsonb_build_object('gained', 500, 'exp', new_exp);
+end $$;
+revoke execute on function public.og_bonus() from anon;
+grant execute on function public.og_bonus() to authenticated;

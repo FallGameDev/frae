@@ -1405,6 +1405,65 @@ const Demo = {
 };
 
 /* =====================================================================
+   OG (launch window: Oct 24 to the end of Nov 10, 2026, Eastern time)
+   Playing during the window gives:
+   - the "OG" achievement in whichever save file you boot (both tapes,
+     game.unlock("og") in each boot())
+   - 500 EXP on your account, once (the og_bonus database function in
+     supabase/story.sql decides, with the database's own clock)
+   - OG.open()   true while the window is open (uses Demo's server time)
+   - OG.claim()  asks the database for the bonus; shows a pop-up if given.
+                 Called by the menu, the Story hub and both tapes.
+   After Nov 10 the achievement is hidden from players who missed it.
+   ===================================================================== */
+const OG = {
+  from: Date.parse("2026-10-24T00:00:00-04:00"),
+  until: Date.parse("2026-11-11T00:00:00-05:00"),   // end of Nov 10 (EST: clocks go back Nov 1)
+  bonus: 500,
+  claiming: null,
+
+  open() { const t = Demo.now(); return t >= this.from && t < this.until; },
+
+  // remembered per account so we only ask the database once per device
+  doneKey() { return "frae-og-" + Cloud.uid(); },
+
+  claim() {
+    if (this.claiming) return this.claiming;
+    this.claiming = (async () => {
+      if (!this.open() || !Cloud.ready() || !Cloud.signedIn()) return 0;
+      try { if (localStorage.getItem(this.doneKey())) return 0; } catch (e) {}
+      try {
+        const r = await Cloud.call("/rest/v1/rpc/og_bonus", { method: "POST", json: {} });
+        if (r && (r.gained > 0 || r.reason === "claimed")) {
+          try { localStorage.setItem(this.doneKey(), "1"); } catch (e) {}
+        }
+        if (!r || !r.gained) return 0;
+        // keep the EXP numbers on this page up to date
+        if (Items.loaded) Items.exp = r.exp;
+        if (Story.data) Story.data.exp = r.exp;
+        this.popup();
+        return r.gained;
+      } catch (e) { return 0; }        // offline, or supabase/story.sql not run yet: try next time
+    })();
+    return this.claiming;
+  },
+
+  // "OG BONUS +500 EXP" banner at the top of the page (plain HTML, any page)
+  popup() {
+    const box = document.createElement("div");
+    box.setAttribute("data-nomeme", "");
+    box.style.cssText = "position:fixed;left:50%;top:18px;transform:translate(-50%,-140%);z-index:99999;" +
+      "background:#2a1d5a;color:#fff;border:4px solid #0d0820;border-radius:18px;box-shadow:0 8px 0 #0d0820;" +
+      "padding:12px 22px;font:bold 20px 'VCR OSD Mono',monospace;text-align:center;transition:transform .45s cubic-bezier(.2,1.4,.4,1);";
+    box.innerHTML = `<div style="color:#ffd84a;font-size:26px">★ OG BONUS ★</div>` +
+      `<div>+${this.bonus} EXP for playing before Nov 10!</div>`;
+    document.body.append(box);
+    requestAnimationFrame(() => requestAnimationFrame(() => { box.style.transform = "translate(-50%,0)"; }));
+    setTimeout(() => { box.style.transform = "translate(-50%,-140%)"; setTimeout(() => box.remove(), 600); }, 5500);
+  },
+};
+
+/* =====================================================================
    STORY MODE (Tape 0 on the menu, the hub is story/index.html)
    One path through the tapes: Tape 1 nights 1-5, then its 6th night and
    custom night, then Tape 2 the same way. Each step opens the tape with
@@ -1781,7 +1840,7 @@ function friendlyError(msg) {
 }
 
 
-const DEVLOG = [{"date": "2026-10-16", "tapes": [2], "text": "Tape 2 is here: Fried Rice at Eddie's 2, a FNaF 2 style night."}, {"date": "2026-10-16", "tapes": [2], "text": "Rigged 3D models for Toy Eddy, Toy Weddy, Toy Cheddy and Toy Endo."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-16", "tapes": [2], "text": "The toys are drawn from their 3D models."}, {"date": "2026-10-17", "tapes": [2], "text": "Characters are drawn live from the models folder, with less lag. Fred makes the phone calls."}, {"date": "2026-10-17", "tapes": [2], "text": "Fixed the stutter once characters start moving."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's own office."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [2], "text": "Mods can add 3D models and 2D characters (models and characters folders)."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-17", "tapes": [2], "text": "Uploaded models follow the game's rig, and their looping animations play."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys have faces (calm, creepy and scary). Mangled Endo is now Meyg."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: a red star over each character's right eye, stronger the harder they are."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: the \"F*CK NO!\" preset, everyone on 20."}, {"date": "2026-10-17", "tapes": [2], "text": "GET READY minigame: the rainbow Endo runs, and the last run ends in a huge fire."}, {"date": "2026-10-17", "tapes": [2], "text": "After the GET READY run the title reads \"Eddies Riceria\" with the crying rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "New tab icon: the rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "The death minigame depends on who caught you (still 1 in 3)."}, {"date": "2026-10-17", "tapes": [2], "text": "The Eddy mask, and the withered cast is torn up and broken."}, {"date": "2026-10-17", "tapes": [2], "text": "Toy Weddy's new model."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's new Puppet."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys breathe while they stand, and each toy has its own 3D jumpscare."}, {"date": "2026-10-17", "tapes": [2], "text": "No idle animation on the title screen and custom night portraits."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: < on 0 jumps to 20 and > on 20 jumps to 0 (not when held or spammed)."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys crawl in the vents and walk down the hall. Sharp close-up on the title screen."}, {"date": "2026-10-18", "tapes": [2], "text": "No static noise on the cameras or the flashlight. New fan sound with rain."}, {"date": "2026-10-18", "tapes": [2], "text": "No more vent light hum."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's newspaper ad at the start of a new game."}, {"date": "2026-10-18", "tapes": [2], "text": "Cheddy takes Bonnie's spots and Weddy takes Chica's."}, {"date": "2026-10-18", "tapes": [2], "text": "Withered Endo no longer kills you right away: survive his stare minigame."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's new mask."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy takes her face plate off when she leaves the stage: a glitching black box covers her face."}, {"date": "2026-10-18", "tapes": [2], "text": "Balloon Boy is now the Peepeepoopoo Monster."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy wears a shirt, and her chest wobbles with real physics."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-18", "tapes": [2], "text": "A warning screen when the game starts: sensitive content on or off. Off turns jumpscares off. It can skip itself on that save file."}, {"date": "2026-10-18", "tapes": [2], "text": "A new phone call on night 1."}, {"date": "2026-10-18", "tapes": [2], "text": "The Puppet's music box on CAM 11 plays a new song."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "New Font setting (menu Settings > Visuals, and each tape's Settings): Original, Dyslexic (OpenDyslexic) and whoo hoo super mario on the ps4 (every word memified). It changes words only, never pictures."}, {"date": "2026-10-23", "tapes": [2], "text": "Tape 2: beating a night now shows a Windows XP pop-up that bounces around the screen like the Solitaire win. Hit its yay button (good luck) to skip it and get a secret achievement."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Demo until October 31 at 1 PM: Tape 1 has Night 1 and Dine In, and Tape 2 shows a countdown. Everything opens on release day."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Story Mode (Tape 0 on the menu): play every tape in order on one path, nights 1 to 5 then the 6th night and custom night. Beat nights to earn EXP and level up your account."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Shop in Story Mode: trade EXP for items that work in every night while signed in: Frying Pan, Stopwatch, Battery Pack, X-Ray Glasses, Bear Trap and Air Horn. Spending EXP never lowers your level."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Pause menu: press Esc (or the II button in the corner) during a night. Resume, Journal, Settings or Quit. The night also pauses itself when you switch tabs."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "The Journal (in the pause menu): a help guide on the blue VHS screen with Entities, Mechanics, Items, Cameras and Summary chapters, with routes, how to stop each one, little camera maps and pixel icons."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "The night goes a little faster while the cameras are up."}, {"date": "2026-10-24", "tapes": [2], "text": "Tape 2: the mask has an oxygen bar. Run out of air and the mask comes off for 15 seconds, everyone moves 1 or 2 steps closer, and the screen goes dark red while you catch your breath."}, {"date": "2026-10-24", "tapes": [2], "text": "Tape 2: the music box winds down a little faster while you wear the mask."}];
+const DEVLOG = [{"date": "2026-10-16", "tapes": [2], "text": "Tape 2 is here: Fried Rice at Eddie's 2, a FNaF 2 style night."}, {"date": "2026-10-16", "tapes": [2], "text": "Rigged 3D models for Toy Eddy, Toy Weddy, Toy Cheddy and Toy Endo."}, {"date": "2026-10-16", "tapes": [1, 2], "text": "Both tapes are now plain web pages with the code inside."}, {"date": "2026-10-16", "tapes": [2], "text": "The toys are drawn from their 3D models."}, {"date": "2026-10-17", "tapes": [2], "text": "Characters are drawn live from the models folder, with less lag. Fred makes the phone calls."}, {"date": "2026-10-17", "tapes": [2], "text": "Fixed the stutter once characters start moving."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's own office."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Smoother drawing. No static anywhere in Tape 2."}, {"date": "2026-10-17", "tapes": [2], "text": "Mods can add 3D models and 2D characters (models and characters folders)."}, {"date": "2026-10-17", "tapes": [1, 2], "text": "Mods have no limits: code, new pictures and sounds, any file, and no more 5 MB cap."}, {"date": "2026-10-17", "tapes": [2], "text": "Uploaded models follow the game's rig, and their looping animations play."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys have faces (calm, creepy and scary). Mangled Endo is now Meyg."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: a red star over each character's right eye, stronger the harder they are."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: the \"F*CK NO!\" preset, everyone on 20."}, {"date": "2026-10-17", "tapes": [2], "text": "GET READY minigame: the rainbow Endo runs, and the last run ends in a huge fire."}, {"date": "2026-10-17", "tapes": [2], "text": "After the GET READY run the title reads \"Eddies Riceria\" with the crying rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "New tab icon: the rainbow guy."}, {"date": "2026-10-17", "tapes": [2], "text": "The death minigame depends on who caught you (still 1 in 3)."}, {"date": "2026-10-17", "tapes": [2], "text": "The Eddy mask, and the withered cast is torn up and broken."}, {"date": "2026-10-17", "tapes": [2], "text": "Toy Weddy's new model."}, {"date": "2026-10-17", "tapes": [2], "text": "Aidan's new Puppet."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys breathe while they stand, and each toy has its own 3D jumpscare."}, {"date": "2026-10-17", "tapes": [2], "text": "No idle animation on the title screen and custom night portraits."}, {"date": "2026-10-17", "tapes": [2], "text": "Custom night: < on 0 jumps to 20 and > on 20 jumps to 0 (not when held or spammed)."}, {"date": "2026-10-17", "tapes": [2], "text": "The toys crawl in the vents and walk down the hall. Sharp close-up on the title screen."}, {"date": "2026-10-18", "tapes": [2], "text": "No static noise on the cameras or the flashlight. New fan sound with rain."}, {"date": "2026-10-18", "tapes": [2], "text": "No more vent light hum."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's newspaper ad at the start of a new game."}, {"date": "2026-10-18", "tapes": [2], "text": "Cheddy takes Bonnie's spots and Weddy takes Chica's."}, {"date": "2026-10-18", "tapes": [2], "text": "Withered Endo no longer kills you right away: survive his stare minigame."}, {"date": "2026-10-18", "tapes": [2], "text": "Aidan's new mask."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy takes her face plate off when she leaves the stage: a glitching black box covers her face."}, {"date": "2026-10-18", "tapes": [2], "text": "Balloon Boy is now the Peepeepoopoo Monster."}, {"date": "2026-10-18", "tapes": [2], "text": "Toy Weddy wears a shirt, and her chest wobbles with real physics."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "After every death: a VHS STOP screen and a guide on how to survive whoever got you."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "DOORS \"Self\" plays during the VHS guide."}, {"date": "2026-10-18", "tapes": [1, 2], "text": "Devlog button in Settings: every update to the game."}, {"date": "2026-10-18", "tapes": [2], "text": "A warning screen when the game starts: sensitive content on or off. Off turns jumpscares off. It can skip itself on that save file."}, {"date": "2026-10-18", "tapes": [2], "text": "A new phone call on night 1."}, {"date": "2026-10-18", "tapes": [2], "text": "The Puppet's music box on CAM 11 plays a new song."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "New Settings button on the tape menu for every tape: brightness, picture quality, master/music/sound volume."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Parental settings (with an optional PIN): block mods, block jumpscares, story mode only, and chicken mode (10x easier, no achievements)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Accounts: sign in to keep your save files, settings and mods on any device."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Workshop! Settings > Mods > LOAD PACKED > WORKSHOP: browse and install mods other players published, no account needed."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "With an account you can publish your unpacked mods to the Workshop, edit them later, and mark them mature (hidden from the list, link only)."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "Mods are uploaded as one picture (the whole mod packed into its pixels) and turned back into the real files when loaded."}, {"date": "2026-10-22", "tapes": [1, 2], "text": "PICK .ZIP also takes a mod image (.png), so a mod can be shared as a single picture."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "No more mod limit: mods are saved entirely in the browser's file storage (not the small 5 MB storage), so huge mods load fine. Old mods move over by themselves."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "The Mods screen shows how much room your browser gives mods."}, {"date": "2026-10-23", "tapes": [1, 2], "text": "New Font setting (menu Settings > Visuals, and each tape's Settings): Original, Dyslexic (OpenDyslexic) and whoo hoo super mario on the ps4 (every word memified). It changes words only, never pictures."}, {"date": "2026-10-23", "tapes": [2], "text": "Tape 2: beating a night now shows a Windows XP pop-up that bounces around the screen like the Solitaire win. Hit its yay button (good luck) to skip it and get a secret achievement."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Demo until October 31 at 1 PM: Tape 1 has Night 1 and Dine In, and Tape 2 shows a countdown. Everything opens on release day."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Story Mode (Tape 0 on the menu): play every tape in order on one path, nights 1 to 5 then the 6th night and custom night. Beat nights to earn EXP and level up your account."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Shop in Story Mode: trade EXP for items that work in every night while signed in: Frying Pan, Stopwatch, Battery Pack, X-Ray Glasses, Bear Trap and Air Horn. Spending EXP never lowers your level."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "Pause menu: press Esc (or the II button in the corner) during a night. Resume, Journal, Settings or Quit. The night also pauses itself when you switch tabs."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "The Journal (in the pause menu): a help guide on the blue VHS screen with Entities, Mechanics, Items, Cameras and Summary chapters, with routes, how to stop each one, little camera maps and pixel icons."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "The night goes a little faster while the cameras are up."}, {"date": "2026-10-24", "tapes": [2], "text": "Tape 2: the mask has an oxygen bar. Run out of air and the mask comes off for 15 seconds, everyone moves 1 or 2 steps closer, and the screen goes dark red while you catch your breath."}, {"date": "2026-10-24", "tapes": [2], "text": "Tape 2: the music box winds down a little faster while you wear the mask."}, {"date": "2026-10-24", "tapes": [1, 2], "text": "New limited achievement: OG. Play between Oct 24 and Nov 10, 2026 to get it, plus a free 500 EXP on your account (once) if you are signed in."}];
 
 /* =====================================================================
    PICTURES AND SOUNDS
@@ -4300,8 +4359,9 @@ class Game {
   // (Tape 2 asks about sensitive content first, once per save file unless they say otherwise: warning.js)
   async boot() {
     await Promise.all([Demo.check(), loadItemsQuick()]);   // server time + who is signed in + shop items
+    if (Demo.on() && !Story.on) { OG.claim(); return this.demoLocked(); }   // locked tape: only the account bonus
+    this.claimOG();                                         // OG achievement + bonus EXP (until Nov 10)
     if (Story.on) { const go = () => this.storyBoot(); return needsWarning(this.file) ? showWarning(go) : go(); }
-    if (Demo.on()) return this.demoLocked();
     if (needsWarning(this.file)) showWarning(() => this.showTitle()); else this.showTitle();
   }
 
@@ -6619,11 +6679,20 @@ const ACHIEVEMENTS = [
   { id: "minigame", icon: "▣",  colors: ["#6a6aff", "#12125a"], name: "Insert Coin",             desc: "Play one of the strange 8-bit games.", hidden: true },
   { id: "yay",      icon: "✓",  colors: ["#3a8cff", "#0d2f6b"], name: "yay",                     desc: "Somehow hit the yay button at 6 AM.", hidden: true },
   { id: "cake",     icon: "🎂", colors: ["#e68ab4", "#5a1d38"], name: "Take Cake",               desc: "Give cake to every child.", hidden: true },
+  // limited: only during the OG window (OG in tools/global.js); hidden from the list afterwards unless you got it
+  { id: "og",       icon: "OG", colors: ["#ffd84a", "#7a3ad9"], name: "OG",                      desc: "Play the game between Oct 24 and Nov 10, 2026.", limited: true },
 ];
 
 const ACH_WORD = s => (TEXTS[s] !== undefined ? String(TEXTS[s]) : s);
 
 Object.assign(Game.prototype, {
+
+  // OG window (Oct 24 to Nov 10, 2026): the OG achievement on this save file
+  // + the one-time 500 EXP account bonus (OG in tools/global.js)
+  claimOG() {
+    if (OG.open()) this.unlock("og");
+    OG.claim();
+  },
 
   // Unlock an achievement (once per save file) and show the pop-up
   unlock(id) {
@@ -6688,13 +6757,15 @@ function achievementChime() {
    --------------------------------------------------------------------- */
 function openAchievements() {
   const got = game.progress.achievements;
-  const done = ACHIEVEMENTS.filter(a => got[a.id]).length;
-  const pct = Math.round(done / ACHIEVEMENTS.length * 100);
+  // a limited one (OG) only shows while it can still be earned, or once you have it
+  const LIST = ACHIEVEMENTS.filter(a => !a.limited || got[a.id] || OG.open());
+  const done = LIST.filter(a => got[a.id]).length;
+  const pct = Math.round(done / LIST.length * 100);
   const box = $("#achPanel");
   box.innerHTML = "";
   const date = t => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   // unlocked first (newest on top), then locked
-  const order = [...ACHIEVEMENTS].sort((p, q) => (got[q.id] || 0) - (got[p.id] || 0));
+  const order = [...LIST].sort((p, q) => (got[q.id] || 0) - (got[p.id] || 0));
   const rows = order.map(a => {
     const unlocked = !!got[a.id], secret = !unlocked && a.hidden;
     return el("div", { class: "achRow" + (unlocked ? "" : " locked") },
@@ -6710,7 +6781,7 @@ function openAchievements() {
     el("div", { class: "achTop" },
       el("button", { onclick: closeAchievements }, "< " + ACH_WORD("BACK")),
       el("h2", {}, ACH_WORD("Achievements")),
-      el("div", { class: "achCount" }, `${done} / ${ACHIEVEMENTS.length} (${pct}%)  ·  ${game.file === "story" ? ACH_WORD("STORY MODE") : ACH_WORD("FILE") + " " + game.file}`)),
+      el("div", { class: "achCount" }, `${done} / ${LIST.length} (${pct}%)  ·  ${game.file === "story" ? ACH_WORD("STORY MODE") : ACH_WORD("FILE") + " " + game.file}`)),
     bar,
     el("div", { class: "achList" }, ...rows));
   box.hidden = false;
