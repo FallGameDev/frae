@@ -15,6 +15,7 @@ Repo: FallGameDev/frae (GitHub Pages: fallgamedev.github.io/frae)
 - Code-only rebuild (after changing JS/HTML only): `python3 tools/build_game1.py --code`
 - The build describes every picture as layers (rooms, character files, words...), then `tools/flatten.py 1` paints each one into a single image file (headless browser, using `tools/legacy_layers.js`) and writes `tools/game/names.js` + `words.js` + `assets/texts.json`. `1/index.html` is just `game_shell.html` with the code files pasted into its `<script>`.
 - Art pipeline: `tools/mods.py` (text sprites to real text, unused costumes), `tools/cameras.py` (empty rooms + separate character art), `tools/custom_night.py`, `tools/fanmade.py` (fan-made cast replaces FNaF characters).
+- Unused files: `UNUSED` in tools/flatten.py lists Tape 1 pictures/sounds the code never uses (the build skips them); Tape 2's is `SOUNDS_USED` in build_game2.py. Only list a group the game reads by name, never one read by number (picAt / PICTURE_NAMES[g][i]). The .fbx toy models are kept on purpose (Roblox / GameMaker), even though the game loads the .glb.
 - New phone calls and ringtone live in `tools/calls/` (night1-4.mp3, ringtone.mp3); the build copies them in.
 
 ## Hand-written game code (`tools/game/`)
