@@ -84,5 +84,6 @@
  {"date": "2026-10-25", "tapes": [2], "text": "\"It's Me\" now unlocks only when you actually see Golden Eddie."},
  {"date": "2026-10-25", "tapes": [2], "text": "Give Gifts, Give Life ends by itself after 45 seconds, so it can't get stuck."},
  {"date": "2026-10-25", "tapes": [1, 2], "text": "A click that changes the screen no longer also clicks something on the next screen."},
- {"date": "2026-10-25", "tapes": [2], "text": "New custom night challenge: OMG!! IM TURNING TRANS!! (Meyg alone, on 41)."}
+ {"date": "2026-10-25", "tapes": [2], "text": "New custom night challenge: OMG!! IM TURNING TRANS!! (Meyg alone, on 41)."},
+ {"date": "2026-10-25", "tapes": [1, 2], "text": "Cleaned out pictures and sounds the game never used, so the tapes download a little faster."}
 ]

@@ -40,6 +40,41 @@ TAPES = {
 SCALE = 2          # image pixels per game pixel
 
 
+# ---------------------------------------------------------------------------
+# Unused files: pictures and sounds the hand-written game never uses, so the
+# build leaves them out (checked against tools/game/*.js on 2026-10-25).
+# Only groups the game reads by name are listed here: never add a group that
+# is read by number (picAt / PICTURE_NAMES[group][i]), since that shifts it.
+# ---------------------------------------------------------------------------
+UNUSED = {
+    '1': {
+        'pictures': {
+            # the jumpscares only play every other frame
+            'Bonnie': ['ScareBonnie (2)', 'ScareBonnie (4)', 'ScareBonnie (6)', 'ScareBonnie (8)', 'ScareBonnie (10)'],
+            'Chica': ['Chica_Scare (1)', 'Chica_Scare (3)', 'Chica_Scare (5)', 'Chica_Scare (7)',
+                      'Chica_Scare (9)', 'Chica_Scare (11)', 'Chica_Scare (13)'],
+            'Foxy': ['FoxyScare (21)'],
+            'Backdrop': ['SettingsMenu'],          # the settings are HTML now
+            'red dot': ['FreddyScare2 (18)'],
+            'Show Stage': ['Characters'],
+            'West Hall': ['Characters'],
+            'kitchen': ['chicarumble2', 'chicarumble3'],
+        },
+        'sounds': {
+            # copies of "blip3" / "pop" that only the "new game" / "Eddie" copies play
+            'back': ['pop'], 'continue': ['blip3'], '6th Night': ['blip3'], 'Custom Night': ['blip3'],
+            'SettingsButton': ['blip3'], 'dine in': ['blip3'],
+            'Secret??//Static Line': ['pop'], 'Secret??//Glitch lines song': ['pop'], 'Secret??//Title': ['pop'],
+            'Secret??//Static Line2': ['pop'], 'Secret??//New/continue': ['pop'], 'Secret??//Sprite1': ['pop'],
+            'Secret??//Fade out': ['pop'], 'Secret??//Lyrics': ['pop'],
+            'loading': ['DOOR_POUNDING_ME_D0291401'],
+            'Show Stage': ['Hand Clap'],
+            'hallucinations': ['robotvoice', 'golden-freddy_robotic-voice-fnaf-1-made-with-Voicemod'],  # Golden plays its own copy
+        },
+    },
+}
+
+
 def slug(s):
     return re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-') or 'x'
 
@@ -112,6 +147,13 @@ def main():
     if tape == '1':
         art.pop('Fan', None)
         sounds.pop('Fan', None)
+    # pictures and sounds the game code never shows or plays (group -> names)
+    for g, names in UNUSED.get(tape, {}).get('pictures', {}).items():
+        if g in art:
+            art[g]['list'] = [n for n in art[g]['list'] if n not in names]
+    for g, names in UNUSED.get(tape, {}).get('sounds', {}).items():
+        for n in names:
+            sounds.get(g, {}).pop(n, None)
 
     # names must stay different after turning them into file names
     for g, gr in art.items():

@@ -56,7 +56,6 @@ front of the camera and should come at it). The toys' animations are made by
 - `toys_rigged.blend`: the base model with a skeleton, in four toy colors
   (Toy Eddy, Toy Weddy, Toy Cheddy, Toy Endo), each in its own collection.
 - `toy_*.glb` (games, Godot, web) and `toy_*.fbx` (Roblox, GameMaker): one toy per file, rig + colors.
-- `toys_preview.png`: the four toys posed to test the skeleton.
 - `faces/`: Aidan's face drawings (`<toy>_face1..3.png`: calm, creepy, scary) and the
   head textures made from them (`<toy>_head1..3.png`). The models carry the calm face;
   the game swaps in head2 (cameras, hall, vents, title) and head3 (office, jumpscares).

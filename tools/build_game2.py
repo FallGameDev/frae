@@ -58,13 +58,16 @@ MASK_SPRITES = set()      # (the old Freddy mask recolor; Aidan's own mask repla
 # ---------------------------------------------------------------------------
 SOUNDS_USED = {
     'Stage': ['Ambient'], 'Light Left': ['ComputerInteriorLong_EVL02_2'], 'Sprite4': None, 'Sprite5': None,
-    'Mangle': None, 'The office': None, 'Party 01': None, 'Left Vent': None, 'Wind up': None, 'Sprite6': None,
-    'Sprite10': None, 'Sprite11': None, 'Fansound': None, 'Ambience': ['Chimes', 'CROWD_SMALL_CHIL_EC049202'],
-    'BB': None, 'Sprite16': ['ambience2'], 'Sprite3': None, 'Sprite17': None, 'Sprite19': None, 'BB in the office': None,
+    'Mangle': None, 'Left Vent': None, 'Wind up': None, 'Sprite6': None,
+    'Sprite10': ['Change camera', 'COMPUTER_DIGITAL_L2076605'], 'Sprite11': None, 'Fansound': ['fansound'],
+    'Ambience': ['Chimes', 'CROWD_SMALL_CHIL_EC049202'],
+    'BB': None, 'Sprite3': None, 'Sprite19': None, 'BB in the office': None,
     'Sprite28': None, 'Sprite45': None, 'Sprite21': ['PartyFavorraspyPart_AC01__3', 'recording1'],
-    'Sprite27': None,
+    'Sprite27': ['Xscream2', 'jackinthebox'],
+    # left out (2026-10-25, never played): The office (light buzz), Party 01, Sprite16 (camera hum),
+    # Sprite17, Sprite10's vent hum, Fansound's Fake/Fake1, Sprite27's extra After Death
 }
-MUSIC = {'Music_Box_Melody_Playful', 'FNAF 2 - Win Music-Lullaby Waltz (End Of The Game).mp3', 'With_S3',
+MUSIC = {'Music_Box_Melody_Playful', 'FNAF 2 - Win Music-Lullaby Waltz (End Of The Game).mp3',
          'During mini game.mp3', 'jackinthebox', 'title', 'Chimes'}
 
 TITLE_SONG = os.path.join(TAPE, 'title.mp3')     # Aidan's title song (Beat Saber lobby music)
