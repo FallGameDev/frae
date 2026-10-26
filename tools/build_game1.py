@@ -226,10 +226,10 @@ class Builder:
 
 def write_page():
     """1/index.html: the page, the hand-written game and the settings/mods UI, all in <script>.
-    (Pictures and sounds are plain files in 1/assets, listed by names.js.)"""
+    (Small pictures are packed into embedded.js as base64; the other pictures and sounds are plain files in 1/assets, listed by names.js.)"""
     game_dir = os.path.join(HERE, 'game')
     code = '\n\n'.join(open(os.path.join(game_dir, f), encoding='utf-8').read()
-                        for f in ('names.js', 'words.js', 'pictures.js', 'sound.js', 'vhs.js', 'pause.js', 'game.js', 'guide.js', 'secret.js', 'achievements.js'))
+                        for f in ('names.js', 'words.js', 'embedded.js', 'pictures.js', 'sound.js', 'vhs.js', 'pause.js', 'game.js', 'guide.js', 'secret.js', 'achievements.js'))
 
     # the devlog (Settings > Devlog): this tape's updates from tools/devlog.json
     log = [e for e in json.load(open(os.path.join(HERE, 'devlog.json'), encoding='utf-8')) if 1 in e['tapes']]

@@ -312,7 +312,7 @@ async function buildTemplate(onProgress) {
   const workers = Array.from({ length: 6 }, async () => {
     while (queue.length) {
       const f = queue.shift();
-      const blob = await (await fetch("assets/" + f)).blob();
+      const blob = await (await fetch(ownAssetUrl(f))).blob();
       if (kindOf(f) === "image") {
         // every picture goes in the template as a PNG (easy to open in any paint program)
         const png = await toPng(blob, f);
@@ -389,7 +389,7 @@ async function addActorTemplate(entries, enc) {
     if (!model && hasPic("Chars", role)) {
       try {
         const f = picturePath("Chars", role);
-        const png = await toPng(await (await fetch("assets/" + f)).blob(), f);
+        const png = await toPng(await (await fetch(ownAssetUrl(f))).blob(), f);
         entries.push({ path: "characters/" + name + ".png", bytes: new Uint8Array(await png.arrayBuffer()) });
       } catch (e) { console.warn("No drawing for", role, e); }
     }

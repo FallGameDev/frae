@@ -29,7 +29,10 @@ const picturePath = (group, name) => `img/${fileName(group)}/${fileName(name)}.w
 
 // Files a mod replaces: asset path -> its own file (see applyMods in ui.js)
 const MOD_FILES = {};
-const assetUrl = path => MOD_FILES[path] || "assets/" + path;
+// The game's own copy of a file: small pictures are packed into the code as
+// base64 (embedded.js, made by tools/embed_small.py), everything else is a file.
+const ownAssetUrl = path => (typeof EMBEDDED_PICS !== "undefined" && EMBEDDED_PICS[path]) || "assets/" + path;
+const assetUrl = path => MOD_FILES[path] || ownAssetUrl(path);
 
 /* ---------------------------------------------------------------------
    Loading files
@@ -71,7 +74,7 @@ const Files = {
       if (img) this.images.set(path, img);
       // a mod's picture may be any size: remember the game's own size so it fills the same spot
       if (MOD_FILES[path]) {
-        const own = await loadOne("assets/" + path);
+        const own = await loadOne(ownAssetUrl(path));
         if (own) this.sizes.set(path, [own.naturalWidth, own.naturalHeight]);
       }
       tick();

@@ -172,8 +172,8 @@ def words_in_code():
 
 def write_page():
     """2/index.html: the page, the hand-written game and the settings/mods UI, all in <script>.
-    (Pictures and sounds are plain files in 2/assets, listed by names.js.)"""
-    code = '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read() for f in ('names.js', 'words.js'))
+    (Small pictures are packed into embedded.js as base64; the other pictures and sounds are plain files in 2/assets, listed by names.js.)"""
+    code = '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read() for f in ('names.js', 'words.js', 'embedded.js'))
     code += '\n\n' + '\n\n'.join(open(os.path.join(HERE, 'game', f), encoding='utf-8').read() for f in ('pictures.js', 'sound.js', 'vhs.js', 'pause.js'))
     code += '\n\n' + '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read()
                                  for f in ('poses.js', 'actors.js', 'game.js', 'guide.js', 'minigames.js', 'achievements.js', 'warning.js'))

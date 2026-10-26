@@ -284,6 +284,9 @@ def main():
     open(os.path.join(cfg['code'], 'words.js'), 'w', encoding='utf-8').write('\n'.join(w))
     print(f'wrote names.js and words.js in {os.path.relpath(cfg["code"], REPO)}')
 
+    # ---- small pictures go into the code as base64 (fewer files: itch.io allows 1000) ----
+    subprocess.run([sys.executable, os.path.join(HERE, 'embed_small.py'), tape], check=True)
+
 
 if __name__ == '__main__':
     main()
