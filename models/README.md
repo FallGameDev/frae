@@ -21,6 +21,7 @@ Name the file after the character (any of `.glb`, `.gltf`, `.fbx`, `.obj`):
 | `withered_endo`   | Withered Endo    |
 | `golden_eddie`    | Golden Eddie     |
 | `endo`            | the bare endoskeleton (vents, prize corner) |
+| `miggy` (.obj)    | the little figurine on the office desk (Tape 2, not a character: see FIGURINE in actors.js) |
 
 (The list lives in `ACTOR_FILES` in `tools/tape2/actors.js`.) A character
 with no model yet is drawn as its 2D drawing.

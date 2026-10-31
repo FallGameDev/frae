@@ -179,6 +179,13 @@ const PRIZE_SPOT = {
   Sprite63: [-125, -105], Sprite64: [120, -125], Sprite65: [20, -130], Sprite66: [60, -90],
 };
 
+// THE DESK FIGURINE (Miggy: FIGURINE in actors.js). Every night it stands somewhere new on the desk.
+// The desk top, in office picture spots (x from the office's middle like PRIZE_SPOT, y = screen y of its feet):
+// the back edge (far, small) and the front edge (near, big), each [left x, right x, y, how tall the figure is there].
+const FIGURINE_DESK = { back: [-180, 180, 238, 24], front: [-255, 245, 284, 30] };
+// spots on the desk where it can't stand (the paper balls, the lamp, the cup): [left, top, right, bottom], where its feet can't go
+const FIGURINE_BLOCKED = [[-110, 224, -50, 256], [36, 220, 120, 266], [114, 196, 164, 280]];
+
 // The phone handset icon (Material Design "call" icon, 24 x 24)
 const PHONE_ICON = new Path2D("M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z");
 
@@ -636,6 +643,7 @@ class Game {
     sp.musicbox.setVolume(0); sp.musicbox.play("Sprite6", "Music_Box_Melody_Playful", { loop: true });
     sp.breath.setVolume(0); sp.breath.play("Sprite3", "deepbreaths", { loop: true });
 
+    n.figurine = this.placeFigurine();
     this.runPhone();
     this.runCameraPan();
     this.runExtras();
@@ -1482,6 +1490,8 @@ class Game {
       { name: "The monitor", pix: "monitor", text: ["E (or the bottom-right bar). Nobody gets in while you look at the office, only while the monitor is up.", "The night moves a little faster while it's up."] },
       { name: "The music box", pix: "music", text: ["On CAM 11. Hold WIND UP to wind it. If it runs out, the Puppet comes.", "It winds down a little faster while you wear the mask."] },
       { name: "The clock", pix: "clock", text: ["12 AM to 6 AM, 70 seconds an hour. Everyone gets more active at 3 and 5 AM."] },
+      { name: "The figurine", pix: "eye", text: ["Miggy lives on your desk. Every night he stands somewhere new, and his pose copies whoever will be the busiest that night."],
+        tips: ["Singing: Toy Eddy. Guitar: Toy Cheddy. Holding something out: Toy Weddy. Knocked over: Meyg. Waving: the Peepeepoopoo Monster. Arms out: the Puppet. Slumped: Withered Eddy. Reaching: Withered Cheddy. Arms wide: Withered Weddy. Running: Withered Endo. Sitting: Golden Eddie."] },
       { name: "Phone calls", pix: "phone", text: ["The phone rings when a night starts. Pick up for advice, or hang up."] },
     ];
     const through = c => Object.keys(PATHS).filter(w => PATHS[w].includes(c) || Object.entries(DETOURS[w] || {}).some(([a, b]) => String(a) === String(c) || b === c)).map(w => CAST[w].name);
@@ -2172,6 +2182,40 @@ class Game {
     if (n.stare) this.drawStare(ctx);
   }
 
+  /* The desk figurine: who will be the most active tonight (that's its pose), and a new
+     random spot on the desk. Picked once when the night starts, so it stays put all night. */
+  figurineFor() {
+    const n = this.n, hourly = HOURLY[this.level] || {};
+    // how busy each one is tonight: their AI, plus what they gain later in the night (HOURLY)
+    const busy = {};
+    for (const who of Object.keys(FIGURINE_POSES)) {
+      if (who === "stand") continue;
+      busy[who] = (n.ai[who] || 0) + Object.values(hourly).reduce((t, h) => t + (h[who] || 0), 0);
+    }
+    // the Puppet is always "busy" (that's how fast the music box runs down), so he only counts if nobody else moves
+    const walkers = Object.keys(busy).filter(w => w !== "puppet" && busy[w] > 0);
+    const pool = walkers.length ? walkers : busy.puppet > 0 ? ["puppet"] : [];
+    if (!pool.length) return "stand";
+    const top = Math.max(...pool.map(w => busy[w]));
+    const tied = pool.filter(w => busy[w] === top);
+    return tied[Math.floor(Math.random() * tied.length)];     // a tie: any of them
+  }
+  placeFigurine() {
+    const { back, front } = FIGURINE_DESK;
+    let spot = null;
+    for (let i = 0; i < 30 && !spot; i++) {
+      const t = Math.random();                                   // 0 = back edge, 1 = front edge
+      const lerp = (a, b) => a + (b - a) * t;
+      const y = lerp(back[2], front[2]), tall = lerp(back[3], front[3]);
+      const x = randFloat(lerp(back[0], front[0]), lerp(back[1], front[1]));
+      const w = tall * 0.45;                                     // about how wide it is
+      const hit = FIGURINE_BLOCKED.some(([l, tp, r, b]) => x + w > l && x - w < r && y > tp - 4 && y < b + 6)
+        || (this.progress.prizes || []).some(pr => PRIZE_SPOT[pr] && Math.abs(PRIZE_SPOT[pr][0] - x) < 40 && Math.abs(SY(PRIZE_SPOT[pr][1]) - y) < 40);
+      if (!hit || i === 29) spot = { x, y, tall };
+    }
+    return { ...spot, pose: this.figurineFor(), flip: Math.random() < 0.5 };
+  }
+
   drawOffice(ctx, pan, a) {
     const n = this.n;
     const ox = SX(pan), oy = 180;
@@ -2213,6 +2257,9 @@ class Game {
       if (PLUSH_ROLE[prize]) drawSpot(ctx, { ...PLUSH_SPOT, role: PLUSH_ROLE[prize] }, SX(pan + p[0]), SY(p[1]), 50);
       else if (hasPic("Plush", prize)) draw(ctx, pic("Plush", prize), SX(pan + p[0]), SY(p[1]), { size: 50 });
     }
+    // the figurine on the desk (Miggy): its pose hints at tonight's busiest character
+    const f = n.figurine;
+    if (f) drawFigurine(ctx, f.pose, SX(pan + f.x), f.y, f.tall, { flip: f.flip, shade: addShade(0.3, dim) });
     // others in the office
     if (n.bbIn) drawSpot(ctx, EXTRA_SPOTS.bb, SX(pan - 90), SY(-20), 65);
     if (n.mangleIn) drawSpot(ctx, EXTRA_SPOTS.mangle, SX(pan + 100), SY(120), 65);

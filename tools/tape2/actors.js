@@ -201,6 +201,7 @@ const Actors = {
   allPictures() {
     const out = [];
     for (const s of this.sprites.values()) for (const f of s.frames || [s]) out.push(f.img, f.black);
+    if (this.figure) for (const s of Object.values(this.figure.poses)) out.push(s.img, s.black);
     return out;
   },
 
@@ -252,7 +253,8 @@ const Actors = {
       }
     }));
     const roles = Object.keys(found);
-    if (!roles.length) return;
+    const fig = await findFigurine();            // the little figurine on the office desk (see FIGURINE)
+    if (!roles.length && !fig) return;
     let three;
     try { three = await this.startThree(); }
     catch (e) { console.warn("3D models could not be started (using the 2D drawings)", e); return; }
@@ -304,9 +306,25 @@ const Actors = {
       await renderRole(role);
       if (onProgress) onProgress(++done / roles.length);
     }
+    // the desk figurine: one picture per pose (who it hints at)
+    if (fig) {
+      try { await this.loadFigurine(three, fig); }
+      catch (e) { console.warn("Could not use the desk figurine", fig.url, e); }
+    }
     // keep three.js only if a jumpscare needs it (it also re-makes Weddy when sensitive content is switched)
     if (Object.keys(this.scares).length || this.sensitiveRoles.size) this.three = three;
     else three.dispose();
+  },
+
+  // The desk figurine: every pose in FIGURINE_POSES, rendered once (see FIGURINE below).
+  // figure.standPx = how tall the standing pose is in its picture, so every pose is drawn at the same scale.
+  figure: null,
+  async loadFigurine(three, fig) {
+    const model = await three.loadFigurine(fig.url);
+    const poses = {};
+    for (const who of Object.keys(FIGURINE_POSES)) poses[who] = makeSprite(three.renderFigurine(model, FIGURINE_POSES[who]), 0.3);
+    const st = poses.stand.body;
+    this.figure = { poses, standPx: st[3] - st[1] };
   },
 
   // Sensitive content switched (jumpscares setting): make again the characters it changes
@@ -696,7 +714,87 @@ const Actors = {
       });
     }
 
-    return { loadModel, render, renderAnimation, renderBig, renderScare, loadFaces, setFace, dispose };
+    // ---- the desk figurine (FIGURINE) ----
+    // A plain .obj made of separate parts (Roblox export: head, torso, arms, legs...). Each limb is
+    // hung on a joint (shoulder, hip, neck) so the poses can swing it, like bones.
+    async function loadFigurine(url) {
+      const { OBJLoader } = await import("three/addons/loaders/OBJLoader.js");
+      const root = await new OBJLoader().loadAsync(url);
+      const meshes = [];
+      root.traverse(o => { if (o.isMesh) meshes.push(o); });
+      // bake it: 2.4 tall, feet on the floor, in the middle, turned to face +z like the other models
+      root.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(root);
+      const size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+      const bake = new THREE.Matrix4().makeRotationY(Math.PI * (FIGURINE.turnAround ? 1 : 0))
+        .multiply(new THREE.Matrix4().makeScale(2.4 / size.y, 2.4 / size.y, 2.4 / size.y))
+        .multiply(new THREE.Matrix4().makeTranslation(-mid.x, -box.min.y, -mid.z));
+      const fig = { group: new THREE.Group(), joints: {} };
+      const partOf = name => Object.keys(FIGURINE.parts).find(k => FIGURINE.parts[k].includes(name)) || "body";
+      const byPart = {};
+      for (const m of meshes) {
+        m.geometry = m.geometry.clone();
+        m.geometry.applyMatrix4(new THREE.Matrix4().multiplyMatrices(bake, m.matrixWorld));
+        m.geometry.computeBoundingBox();
+        m.geometry.computeVertexNormals();
+        // (no .mtl came with it: each part gets its color from FIGURINE.colors)
+        m.material = new THREE.MeshStandardMaterial({ color: FIGURINE.colors[m.name] ?? 0xb8b0a8, roughness: 0.55 });
+        m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1);
+        m.frustumCulled = false;
+        (byPart[partOf(m.name)] = byPart[partOf(m.name)] || []).push(m);
+      }
+      // the joints: where each part turns from (measured from the part itself)
+      const partBox = list => list.reduce((b, m) => b.union(m.geometry.boundingBox), new THREE.Box3());
+      const pivots = {
+        head: b => [(b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2],                   // the neck
+        armR: b => [b.max.x - (b.max.x - b.min.x) * 0.25, b.max.y - (b.max.y - b.min.y) * 0.12, (b.min.z + b.max.z) / 2],  // the shoulder (inner top)
+        armL: b => [b.min.x + (b.max.x - b.min.x) * 0.25, b.max.y - (b.max.y - b.min.y) * 0.12, (b.min.z + b.max.z) / 2],
+        legR: b => [(b.min.x + b.max.x) / 2, b.max.y, (b.min.z + b.max.z) / 2],                   // the hip
+        legL: b => [(b.min.x + b.max.x) / 2, b.max.y, (b.min.z + b.max.z) / 2],
+      };
+      for (const [part, list] of Object.entries(byPart)) {
+        if (part === "body" || !pivots[part]) { for (const m of list) fig.group.add(m); continue; }
+        const [x, y, z] = pivots[part](partBox(list));
+        const joint = new THREE.Group();
+        joint.position.set(x, y, z);
+        for (const m of list) { m.position.set(-x, -y, -z); joint.add(m); }
+        fig.group.add(joint);
+        fig.joints[part] = joint;
+      }
+      fig.root = new THREE.Group();            // turns the whole figure (lying down, leaning) and keeps it in view
+      fig.root.add(fig.group);
+      return fig;
+    }
+    // one pose -> a picture, seen from a bit above (it sits on the desk below you)
+    function renderFigurine(fig, p) {
+      for (const [part, joint] of Object.entries(fig.joints)) {
+        const [x, y, z] = p[part] || [0, 0, 0];
+        joint.rotation.set(x * DEG, y * DEG, z * DEG);
+      }
+      const [bx, by, bz] = p.body || [0, 0, 0];
+      fig.group.rotation.set(bx * DEG, (by + (p.turn ?? FIGURINE.turn)) * DEG, bz * DEG);
+      fig.group.position.set(0, 0, 0);
+      fig.root.updateMatrixWorld(true);
+      // stand it back on the floor in the middle (a lying or sitting pose moves its feet)
+      const b = new THREE.Box3().setFromObject(fig.root), c = b.getCenter(new THREE.Vector3());
+      fig.group.position.set(-c.x, -b.min.y, -c.z);
+      fig.root.updateMatrixWorld(true);
+      const H = FIGURINE.renderH;
+      R.setSize(H, H, false);
+      camera.aspect = 1;
+      camera.position.set(0, 4.6, 11.5);
+      camera.lookAt(0, 1.1, 0);
+      camera.updateProjectionMatrix();
+      scene.add(fig.root);
+      R.render(scene, camera);
+      scene.remove(fig.root);
+      const out = document.createElement("canvas");
+      out.width = H; out.height = H;
+      out.getContext("2d", { willReadFrequently: true }).drawImage(R.domElement, 0, 0);
+      return trim(out);
+    }
+
+    return { loadModel, render, renderAnimation, renderBig, renderScare, loadFaces, setFace, dispose, loadFigurine, renderFigurine };
   },
 };
 
@@ -845,6 +943,84 @@ function inPicture(ctx, p, x, y, size, fn) {
 
 // "darker" in draw()'s units (-100..0) and a shade together (both darken)
 const addShade = (shade, bright) => 1 - (1 - (shade || 0)) * (1 - Math.max(0, -(bright || 0)) / 100);
+
+/* ---------------------------------------------------------------------
+   THE DESK FIGURINE (Miggy, models/miggy.obj)
+   A little figure that always sits on the office desk. Every night it is
+   somewhere else on the desk (game.js: placeFigurine, FIGURINE_DESK), and
+   its pose hints at who will be the most active that night (FIGURINE_POSES,
+   picked by figurineFor() in game.js).
+   The .obj has no rig, but its parts are separate (Roblox export), so the
+   arms, legs and head each turn on a joint. A mod can bring its own
+   models/miggy.obj (same part names) to swap the figure.
+   --------------------------------------------------------------------- */
+const FIGURINE = {
+  file: "miggy",
+  renderH: 420,                // the size of each pose's picture (pixels)
+  turn: -25,                   // turned a bit to the side, like it was put down by hand
+  turnAround: true,            // the Roblox export faces -z: turn it to face you
+  // which .obj part is which (the rest is the body: torso, backpack)
+  parts: {
+    head: ["Specialflower136", "Handle1", "Handle3"],          // head, headphones, hair
+    armR: ["Specialflower133"], armL: ["Specialflower135"],
+    legR: ["Specialflower132"], legL: ["Specialflower134"],
+  },
+  // the .obj came without its .mtl (colors), so here they are
+  colors: {
+    Specialflower136: 0xf2c79b,   // head (skin)
+    Handle1: 0x2b2b30,            // headphones
+    Handle3: 0x3b2618,            // hair
+    Handle2: 0x4f7a3a,            // backpack
+    Specialflower131: 0xd8342b,   // shirt
+    Specialflower133: 0xf2c79b, Specialflower135: 0xf2c79b,   // arms (skin)
+    Specialflower132: 0x2e4a7d, Specialflower134: 0x2e4a7d,   // legs (jeans)
+  },
+};
+// Poses: joint -> [x, y, z] turn in degrees. x below 0 swings a limb forward (toward you),
+// armR is on your left (z below 0 lifts it out to the side), armL on your right (z above 0).
+// head: x above 0 looks down. body: the whole figure (x above 0 leans toward you, z 90 = lying on its side).
+// One pose per character it can hint at (the role ids), plus "stand" (nobody in particular).
+const FIGURINE_POSES = {
+  stand:   {},
+  tfreddy: { armR: [-140, 0, -8], armL: [0, 0, 35], head: [-12, 0, 0] },                       // Toy Eddy: singing into a mic
+  tbonnie: { armR: [-55, 0, 35], armL: [-40, 0, -25], head: [0, 0, 14], legL: [0, 0, 8] },      // Toy Cheddy: strumming a guitar
+  tchica:  { armL: [-85, 0, 0], armR: [-35, 0, 15], head: [0, 0, -12] },                        // Toy Weddy: holding out a cupcake
+  mangle:  { body: [0, 0, 90], armR: [-170, 0, 0], armL: [30, 0, 70], legL: [-60, 0, 0], head: [0, 0, 40] },   // Meyg: knocked over, all bent
+  bb:      { armL: [0, 0, 165], armR: [0, 0, -15], head: [0, 0, 10] },                         // Balloon Boy's spot: waving hello
+  puppet:  { armR: [0, 0, -85], armL: [0, 0, 85], head: [0, 0, 22] },                          // the Puppet: arms out, head tilted
+  wfreddy: { body: [14, 0, 0], head: [38, 0, 0], armR: [8, 0, 4], armL: [8, 0, -4] },          // Withered Eddy: slumped, head down
+  wbonnie: { armR: [-95, 0, -5], armL: [-95, 0, 5], head: [-28, 0, 16] },                       // Withered Cheddy: reaching for you
+  wchica:  { armR: [-70, 0, -40], armL: [-70, 0, 40], head: [0, 0, -22] },                      // Withered Weddy: arms wide open
+  foxy:    { body: [16, 0, 0], armR: [-75, 0, 0], armL: [55, 0, 0], legR: [-50, 0, 0], legL: [35, 0, 0] },   // Withered Endo: running at you
+  golden:  { legR: [-90, 0, 0], legL: [-90, 0, 0], head: [16, 0, 26], armR: [-20, 0, -12], armL: [-20, 0, 12] }, // Golden Eddie: sitting slumped
+};
+// Is there a figurine model? (a mod's models/miggy.obj first, then the game's)
+async function findFigurine() {
+  const rel = "models/" + FIGURINE.file + ".obj";
+  if (typeof MOD_FILES !== "undefined" && MOD_FILES[rel]) return { url: MOD_FILES[rel] };
+  try {
+    const r = await fetch(MODEL_DIR + FIGURINE.file + ".obj", { method: "HEAD", cache: "no-cache" });
+    if (r.ok) return { url: MODEL_DIR + FIGURINE.file + ".obj" };
+  } catch (e) { /* no figurine */ }
+  return null;
+}
+// Draws the figurine in a pose with its feet (the bottom middle) at (x, y), standing `tall` px tall
+// (every pose is drawn at the same scale, so lying down is short and wide). shade 0..1 = darker.
+function drawFigurine(ctx, pose, x, y, tall, o = {}) {
+  const F = Actors.figure;
+  if (!F) return;
+  const s = F.poses[pose] || F.poses.stand;
+  const k = tall / F.standPx;
+  const [x0, , x1, y1] = s.body;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(o.flip ? -k : k, k);
+  ctx.translate(-(x0 + x1) / 2, -y1);
+  ctx.drawImage(s.img, 0, 0);
+  const shade = Math.min(0.95, o.shade || 0);
+  if (shade > 0.01) { ctx.globalAlpha *= shade; ctx.drawImage(s.black, 0, 0); }
+  ctx.restore();
+}
 
 /* ---------------------------------------------------------------------
    Character spots that are not in a room (the old pictures' pins and boxes)
