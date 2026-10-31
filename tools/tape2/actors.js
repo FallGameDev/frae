@@ -717,9 +717,43 @@ const Actors = {
     // ---- the desk figurine (FIGURINE) ----
     // A plain .obj made of separate parts (Roblox export: head, torso, arms, legs...). Each limb is
     // hung on a joint (shoulder, hip, neck) so the poses can swing it, like bones.
+    // The figurine's .mtl (materials): material name -> a finished texture. Roblox clothing pictures are
+    // see-through where the skin shows, so each picture is painted over its material's color (Kd) first.
+    async function figurineLooks() {
+      const fileUrl = name => (typeof MOD_FILES !== "undefined" && MOD_FILES["models/" + name]) || MODEL_DIR + name;
+      let text;
+      try { const r = await fetch(fileUrl(FIGURINE.file + ".mtl")); if (!r.ok) return {}; text = await r.text(); }
+      catch (e) { return {}; }
+      const mats = {};
+      let cur = null;
+      for (const line of text.split(/\r?\n/)) {
+        const [key, ...rest] = line.trim().split(/\s+/);
+        if (key === "newmtl") mats[cur = rest.join(" ")] = { kd: [0.8, 0.8, 0.8] };
+        else if (cur && key === "Kd") mats[cur].kd = rest.map(Number);
+        else if (cur && key === "map_Kd") mats[cur].map = rest.join(" ");
+      }
+      const out = {};
+      await Promise.all(Object.entries(mats).map(async ([name, m]) => {
+        const c = document.createElement("canvas");
+        const g = c.getContext("2d");
+        let img = null;
+        if (m.map) { try { img = await loadImage(fileUrl(m.map)); } catch (e) { /* missing picture: color only */ } }
+        c.width = img ? img.naturalWidth : 4; c.height = img ? img.naturalHeight : 4;
+        // (Kd is linear light: turned back into a normal screen color)
+        const srgb = v => Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
+        g.fillStyle = "rgb(" + m.kd.map(srgb).join(",") + ")";
+        g.fillRect(0, 0, c.width, c.height);
+        if (img) g.drawImage(img, 0, 0);
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        out[name] = tex;
+      }));
+      return out;
+    }
     async function loadFigurine(url) {
       const { OBJLoader } = await import("three/addons/loaders/OBJLoader.js");
       const root = await new OBJLoader().loadAsync(url);
+      const looks = await figurineLooks();
       const meshes = [];
       root.traverse(o => { if (o.isMesh) meshes.push(o); });
       // bake it: 2.4 tall, feet on the floor, in the middle, turned to face +z like the other models
@@ -737,8 +771,10 @@ const Actors = {
         m.geometry.applyMatrix4(new THREE.Matrix4().multiplyMatrices(bake, m.matrixWorld));
         m.geometry.computeBoundingBox();
         m.geometry.computeVertexNormals();
-        // (no .mtl came with it: each part gets its color from FIGURINE.colors)
-        m.material = new THREE.MeshStandardMaterial({ color: FIGURINE.colors[m.name] ?? 0xb8b0a8, roughness: 0.55 });
+        // its look from miggy.mtl (texture painted over the part's color), else a plain color from FIGURINE.colors
+        const look = looks[(Array.isArray(m.material) ? m.material[0] : m.material || {}).name];
+        m.material = look ? new THREE.MeshStandardMaterial({ map: look, roughness: 0.6 })
+          : new THREE.MeshStandardMaterial({ color: FIGURINE.colors[m.name] ?? 0xb8b0a8, roughness: 0.55 });
         m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1);
         m.frustumCulled = false;
         (byPart[partOf(m.name)] = byPart[partOf(m.name)] || []).push(m);
@@ -965,7 +1001,7 @@ const FIGURINE = {
     armR: ["Specialflower133"], armL: ["Specialflower135"],
     legR: ["Specialflower132"], legL: ["Specialflower134"],
   },
-  // the .obj came without its .mtl (colors), so here they are
+  // its looks come from models/miggy.mtl + the miggy_*_diff.png pictures; these colors are only used without them
   colors: {
     Specialflower136: 0xf2c79b,   // head (skin)
     Handle1: 0x2b2b30,            // headphones

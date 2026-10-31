@@ -1,0 +1,56 @@
+newmtl Handle3Mtl
+Material Color
+Ka 0.373615 0.368591 0.383775
+Kd 0.373615 0.368591 0.383775
+Ks 0.0234425 0.0231273 0.02408 
+
+d 1
+
+Ns 0
+
+map_Ka miggy_Handle3_diff.png
+map_Kd miggy_Handle3_diff.png
+map_d miggy_Handle3_diff.png
+
+newmtl Handle2Mtl
+Material Color
+Ka 0.373615 0.368591 0.383775
+Kd 0.373615 0.368591 0.383775
+Ks 0.0234425 0.0231273 0.02408 
+
+d 1
+
+Ns 0
+
+map_Ka miggy_Handle2_diff.png
+map_Kd miggy_Handle2_diff.png
+map_d miggy_Handle2_diff.png
+
+newmtl Specialflower131Mtl
+Material Color
+Ka 0.687031 0.56681 0.329729
+Kd 0.687031 0.56681 0.329729
+Ks 0.0431078 0.0355645 0.0206889 
+
+d 1
+
+Ns 0
+
+map_Ka miggy_Specialflower131_diff.png
+map_Kd miggy_Specialflower131_diff.png
+map_d miggy_Specialflower131_diff.png
+
+newmtl Handle1Mtl
+Material Color
+Ka 0.373615 0.368591 0.383775
+Kd 0.373615 0.368591 0.383775
+Ks 0.0234425 0.0231273 0.02408 
+
+d 1
+
+Ns 0
+
+map_Ka miggy_Handle1_diff.png
+map_Kd miggy_Handle1_diff.png
+map_d miggy_Handle1_diff.png
+

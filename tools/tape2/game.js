@@ -182,7 +182,7 @@ const PRIZE_SPOT = {
 // THE DESK FIGURINE (Miggy: FIGURINE in actors.js). Every night it stands somewhere new on the desk.
 // The desk top, in office picture spots (x from the office's middle like PRIZE_SPOT, y = screen y of its feet):
 // the back edge (far, small) and the front edge (near, big), each [left x, right x, y, how tall the figure is there].
-const FIGURINE_DESK = { back: [-180, 180, 238, 24], front: [-255, 245, 284, 30] };
+const FIGURINE_DESK = { back: [-165, 160, 240, 40], front: [-235, 215, 284, 50] };
 // spots on the desk where it can't stand (the paper balls, the lamp, the cup): [left, top, right, bottom], where its feet can't go
 const FIGURINE_BLOCKED = [[-110, 224, -50, 256], [36, 220, 120, 266], [114, 196, 164, 280]];
 
