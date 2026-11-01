@@ -678,6 +678,7 @@ class Game {
     };
     for (const who of Object.keys(PATHS)) { n.at[who] = PATHS[who][0]; n.wait[who] = randFloat(4, 6); }
     n.at.foxy = 8; n.wait.foxy = randFloat(4, 6);
+    if (L === 5) BoomFx.load();            // the explosion for when the phone hits the wall
     this.smooth.jump("pan", 0);
     this.smooth.jump("camPan", 0);
     this.smooth.jump("phoneShow", 0);
@@ -841,7 +842,7 @@ class Game {
   /* --------------------------------------------------------------
      THROWING THE PHONE (night 5's call). Your arm swings up from the
      bottom right, the phone spins across the office into the wall
-     above the right TVs and blows up (a chunky pixel explosion), and a
+     right of the hall door and blows up (a chunky pixel explosion), and a
      scorch mark stays there for the rest of the night.
      -------------------------------------------------------------- */
   startPhoneThrow(onHit) {

@@ -2,14 +2,44 @@
    NIGHT 5: THROWING THE PHONE AT THE WALL
    The pieces game.js uses for it (startPhoneThrow / drawThrow): the
    timing, the phone in your hand, the pixel explosion, its boom, and the
-   scorch mark left on the wall. The explosion is drawn by the game in
-   chunky pixels (an original one, not a copy of any game's sprite).
+   scorch mark left on the wall. The explosion is Aidan's GIF + sound
+   (BoomFx); the chunky pixel one drawn by the game is the backup.
    ===================================================================== */
 "use strict";
 
-// wall: where it hits (office picture units: the wall above the right TVs)
+// wall: where it hits (office picture units: the wall just right of the hall door, so it's always in view)
 // release / hit: seconds after the throw starts; boom: how long the explosion lasts
-const THROW = { wall: [313, 88], release: 0.38, hit: 0.78, boom: 1.25 };
+const THROW = { wall: [284, 76], release: 0.38, hit: 0.78, boom: 1.7 };
+
+// The explosion Aidan picked: a GIF (as a sprite sheet: tools/tape2/fx/explosion.png, 17 frames of 71 x 98,
+// 10 per second) and its sound (fx/explosion.mp3). Copied to 2/assets/fx by the build; a mod can swap them.
+// Loaded when night 5 starts. If they can't load, the game's own pixel explosion and boom are used.
+const BoomFx = {
+  frames: 17, w: 71, h: 98, fps: 10,
+  pin: [32, 49],                   // the point in a frame where it starts (lands on the wall)
+  size: 2.2,                       // drawn this many game pixels per GIF pixel
+  volume: 1.6,
+  img: null, buffer: null, started: false,
+  load() {
+    if (this.started) return;
+    this.started = true;
+    const img = new Image();
+    img.onload = () => { this.img = img; };
+    img.src = assetUrl("fx/explosion.png");
+    fetch(assetUrl("fx/explosion.mp3")).then(r => r.arrayBuffer()).then(d => Sound.ctx.decodeAudioData(d))
+      .then(b => { this.buffer = b; }).catch(() => {});
+  },
+  // the frame for t seconds after the hit (null when it's over)
+  draw(ctx, x, y, t) {
+    const i = Math.floor(t * this.fps);
+    if (!this.img || i >= this.frames) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.img, i * this.w, 0, this.w, this.h,
+      x - this.pin[0] * this.size, y - this.pin[1] * this.size, this.w * this.size, this.h * this.size);
+    ctx.restore();
+  },
+};
 
 // A phone (the one with Fred on the screen), centered at x, y
 function drawHeldPhone(ctx, x, y, scale, rot) {
@@ -57,7 +87,11 @@ function drawExplosion(ctx, x, y, t, tick) {
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   // the white flash over everything
-  if (t < 0.14) { ctx.fillStyle = "rgba(255,255,255," + (0.75 * (1 - t / 0.14)) + ")"; ctx.fillRect(0, 0, 480, 360); }
+  const flash = 0.14 * 1.25 / THROW.boom;
+  if (t < flash) { ctx.fillStyle = "rgba(255,255,255," + (0.75 * (1 - t / flash)) + ")"; ctx.fillRect(0, 0, 480, 360); }
+  // Aidan's explosion GIF, when it loaded
+  if (BoomFx.img) { ctx.restore(); BoomFx.draw(ctx, x, y, t * THROW.boom); return; }
+  t = Math.min(1, t * THROW.boom / 1.25);          // (the game's own one is 1.25 s long)
   // the shockwave ring
   if (t < 0.45) {
     ctx.globalAlpha = 1 - t / 0.45;
@@ -93,6 +127,13 @@ function drawExplosion(ctx, x, y, t, tick) {
 // BOOM (made by the game: rumbling noise that closes down, plus a chiptune drop)
 function explosionSound() {
   const c = Sound.ctx, t = c.currentTime;
+  if (BoomFx.buffer) {
+    const src = c.createBufferSource(), g = c.createGain();
+    src.buffer = BoomFx.buffer; g.gain.value = BoomFx.volume;
+    src.connect(g).connect(Sound.sfxBus);
+    src.start();
+    return;
+  }
   const len = Math.round(c.sampleRate * 1.6);
   const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
   let hold = 0;
@@ -112,7 +153,7 @@ function explosionSound() {
   sq.start(t); sq.stop(t + 0.7);
 }
 
-// The burn mark where it hit, with bits of phone on top of the TVs (office picture units, drawn in drawOffice)
+// The burn mark where it hit, with bits of phone on the floor under it (office picture units, drawn in drawOffice)
 function drawScorch(ctx, [u, v], tick) {
   ctx.save();
   const g = ctx.createRadialGradient(u, v, 1, u, v, 16);
@@ -128,12 +169,12 @@ function drawScorch(ctx, [u, v], tick) {
     ctx.lineTo(u + Math.cos(a - 0.1) * 15, v + Math.sin(a - 0.1) * 12);
     ctx.stroke();
   }
-  // bits of the phone on top of the right TVs
+  // bits of the phone on the floor under it
   ctx.fillStyle = "#141417";
   for (const [dx, w, h, r] of [[-12, 3, 1.6, 0.3], [-6, 2, 1.2, -0.5], [4, 4, 1.8, 0.1], [9, 1.6, 1.4, 0.8]]) {
-    ctx.save(); ctx.translate(u + dx, 103.6); ctx.rotate(r); ctx.fillRect(-w / 2, -h, w, h); ctx.restore();
+    ctx.save(); ctx.translate(u + dx, 139); ctx.rotate(r); ctx.fillRect(-w / 2, -h, w, h); ctx.restore();
   }
-  ctx.fillStyle = "#1e3260"; ctx.fillRect(u + 2.5, 102.4, 2, 1);          // a bit of the screen
+  ctx.fillStyle = "#1e3260"; ctx.fillRect(u + 2.5, 137.8, 2, 1);          // a bit of the screen
   // a thin wisp of smoke still coming off it
   for (let i = 0; i < 4; i++) {
     const k = ((tick / 60 + i / 4) % 1);

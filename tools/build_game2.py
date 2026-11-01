@@ -202,6 +202,11 @@ def copy_calls():
     for n in range(1, 5):
         shutil.copy(os.path.join(TAPE, 'calls', f'call{n}.mp3'), os.path.join(dst, f'call-{n}b.mp3'))
     shutil.copy(os.path.join(TAPE, 'calls', CALL5_NAME), os.path.join(dst, CALL5_NAME))
+    # the explosion when you throw the phone (night 5): Aidan's GIF as a sprite sheet + its sound
+    fx = os.path.join(os.path.dirname(HERE), '2', 'assets', 'fx')
+    os.makedirs(fx, exist_ok=True)
+    for f in ('explosion.png', 'explosion.mp3'):
+        shutil.copy(os.path.join(TAPE, 'fx', f), os.path.join(fx, f))
     old5 = os.path.join(dst, 'call-5b.mp3')          # (the old FNaF night 5 call: not used any more)
     if os.path.exists(old5):
         os.remove(old5)
