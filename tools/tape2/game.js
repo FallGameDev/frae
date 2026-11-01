@@ -273,6 +273,7 @@ function loadProgress(file) {
       p.caughtBy = Array.isArray(s.caughtBy) ? s.caughtBy : [];
       p.seen = Array.isArray(s.seen) ? s.seen : [];
       p.custom = Array.isArray(s.custom) ? s.custom : null;
+      p.debugged = !!s.debugged;           // the dev debugger was used on this file: no achievements (devmenu.js)
       p.started = true;
     }
   } catch (e) { /* storage blocked: play without saving */ }
@@ -281,7 +282,7 @@ function loadProgress(file) {
 function saveProgress(file, p) {
   try {
     localStorage.setItem(saveKey(file), JSON.stringify({ night: p.night, beat5: p.beat5, beat6: p.beat6, beat420: p.beat420,
-      prizes: p.prizes, achievements: p.achievements, caughtBy: p.caughtBy, custom: p.custom, seen: p.seen }));
+      prizes: p.prizes, achievements: p.achievements, caughtBy: p.caughtBy, custom: p.custom, seen: p.seen, debugged: !!p.debugged }));
     Cloud.saved(saveKey(file));                  // backed up to the account if signed in (tools/global.js)
   } catch (e) {}
 }

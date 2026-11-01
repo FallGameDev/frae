@@ -176,7 +176,7 @@ def write_page():
     code = '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read() for f in ('names.js', 'words.js', 'embedded.js'))
     code += '\n\n' + '\n\n'.join(open(os.path.join(HERE, 'game', f), encoding='utf-8').read() for f in ('pictures.js', 'sound.js', 'vhs.js', 'pause.js'))
     code += '\n\n' + '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read()
-                                 for f in ('poses.js', 'actors.js', 'dressing.js', 'phonethrow.js', 'game.js', 'guide.js', 'minigames.js', 'achievements.js', 'warning.js'))
+                                 for f in ('poses.js', 'actors.js', 'dressing.js', 'phonethrow.js', 'game.js', 'guide.js', 'minigames.js', 'achievements.js', 'warning.js', 'devmenu.js'))
 
     # the devlog (Settings > Devlog): this tape's updates from tools/devlog.json
     log = [e for e in json.load(open(os.path.join(HERE, 'devlog.json'), encoding='utf-8')) if 2 in e['tapes']]
