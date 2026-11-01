@@ -176,7 +176,7 @@ def write_page():
     code = '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read() for f in ('names.js', 'words.js', 'embedded.js'))
     code += '\n\n' + '\n\n'.join(open(os.path.join(HERE, 'game', f), encoding='utf-8').read() for f in ('pictures.js', 'sound.js', 'vhs.js', 'pause.js'))
     code += '\n\n' + '\n\n'.join(open(os.path.join(TAPE, f), encoding='utf-8').read()
-                                 for f in ('poses.js', 'actors.js', 'dressing.js', 'game.js', 'guide.js', 'minigames.js', 'achievements.js', 'warning.js'))
+                                 for f in ('poses.js', 'actors.js', 'dressing.js', 'phonethrow.js', 'game.js', 'guide.js', 'minigames.js', 'achievements.js', 'warning.js'))
 
     # the devlog (Settings > Devlog): this tape's updates from tools/devlog.json
     log = [e for e in json.load(open(os.path.join(HERE, 'devlog.json'), encoding='utf-8')) if 2 in e['tapes']]
@@ -189,8 +189,27 @@ def write_page():
     open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8').write(html)
 
 
+# The phone calls, nights 1-5 (Miggy, tools/tape2/calls/): 1-4 pitched down 1.4 semitones with a little
+# static (already done to the files), night 5 left clean under its odd name: the game corrupts it while
+# loading (CALL5_FILE in game.js), so only someone digging through the files hears it clean.
+CALL5_NAME = 'HoT c1OUplEs ᵣₑᵥₑᵣₛₑ NeAR yOU! 01000101.mp3'
+
+
+def copy_calls():
+    """Put the calls where the game reads them (2/assets/snd/sprite11/). Runs on every build, --code too."""
+    dst = os.path.join(os.path.dirname(HERE), '2', 'assets', 'snd', 'sprite11')
+    os.makedirs(dst, exist_ok=True)
+    for n in range(1, 5):
+        shutil.copy(os.path.join(TAPE, 'calls', f'call{n}.mp3'), os.path.join(dst, f'call-{n}b.mp3'))
+    shutil.copy(os.path.join(TAPE, 'calls', CALL5_NAME), os.path.join(dst, CALL5_NAME))
+    old5 = os.path.join(dst, 'call-5b.mp3')          # (the old FNaF night 5 call: not used any more)
+    if os.path.exists(old5):
+        os.remove(old5)
+
+
 def main():
     if sys.argv[1] == '--code':
+        copy_calls()
         write_page()
         print('wrote 2/index.html (code only)')
         return
@@ -248,9 +267,7 @@ def main():
     # the office fan: Aidan's fan noise with rain, mixed into one loop (tools/tape2/fan.mp3)
     shutil.copy(os.path.join(TAPE, 'fan.mp3'), os.path.join(ASSETS, 'snd', 'fan.mp3'))
     sounds['Fansound']['fansound'] = {'src': 'assets/snd/fan.mp3', 'music': 0}
-    # night 1's phone call: Aidan's own voiceline (tools/tape2/call1.mp3)
-    shutil.copy(os.path.join(TAPE, 'call1.mp3'), os.path.join(ASSETS, 'snd', 'call1.mp3'))
-    sounds['Sprite11']['call 1b'] = {'src': 'assets/snd/call1.mp3', 'music': 0}
+    # nights 1-5's phone calls: Miggy (tools/tape2/calls/, put in place by copy_calls() after flattening)
     # the Puppet's music box tune (CAM 11): the FNaF 1 song instrumental, turned down 8 dB (tools/tape2/musicbox.mp3)
     shutil.copy(os.path.join(TAPE, 'musicbox.mp3'), os.path.join(ASSETS, 'snd', 'musicbox.mp3'))
     sounds['Sprite6']['Music_Box_Melody_Playful'] = {'src': 'assets/snd/musicbox.mp3', 'music': 1}
@@ -275,6 +292,7 @@ def main():
     # paint every picture into one plain image file (and write names.js / words.js)
     import subprocess
     subprocess.run([sys.executable, os.path.join(HERE, 'flatten.py'), '2'], check=True)
+    copy_calls()
     write_page()
     print(f'wrote 2/index.html ({len(art)} picture groups, {sum(len(v) for v in sounds.values())} sounds)')
 

@@ -17,9 +17,14 @@ const Sound = {
   buffers: new Map(),       // url -> decoded sound
   speakers: [],
 
+  // A tape can give a sound a different file name (Sound.rename["Group/name"] = "snd/...mp3")
+  // and change it right after it loads (Sound.filters[that path] = (buffer, fileBytes) => buffer).
+  rename: {},
+  filters: {},
   // where a sound's file is (null if there is no such sound)
   path(group, name) {
-    return SOUND_NAMES[group] && SOUND_NAMES[group].includes(name) ? `snd/${fileName(group)}/${fileName(name)}.mp3` : null;
+    if (!(SOUND_NAMES[group] && SOUND_NAMES[group].includes(name))) return null;
+    return this.rename[group + "/" + name] || `snd/${fileName(group)}/${fileName(name)}.mp3`;
   },
   // every sound file (for the loading bar and the mod template)
   allPaths() {
@@ -30,7 +35,10 @@ const Sound = {
 
   async load(path) {
     const data = await (await fetch(assetUrl(path))).arrayBuffer();
-    this.buffers.set(path, await this.ctx.decodeAudioData(data));
+    const bytes = this.filters[path] ? new Uint8Array(data.slice(0)) : null;     // (decoding empties `data`)
+    let buffer = await this.ctx.decodeAudioData(data);
+    if (this.filters[path]) buffer = this.filters[path](buffer, bytes);
+    this.buffers.set(path, buffer);
   },
 
   // A speaker for one thing in the game (the phone, the fan, the kitchen...)

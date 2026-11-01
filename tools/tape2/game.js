@@ -186,6 +186,54 @@ const FIGURINE_DESK = { back: [-165, 160, 240, 40], front: [-235, 215, 284, 50] 
 // spots on the desk where it can't stand (the paper balls, the lamp, the cup): [left, top, right, bottom], where its feet can't go
 const FIGURINE_BLOCKED = [[-110, 224, -50, 256], [36, 220, 120, 266], [114, 196, 164, 280]];
 
+/* ---------------------------------------------------------------------
+   NIGHT 5'S CALL. The file is clean (and has an odd name: anyone who digs
+   through the game's files or the browser's network tab finds it and can
+   listen properly). The game breaks it up while loading: crunched down,
+   stuttering, played backwards in places, with bursts of the file's own
+   raw bytes played as sound ("binary waterfall"). Two seconds in, you
+   throw the phone at the wall (startPhoneThrow).
+   --------------------------------------------------------------------- */
+const CALL5_FILE = "snd/sprite11/HoT c1OUplEs ᵣₑᵥₑᵣₛₑ NeAR yOU! 01000101.mp3";
+Sound.rename["Sprite11/call 5b"] = CALL5_FILE;
+Sound.filters[CALL5_FILE] = binaryWaterfall;
+function binaryWaterfall(buffer, bytes) {
+  const sr = buffer.sampleRate, len = buffer.length, chans = buffer.numberOfChannels;
+  const out = Sound.ctx.createBuffer(chans, len, sr);
+  let seed = 1987;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  // the plan, in 90 ms blocks: 0 crunched, 1 raw bytes, 2 stutter, 3 backwards, 4 voice + bytes
+  const block = Math.round(sr * 0.09), blocks = Math.ceil(len / block);
+  const plan = [], from = [];
+  for (let b = 0; b < blocks; b++) {
+    const r = rnd();
+    plan.push(b === 0 ? 1 : b < 3 ? 4 : r < 0.22 ? 1 : r < 0.36 ? 2 : r < 0.45 ? 3 : r < 0.65 ? 4 : 0);
+    from.push(Math.floor(rnd() * Math.max(1, bytes.length - block)));     // where in the file its bytes come from
+  }
+  const hold = 4, stut = Math.round(sr * 0.028);
+  for (let c = 0; c < chans; c++) {
+    const inp = buffer.getChannelData(c), o = out.getChannelData(c);
+    let noise = 7 + c;
+    for (let b = 0; b < blocks; b++) {
+      const start = b * block, end = Math.min(len, start + block), kind = plan[b];
+      for (let i = start; i < end; i++) {
+        const j = i - (i % hold);                               // sample-and-hold: crunchy, like a cheap old chip
+        let v = kind === 3 ? inp[Math.max(start, end - 1 - (j - start))] : kind === 2 ? inp[start + ((j - start) % stut)] : inp[j];
+        v = Math.round(v * 7) / 7;                               // only a few loudness steps (bit crushed)
+        if (kind === 1 || kind === 4) {
+          const byte = bytes[from[b] + Math.floor((i - start) / (kind === 1 ? 2 : 3))] || 128;
+          const w = (byte - 128) / 128 * 0.42;
+          v = kind === 1 ? w * 0.85 + v * 0.2 : v * 0.7 + w * 0.32;
+        }
+        noise = (noise * 16807) % 2147483647;
+        v += ((noise / 2147483647) - 0.5) * 0.05;                // static
+        o[i] = Math.max(-1, Math.min(1, v));
+      }
+    }
+  }
+  return out;
+}
+
 // The phone handset icon (Material Design "call" icon, 24 x 24)
 const PHONE_ICON = new Path2D("M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z");
 
@@ -713,6 +761,11 @@ class Game {
       call = sp.play("Sprite11", "call " + this.level + "b");
       n.phone = "talking";
       n.callTime = 0;
+      // night 5: two seconds of that and the phone goes at the wall
+      if (this.level === 5) this.scripts.run("throw", function* () {
+        yield 2;
+        if (n.phone === "talking") this.startPhoneThrow(() => { call.stop(); this.scripts.stop("phone"); n.phone = "off"; });
+      }.call(this));
       this.scripts.run("phone", function* () {
         yield () => call.done;
         n.phone = "off";
@@ -723,7 +776,7 @@ class Game {
       this.unlock("hangup");
       if (ring) ring.stop();
       if (call) call.stop();
-      this.scripts.stop("ring", "phone");
+      this.scripts.stop("ring", "phone", "throw");
       n.phone = "off";
     };
     this.phoneTap = () => (n.phone === "ringing" ? answer() : hangUp());
@@ -783,6 +836,63 @@ class Game {
     ctx.fillStyle = "#fff";
     ctx.fill(PHONE_ICON);
     ctx.restore();
+  }
+
+  /* --------------------------------------------------------------
+     THROWING THE PHONE (night 5's call). Your arm swings up from the
+     bottom right, the phone spins across the office into the wall
+     above the right TVs and blows up (a chunky pixel explosion), and a
+     scorch mark stays there for the rest of the night.
+     -------------------------------------------------------------- */
+  startPhoneThrow(onHit) {
+    const n = this.n;
+    if (n.throwing) return;
+    this.forceMonitorDown();                          // you need both hands (and to see the wall)
+    n.throwing = { t: 0, hit: false, onHit };
+  }
+  updateThrow() {
+    const n = this.n, th = n.throwing;
+    if (!th) return;
+    th.t += TICK;
+    if (!th.hit && th.t >= THROW.hit) {
+      th.hit = true;
+      th.onHit();
+      n.scorch = true;
+      n.shake = 0.7;
+      explosionSound();
+    }
+    if (n.shake > 0) n.shake = Math.max(0, n.shake - TICK);
+    if (th.t > THROW.hit + THROW.boom) n.throwing = null;
+  }
+  // where the phone hits, on the screen right now (office picture units -> screen)
+  throwTarget(pan) { return [SX(pan) + (THROW.wall[0] - 240) * 1.5, 180 + (THROW.wall[1] - 115) * 1.5]; }
+  drawThrow(ctx, pan) {
+    const n = this.n, th = n.throwing;
+    if (!th) return;
+    const t = th.t, [tx, ty] = this.throwTarget(pan);
+    // the arm: winds back, then swings forward and lets go
+    if (t < THROW.release + 0.25) {
+      const k = t < THROW.release ? t / THROW.release : 1 + (t - THROW.release) / 0.25;
+      const ease = k <= 1 ? (k < 0.4 ? -k / 0.4 * 0.35 : -0.35 + (k - 0.4) / 0.6 * 1.35) : 1 + (k - 1) * 0.4;
+      const hx = 430 - ease * 95, hy = 330 - ease * 85 + (k > 1 ? (k - 1) * 120 : 0);
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#1d2433"; ctx.lineWidth = 30;              // sleeve
+      ctx.beginPath(); ctx.moveTo(520, 420); ctx.quadraticCurveTo(470, 360, hx + 10, hy + 14); ctx.stroke();
+      ctx.fillStyle = "#e6b48c";                                     // hand
+      ctx.beginPath(); ctx.ellipse(hx, hy, 15, 12, -0.6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      if (t < THROW.release) drawHeldPhone(ctx, hx - 4, hy - 16, 1.25, -0.4 - ease * 0.5);
+    }
+    // the phone flying, spinning and getting smaller as it goes
+    if (t >= THROW.release && t < THROW.hit) {
+      const k = (t - THROW.release) / (THROW.hit - THROW.release);
+      const sx = 335, sy = 245;
+      const x = sx + (tx - sx) * k, y = sy + (ty - sy) * k - Math.sin(k * Math.PI) * 45;
+      drawHeldPhone(ctx, x, y, 1.25 - k * 0.9, k * 9);
+    }
+    // the explosion
+    if (th.hit) drawExplosion(ctx, tx, ty, (t - THROW.hit) / THROW.boom, this.tick);
   }
 
   /* --------------------------------------------------------------
@@ -1321,6 +1431,7 @@ class Game {
     this.updateMusicBox();
     this.updateGolden();
     this.updatePhone();
+    this.updateThrow();
     this.updateNightSounds();
     if (n.placingTrap && !n.monitorUp) n.placingTrap = false;     // put the monitor down: no trap set
     if (this.tick % 15 === 0) this.noteSeen();
@@ -2163,8 +2274,11 @@ class Game {
       return;
     }
     const pan = this.smooth.at("pan", a);
-    if (!n.camsUp) this.drawOffice(ctx, pan, a);
+    ctx.save();
+    if (n.shake > 0) ctx.translate((Math.random() - 0.5) * n.shake * 22, (Math.random() - 0.5) * n.shake * 22);
+    if (!n.camsUp) { this.drawOffice(ctx, pan, a); this.drawThrow(ctx, pan); }
     else this.drawCams(ctx, a);
+    ctx.restore();
     // monitor flipping up or down
     if (n.monitorFrame) draw(ctx, picAt("Sprite5", n.monitorFrame), 240, 180);
     // the mask
@@ -2234,6 +2348,7 @@ class Game {
       for (const s of ROOM_COVERS.office || []) drawActor(ctx, s.role, s.box, { ...s, still: true, shade: addShade(s.shade + (base === "010" ? 0 : 0.5), dim) });
       // tonight's changes to the office: plushies, posters, drawings, notes, TVs (dressing.js)
       Dressing.draw(ctx, this.level, addShade({ "000": 0.32, "010": 0.22, "100": 0.4, "001": 0.4 }[base], dim), this.tick);
+      if (n.scorch) drawScorch(ctx, THROW.wall, this.tick);         // where the phone blew up (night 5)
     });
     // who is in the hall / at a vent (drawn by the game: see actors.js and poses.js)
     const pose = name => {
