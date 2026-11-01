@@ -430,15 +430,17 @@ class Game {
      ================================================================= */
   useFile(file) { this.file = file; this.progress = loadProgress(file); }
   // ?file=1&skip=5 sets this save file's Continue night to 5 (1-6), saves it, then takes &skip off the
-  // address so a reload later doesn't put you back there.
+  // address so a reload later doesn't put you back there. Forgiving: skip={5}, skip=night5 work too.
+  // (Saved straight away even with Settings > Debug mode on, which normally stops saving.)
   skipFromUrl() {
     const url = new URL(location.href), raw = url.searchParams.get("skip");
     if (raw === null) return;
-    const night = Math.round(Number(raw));
+    const digits = raw.match(/\d+/), night = digits ? Number(digits[0]) : NaN;
     if (night >= 1 && night <= 6) {
       this.progress.night = night;
       this.progress.started = true;
-      this.save();
+      saveProgress(this.file, this.progress);
+      console.log("%c&skip: save file " + this.file + " now continues from night " + night, "color:#ffcf3f");
     } else console.warn("&skip= needs a night from 1 to 6, got", raw);
     url.searchParams.delete("skip");
     history.replaceState(null, "", url.pathname + url.search + url.hash);

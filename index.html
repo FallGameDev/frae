@@ -698,7 +698,9 @@
     setTimeout(() => {
       if (game.url) {
         // Story Mode opens its hub; a tape opens on the picked save file
-        location.href = game.story ? game.url : game.url + "?file=" + file;
+        // (?skip=N on the menu's address is passed along: the tape sets that file's Continue night)
+        const skip = new URLSearchParams(location.search).get("skip");
+        location.href = game.story ? game.url : game.url + "?file=" + file + (skip ? "&skip=" + encodeURIComponent(skip) : "");
       } else {
         document.getElementById("tvoff").classList.remove("go");
         alert(game.title + " is not hooked up yet. Set its url in the GAMES list.");
