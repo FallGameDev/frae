@@ -203,9 +203,17 @@ const Actors = {
   plush(role, kind) {
     const key = role + "/" + (kind || "stand");
     if (this.plushes.has(key)) return this.plushes.get(key);
-    const base = this.get(role, kind || "stand", true);
+    // the withered ones are plushies of how they looked BEFORE they broke (their clean drawing, no holes),
+    // just well loved: faded a bit with patches sewn on (unless they have their own 3D model or mod drawing)
+    const clean = PLUSH_CLEAN[role];
+    const worn = !!clean;
+    let base;
+    if (clean && !this.models[role] && hasPic("Chars", clean) && pic("Chars", clean).img) {
+      if (!this.cleanSprites) this.cleanSprites = {};
+      base = this.cleanSprites[clean] = this.cleanSprites[clean] || makeSprite(pic("Chars", clean).img, 0.4);
+    } else base = this.get(role, kind || "stand", true);
     if (!base) return null;
-    const p = plushify(base, role);
+    const p = plushify(base, role, { worn, kind });
     this.plushes.set(key, p);
     return p;
   },
@@ -859,7 +867,17 @@ const Actors = {
      4. a little white tag with a heart on its side
    Works the same on 3D renders and 2D drawings (it only needs the sprite's body and head boxes).
    --------------------------------------------------------------------- */
-const PLUSH = { size: 320, head: 1.38, bodyW: 0.86, bodyH: 0.62, seam: 5, seamColor: "rgba(40,26,20,0.92)", stitch: "rgba(255,246,225,0.95)" };
+const PLUSH = {
+  size: 320,               // how tall the plushie picture is made (pixels)
+  head: 1.55,              // the head this much bigger...
+  bodyW: 1.18, bodyH: 0.54,   // ...over a short, chonky body
+  squish: 1.1,             // and the whole thing a little wider
+  puff: 9,                 // how round and puffy the outline gets (blur, pixels)
+  seam: 6, seamColor: "rgba(40,26,20,0.92)", stitch: "rgba(255,246,225,0.95)",
+  cheeks: "rgba(255,105,140,0.42)",
+};
+// withered plushies use the clean drawing of who they were (the Chars pictures of the toys / Endo)
+const PLUSH_CLEAN = { wfreddy: "tfreddy", wbonnie: "tbonnie", wchica: "tchica", foxy: "endo" };
 let PLUSH_WEAVE = null;
 function plushWeave() {
   if (PLUSH_WEAVE) return PLUSH_WEAVE;
@@ -879,42 +897,93 @@ function plushWeave() {
   for (let x = 0; x < 48; x += 3) g.fillRect(x, 0, 1, 48);
   return (PLUSH_WEAVE = c);
 }
-function plushify(s, role) {
+// a canvas the same size as another
+function sameSize(c) { const o = document.createElement("canvas"); o.width = c.width; o.height = c.height; return o; }
+function plushify(s, role, opt = {}) {
   const [x0, y0, x1, y1] = s.body;
   const [hx0, hy0, hx1, hy1] = s.head;
   const h = y1 - y0, f = PLUSH.size / h;
-  // 1. chibi shape on a canvas with room for the seam
-  // (a character that is mostly face already, like the Peepeepoopoo Monster, keeps its own shape)
+  // a character that is mostly face already (the Peepeepoopoo Monster) keeps its own shape, just puffed up
   const chibi = (hy1 - hy0) < h * 0.5;
-  const headK = chibi ? PLUSH.head : 1;
-  const headW = (hx1 - hx0) * f * headK, headH = (hy1 - hy0) * f * headK;
-  const neck = hy1 - h * 0.06;                              // the body starts a bit above the head's bottom (hidden under it)
-  const bodyW = (x1 - x0) * f * PLUSH.bodyW, bodyH = (y1 - neck) * f * PLUSH.bodyH;
-  const pad = PLUSH.seam * 3;
-  if (!chibi) {
-    // the whole picture as it is, just made soft (the seam, fabric and tag below still apply)
-    const w = (x1 - x0) * f, hh = h * f;
-    const shape = document.createElement("canvas");
-    shape.width = Math.ceil(w + pad * 2); shape.height = Math.ceil(hh + pad * 2);
-    const g0 = shape.getContext("2d");
-    g0.filter = "saturate(1.25) brightness(1.06) blur(0.8px)";
-    g0.drawImage(s.img, x0, y0, x1 - x0, h, pad, pad, w, hh);
-    g0.filter = "none";
-    return plushFinish(shape, pad, pad, w, hh);
+  const pad = PLUSH.seam * 3 + PLUSH.puff;
+  // 1. the layout: a big head over a short, wide body (x squish on everything)
+  let parts, W, H, headBox, bodyBox;
+  if (chibi) {
+    const headW = (hx1 - hx0) * f * PLUSH.head * PLUSH.squish, headH = (hy1 - hy0) * f * PLUSH.head;
+    const neck = hy1 - h * 0.06;
+    const bodyW = (x1 - x0) * f * PLUSH.bodyW * PLUSH.squish, bodyH = (y1 - neck) * f * PLUSH.bodyH;
+    W = Math.ceil(Math.max(headW, bodyW) + pad * 2); H = Math.ceil(headH * 0.88 + bodyH + pad * 2);
+    const headMid = ((hx0 + hx1) / 2 - x0) / (x1 - x0);
+    const bodyX = W / 2 - bodyW * headMid, bodyTop = pad + headH * 0.88;
+    bodyBox = [bodyX, bodyTop, bodyW, bodyH];
+    headBox = [W / 2 - headW / 2, pad, headW, headH];
+    parts = [[x0, neck, x1 - x0, y1 - neck, ...bodyBox], [hx0, hy0, hx1 - hx0, hy1 - hy0, ...headBox]];
+  } else {
+    const w = (x1 - x0) * f * PLUSH.squish, hh = h * f;
+    W = Math.ceil(w + pad * 2); H = Math.ceil(hh + pad * 2);
+    bodyBox = [pad, pad, w, hh];
+    headBox = [pad + ((hx0 - x0) / (x1 - x0)) * w, pad, (hx1 - hx0) / (x1 - x0) * w, (hy1 - hy0) * f];
+    parts = [[x0, y0, x1 - x0, h, ...bodyBox]];
   }
-  const W = Math.ceil(Math.max(headW, bodyW) + pad * 2), H = Math.ceil(headH * 0.9 + bodyH + pad * 2);
   const shape = document.createElement("canvas");
   shape.width = W; shape.height = H;
-  const g = shape.getContext("2d");
-  g.filter = "saturate(1.25) brightness(1.06) blur(0.8px)";
-  const bodyTop = pad + headH * 0.9 - bodyH * 0.02;
-  // where the head's middle is over the body (wide drawings like the Peepeepoopoo Monster keep theirs to the side)
-  const headMid = ((hx0 + hx1) / 2 - x0) / (x1 - x0);
-  const bodyX = W / 2 - bodyW * headMid;
-  g.drawImage(s.img, x0, neck, x1 - x0, y1 - neck, bodyX, bodyTop, bodyW, bodyH);
-  g.drawImage(s.img, hx0, hy0, hx1 - hx0, hy1 - hy0, W / 2 - headW / 2, pad, headW, headH);
-  g.filter = "none";
-  return plushFinish(shape, bodyX, bodyTop, bodyW, bodyH);
+  const g = shape.getContext("2d", { willReadFrequently: true });
+  const paint = filter => { g.filter = filter; for (const p of parts) g.drawImage(s.img, ...p); g.filter = "none"; };
+  const color = opt.worn ? "saturate(0.8) sepia(0.18) brightness(1.02)" : "saturate(1.3) brightness(1.07)";
+  // 2. stuffed: a blurry copy underneath lets the colors fill in the puffed-up edges...
+  paint(color + " blur(" + PLUSH.puff * 0.7 + "px)");
+  paint(color + " blur(" + PLUSH.puff * 0.35 + "px)");
+  paint(color + " blur(0.8px)");
+  // ...and the outline is rounded off: the shape blurred, then cut sharp again a bit outside its edge (curvy, no corners)
+  const m = sameSize(shape), mg = m.getContext("2d", { willReadFrequently: true });
+  mg.filter = "blur(" + PLUSH.puff + "px)";
+  for (const p of parts) mg.drawImage(s.img, ...p);
+  mg.filter = "none";
+  const md = mg.getImageData(0, 0, W, H), d = md.data;
+  for (let i = 3; i < d.length; i += 4) d[i] = d[i] > 70 ? 255 : 0;
+  mg.putImageData(md, 0, 0);
+  for (const p of parts) mg.drawImage(s.img, ...p);          // (thin bits like arms stay)
+  g.globalCompositeOperation = "destination-in";
+  g.drawImage(m, 0, 0);
+  g.globalCompositeOperation = "source-over";
+  // 3. pillowy: darker toward the edges (it's round and stuffed), done with the outside blurred inward
+  const edge = sameSize(shape), eg = edge.getContext("2d");
+  eg.fillStyle = "rgba(40,20,30,1)"; eg.fillRect(0, 0, W, H);
+  eg.globalCompositeOperation = "destination-out"; eg.drawImage(m, 0, 0);
+  const soft = sameSize(shape), sg = soft.getContext("2d");
+  sg.filter = "blur(" + Math.round(PLUSH.size / 22) + "px)"; sg.drawImage(edge, 0, 0); sg.filter = "none";
+  g.globalCompositeOperation = "source-atop";
+  g.globalAlpha = 0.55; g.drawImage(soft, 0, 0); g.globalAlpha = 1;
+  // 4. cute: rosy cheeks on the face
+  if (role !== "puppet" && role !== "shadow") {
+    const [hx, hy, hw, hh] = headBox;
+    g.fillStyle = PLUSH.cheeks;
+    g.filter = "blur(" + Math.max(2, hw * 0.02) + "px)";
+    for (const side of [-1, 1]) {
+      g.beginPath();
+      g.ellipse(hx + hw / 2 + side * hw * 0.27, hy + hh * 0.66, hw * 0.085, hh * 0.05, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.filter = "none";
+  }
+  // 5. well loved (the withered ones): patches sewn on instead of holes
+  if (opt.worn) {
+    const [bx, by, bw, bh] = bodyBox, [hx, hy, hw, hh] = headBox;
+    plushPatch(g, bx + bw * 0.34, by + bh * 0.32, bw * 0.2, "#8fb8de", 0.12);
+    plushPatch(g, hx + hw * 0.76, hy + hh * 0.2, hw * 0.13, "#e7a3c0", -0.25);
+  }
+  g.globalCompositeOperation = "source-over";
+  return plushFinish(shape, ...bodyBox);
+}
+// a square of other fabric sewn on (dashed stitches around it)
+function plushPatch(g, x, y, size, color, rot) {
+  g.save();
+  g.translate(x, y); g.rotate(rot);
+  g.fillStyle = color; g.fillRect(-size / 2, -size / 2, size, size);
+  g.strokeStyle = "rgba(60,40,30,0.85)"; g.lineWidth = Math.max(1.5, size * 0.06);
+  g.setLineDash([size * 0.12, size * 0.1]);
+  g.strokeRect(-size / 2 + size * 0.1, -size / 2 + size * 0.1, size * 0.8, size * 0.8);
+  g.restore();
 }
 // the soft fabric, seam, stitches and tag on a plushie's shape (body box: where the tag goes)
 function plushFinish(shape, bodyX, bodyTop, bodyW, bodyH) {
