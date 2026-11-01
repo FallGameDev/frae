@@ -429,6 +429,20 @@ class Game {
      TITLE SCREEN
      ================================================================= */
   useFile(file) { this.file = file; this.progress = loadProgress(file); }
+  // ?file=1&skip=5 sets this save file's Continue night to 5 (1-6), saves it, then takes &skip off the
+  // address so a reload later doesn't put you back there.
+  skipFromUrl() {
+    const url = new URL(location.href), raw = url.searchParams.get("skip");
+    if (raw === null) return;
+    const night = Math.round(Number(raw));
+    if (night >= 1 && night <= 6) {
+      this.progress.night = night;
+      this.progress.started = true;
+      this.save();
+    } else console.warn("&skip= needs a night from 1 to 6, got", raw);
+    url.searchParams.delete("skip");
+    history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }
   save() { if (!settings.debug) saveProgress(this.file, this.progress); }
 
   // (Tape 2 asks about sensitive content first, once per save file unless they say otherwise: warning.js)
@@ -436,6 +450,7 @@ class Game {
     await Promise.all([Demo.check(), loadItemsQuick()]);   // server time + who is signed in + shop items
     if (Demo.on() && !Story.on) { OG.claim(); return this.demoLocked(); }   // locked tape: only the account bonus
     this.claimOG();                                         // OG achievement + bonus EXP (until Nov 10)
+    if (!Story.on) this.skipFromUrl();
     if (Story.on) { const go = () => this.storyBoot(); return needsWarning(this.file) ? showWarning(go) : go(); }
     if (needsWarning(this.file)) showWarning(() => this.showTitle()); else this.showTitle();
   }

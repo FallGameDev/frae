@@ -96,5 +96,6 @@
  {"date": "2026-10-31", "tapes": [2], "text": "New phone calls for nights 1 to 5, from Miggy."},
  {"date": "2026-10-31", "tapes": [2], "text": "Something is wrong with night 5's call."},
  {"date": "2026-10-31", "tapes": [2], "text": "Phone calls are louder."},
- {"date": "2026-10-31", "tapes": [2], "text": "For developers: type dev.debug in the browser console for a debugger panel (night, clock, battery, music box, oxygen, everyone's AI and spot). Using it turns achievements off on that save file."}
+ {"date": "2026-10-31", "tapes": [2], "text": "For developers: type dev.debug in the browser console for a debugger panel (night, clock, battery, music box, oxygen, everyone's AI and spot). Using it turns achievements off on that save file."},
+ {"date": "2026-10-31", "tapes": [2], "text": "Add &skip=N to the page address (for example 2/?file=1&skip=5) to set that save file's Continue night."}
 ]

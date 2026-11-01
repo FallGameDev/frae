@@ -75,6 +75,7 @@ Built from the FNaF 2 Scratch project (not in the repo, ~40 MB):
 - Every word the game draws goes through `W("group", "text")`; the build collects them into texts.json for mods.
 
 ### Testing
+- `/2/?file=3&skip=5`: `skipFromUrl()` (called in boot, not in Story Mode) sets that file's Continue night (1-6), saves, and removes `&skip` from the address with history.replaceState.
 - `/2/?file=3`, then `game.level = N; game.startNight()`; `game.n.at.<role> = "hall"` etc. to place characters; `game.startMinigame("cake")`.
 
 ### Dev debugger (Tape 2): `dev.debug` in the browser console
