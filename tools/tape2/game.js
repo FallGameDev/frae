@@ -2209,7 +2209,7 @@ class Game {
       const y = lerp(back[2], front[2]), tall = lerp(back[3], front[3]);
       const x = randFloat(lerp(back[0], front[0]), lerp(back[1], front[1]));
       const w = tall * 0.45;                                     // about how wide it is
-      const hit = FIGURINE_BLOCKED.some(([l, tp, r, b]) => x + w > l && x - w < r && y > tp - 4 && y < b + 6)
+      const hit = [...FIGURINE_BLOCKED, ...Dressing.deskBlocks(this.level)].some(([l, tp, r, b]) => x + w > l && x - w < r && y > tp - 4 && y < b + 6)
         || (this.progress.prizes || []).some(pr => PRIZE_SPOT[pr] && Math.abs(PRIZE_SPOT[pr][0] - x) < 40 && Math.abs(SY(PRIZE_SPOT[pr][1]) - y) < 40);
       if (!hit || i === 29) spot = { x, y, tall };
     }
@@ -2232,6 +2232,8 @@ class Game {
     // the new cast on the posters (darker when the hall light is off)
     inPicture(ctx, room, ox, oy, 150, () => {
       for (const s of ROOM_COVERS.office || []) drawActor(ctx, s.role, s.box, { ...s, still: true, shade: addShade(s.shade + (base === "010" ? 0 : 0.5), dim) });
+      // tonight's changes to the office: plushies, posters, drawings, notes, TVs (dressing.js)
+      Dressing.draw(ctx, this.level, addShade({ "000": 0.32, "010": 0.22, "100": 0.4, "001": 0.4 }[base], dim), this.tick);
     });
     // who is in the hall / at a vent (drawn by the game: see actors.js and poses.js)
     const pose = name => {

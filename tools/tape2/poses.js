@@ -137,7 +137,7 @@ const ROOM_COVERS = {
     {role: "tbonnie", box: [184.96, 30.8, 210.04, 57.2], mode: "head", shade: 0.35, cut: [181, 20, 99, 60]},
     {role: "tfreddy", box: [217.96, 30.8, 243.04, 57.2], mode: "head", shade: 0.35, cut: [181, 20, 99, 60]},
     {role: "tchica", box: [250.96, 30.8, 276.04, 57.2], mode: "head", shade: 0.35, cut: [181, 20, 99, 60]},
-    {role: "tchica", box: [36, 35, 82.5, 85], mode: "body", shade: 0.55},
-    {role: "tfreddy", box: [131, 114, 167.5, 150], mode: "body", shade: 0.55},
+    {role: "tchica", box: [36, 35, 82.5, 85], mode: "body", shade: 0.55, plush: true},
+    {role: "tfreddy", box: [131, 114, 167.5, 150], mode: "body", shade: 0.55, plush: true},
   ],
 };

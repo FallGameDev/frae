@@ -197,11 +197,28 @@ const Actors = {
     if (s && s.frames) return still ? s.frames[0] : s.frames[Math.floor(performance.now() / 1000 * s.fps) % s.frames.length];
     return s;
   },
+  // A character as a PLUSHIE (custom night prizes, the plushies around the office): its picture
+  // made soft and squishy by plushify() below. Made the first time it's needed, then kept.
+  plushes: new Map(),
+  plush(role, kind) {
+    const key = role + "/" + (kind || "stand");
+    if (this.plushes.has(key)) return this.plushes.get(key);
+    const base = this.get(role, kind || "stand", true);
+    if (!base) return null;
+    const p = plushify(base, role);
+    this.plushes.set(key, p);
+    return p;
+  },
   // every picture (for the warm-up while loading)
   allPictures() {
     const out = [];
     for (const s of this.sprites.values()) for (const f of s.frames || [s]) out.push(f.img, f.black);
     if (this.figure) for (const s of Object.values(this.figure.poses)) out.push(s.img, s.black);
+    // the plushies too (made now, while loading, so making one never stutters a night)
+    for (const role of Object.keys(ACTOR_FILES)) {
+      if (role === "shadow" || role === "endo") continue;
+      for (const kind of ["stand", "creep"]) { const p = this.plush(role, kind); if (p) out.push(p.img, p.black); }
+    }
     return out;
   },
 
@@ -834,6 +851,130 @@ const Actors = {
   },
 };
 
+/* ---------------------------------------------------------------------
+   PLUSHIFY: any character picture -> a plushie of it
+     1. chibi: the head drawn much bigger, the body short and squat under it
+     2. soft: a little blurred, brighter colors, a fabric weave pressed in, puffy light
+     3. a stitched seam all the way around (darker felt edge with light stitches)
+     4. a little white tag with a heart on its side
+   Works the same on 3D renders and 2D drawings (it only needs the sprite's body and head boxes).
+   --------------------------------------------------------------------- */
+const PLUSH = { size: 320, head: 1.38, bodyW: 0.86, bodyH: 0.62, seam: 5, seamColor: "rgba(40,26,20,0.92)", stitch: "rgba(255,246,225,0.95)" };
+let PLUSH_WEAVE = null;
+function plushWeave() {
+  if (PLUSH_WEAVE) return PLUSH_WEAVE;
+  const c = document.createElement("canvas");
+  c.width = c.height = 48;
+  const g = c.getContext("2d");
+  g.fillStyle = "#808080"; g.fillRect(0, 0, 48, 48);
+  let r = 7;
+  for (let i = 0; i < 900; i++) {                       // fuzzy speckles
+    r = (r * 16807) % 2147483647;
+    const v = 100 + (r % 60);
+    g.fillStyle = "rgb(" + v + "," + v + "," + v + ")";
+    g.fillRect(r % 48, (r >> 8) % 48, 1, 1);
+  }
+  g.fillStyle = "rgba(0,0,0,0.12)";                      // the weave
+  for (let y = 0; y < 48; y += 3) g.fillRect(0, y, 48, 1);
+  for (let x = 0; x < 48; x += 3) g.fillRect(x, 0, 1, 48);
+  return (PLUSH_WEAVE = c);
+}
+function plushify(s, role) {
+  const [x0, y0, x1, y1] = s.body;
+  const [hx0, hy0, hx1, hy1] = s.head;
+  const h = y1 - y0, f = PLUSH.size / h;
+  // 1. chibi shape on a canvas with room for the seam
+  // (a character that is mostly face already, like the Peepeepoopoo Monster, keeps its own shape)
+  const chibi = (hy1 - hy0) < h * 0.5;
+  const headK = chibi ? PLUSH.head : 1;
+  const headW = (hx1 - hx0) * f * headK, headH = (hy1 - hy0) * f * headK;
+  const neck = hy1 - h * 0.06;                              // the body starts a bit above the head's bottom (hidden under it)
+  const bodyW = (x1 - x0) * f * PLUSH.bodyW, bodyH = (y1 - neck) * f * PLUSH.bodyH;
+  const pad = PLUSH.seam * 3;
+  if (!chibi) {
+    // the whole picture as it is, just made soft (the seam, fabric and tag below still apply)
+    const w = (x1 - x0) * f, hh = h * f;
+    const shape = document.createElement("canvas");
+    shape.width = Math.ceil(w + pad * 2); shape.height = Math.ceil(hh + pad * 2);
+    const g0 = shape.getContext("2d");
+    g0.filter = "saturate(1.25) brightness(1.06) blur(0.8px)";
+    g0.drawImage(s.img, x0, y0, x1 - x0, h, pad, pad, w, hh);
+    g0.filter = "none";
+    return plushFinish(shape, pad, pad, w, hh);
+  }
+  const W = Math.ceil(Math.max(headW, bodyW) + pad * 2), H = Math.ceil(headH * 0.9 + bodyH + pad * 2);
+  const shape = document.createElement("canvas");
+  shape.width = W; shape.height = H;
+  const g = shape.getContext("2d");
+  g.filter = "saturate(1.25) brightness(1.06) blur(0.8px)";
+  const bodyTop = pad + headH * 0.9 - bodyH * 0.02;
+  // where the head's middle is over the body (wide drawings like the Peepeepoopoo Monster keep theirs to the side)
+  const headMid = ((hx0 + hx1) / 2 - x0) / (x1 - x0);
+  const bodyX = W / 2 - bodyW * headMid;
+  g.drawImage(s.img, x0, neck, x1 - x0, y1 - neck, bodyX, bodyTop, bodyW, bodyH);
+  g.drawImage(s.img, hx0, hy0, hx1 - hx0, hy1 - hy0, W / 2 - headW / 2, pad, headW, headH);
+  g.filter = "none";
+  return plushFinish(shape, bodyX, bodyTop, bodyW, bodyH);
+}
+// the soft fabric, seam, stitches and tag on a plushie's shape (body box: where the tag goes)
+function plushFinish(shape, bodyX, bodyTop, bodyW, bodyH) {
+  const W = shape.width, H = shape.height;
+  const g = shape.getContext("2d");
+  // 2. fabric and puffy light, only on the plushie itself
+  // (overlay paints the see-through parts too, so the shape is cut back out afterwards)
+  const mask = document.createElement("canvas");
+  mask.width = W; mask.height = H;
+  mask.getContext("2d").drawImage(shape, 0, 0);
+  g.globalAlpha = 0.35;
+  g.globalCompositeOperation = "overlay";
+  g.fillStyle = g.createPattern(plushWeave(), "repeat");
+  g.fillRect(0, 0, W, H);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = "destination-in";
+  g.drawImage(mask, 0, 0);
+  g.globalCompositeOperation = "source-atop";
+  const light = g.createRadialGradient(W * 0.36, H * 0.28, 4, W * 0.5, H * 0.5, Math.max(W, H) * 0.75);
+  light.addColorStop(0, "rgba(255,255,255,0.22)"); light.addColorStop(0.55, "rgba(255,255,255,0)"); light.addColorStop(1, "rgba(0,0,0,0.32)");
+  g.fillStyle = light; g.fillRect(0, 0, W, H);
+  g.globalCompositeOperation = "source-over";
+  // 3. the seam: a felt edge around the shape (the shape drawn darker in a ring under it), then stitches on it
+  const out = document.createElement("canvas");
+  out.width = W; out.height = H;
+  const o = out.getContext("2d", { willReadFrequently: true });
+  const edge = blackCopy(shape, W, H);
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * Math.PI * 2;
+    o.drawImage(edge, Math.cos(a) * PLUSH.seam, Math.sin(a) * PLUSH.seam);
+  }
+  o.globalCompositeOperation = "source-in";
+  o.fillStyle = PLUSH.seamColor; o.fillRect(0, 0, W, H);
+  o.globalCompositeOperation = "source-over";
+  // stitches: little light dashes along the middle of the seam ring
+  const ring = o.getImageData(0, 0, W, H).data;
+  const inner = shape.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+  const A = (d, x, y) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : d[(y * W + x) * 4 + 3]);
+  o.fillStyle = PLUSH.stitch;
+  const step = 7;
+  for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) {
+    if ((x * 3 + y * 5) % step >= 2) continue;
+    if (A(ring, x, y) < 128 || A(inner, x, y) > 10) continue;
+    // halfway through the seam: shape about seam/2 away
+    const r = Math.round(PLUSH.seam / 2);
+    if (A(inner, x + r, y) > 60 || A(inner, x - r, y) > 60 || A(inner, x, y + r) > 60 || A(inner, x, y - r) > 60) o.fillRect(x - 1, y, 2.2, 1.6);
+  }
+  o.drawImage(shape, 0, 0);
+  // 4. the tag (white, with a little red heart), sticking out from the bottom of the body
+  const tx = bodyX + bodyW * 0.82, ty = bodyTop + bodyH * 0.84;
+  o.save();
+  o.translate(tx, ty); o.rotate(0.35);
+  o.fillStyle = "#f6f3ea"; o.strokeStyle = "rgba(0,0,0,0.35)"; o.lineWidth = 1;
+  o.fillRect(0, 0, 16, 20); o.strokeRect(0, 0, 16, 20);
+  o.fillStyle = "#d8283a";
+  o.beginPath(); o.moveTo(8, 15); o.bezierCurveTo(1, 9, 4, 4, 8, 8); o.bezierCurveTo(12, 4, 15, 9, 8, 15); o.fill();
+  o.restore();
+  return makeSprite(trim(out), 0.5);
+}
+
 // The picture's shape in black (for darkening)
 function blackCopy(canvas, w, h) {
   const black = document.createElement("canvas");
@@ -892,7 +1033,7 @@ function trim(c) {
             rot (degrees), cut [x, y, w, h] (only inside), alpha, flip
    --------------------------------------------------------------------- */
 function drawActor(ctx, role, box, o = {}) {
-  const s = Actors.get(role, o.kind, o.still);
+  const s = o.plush ? Actors.plush(role, o.kind) : Actors.get(role, o.kind, o.still);
   if (!s) return;
   const head = o.mode === "head";
   const part = head ? s.head : s.body;
@@ -1073,7 +1214,7 @@ const EXTRA_SPOTS = {
 // custom night prizes that are characters (little plushies on the desk)
 const PLUSH_ROLE = { Sprite58: "bb", Sprite59: "wbonnie", Sprite60: "wchica", Sprite62: "foxy",
                      Sprite63: "wfreddy", Sprite64: "golden", Sprite66: "tbonnie" };
-const PLUSH_SPOT = { pin: [60, 85], box: [10, 10, 110, 165], mode: "body", shade: 0.3, still: true };
+const PLUSH_SPOT = { pin: [60, 85], box: [10, 10, 110, 165], mode: "body", shade: 0.3, still: true, plush: true };
 // custom night portraits
 const HEAD_SPOT = { pin: [40, 35], box: [4, 4, 76, 66], mode: "head", still: true };      // (no idle animation here)
 // title screen faces (Toy Eddy staring, and the old ones for a split second)

@@ -397,7 +397,7 @@ def cover_spots(sprite):
         elif kind == 'plate':   # a paper plate pal on the wall: just the head, a bit faded
             out.append(dict(role=role, box=[x0 + 6, y0 + 6, x1 - 6, y1 - 6], mode='head', shade=0.3, cut=cut))
         else:                   # a plush on a shelf
-            out.append(dict(role=role, box=[x0, y0, x1, y1], mode='body', shade=0.55))
+            out.append(dict(role=role, box=[x0, y0, x1, y1], mode='body', shade=0.55, plush=True))   # (drawn as its plushie: Actors.plush)
     return out
 
 
