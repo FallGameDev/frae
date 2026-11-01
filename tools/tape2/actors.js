@@ -200,6 +200,21 @@ const Actors = {
   // A character as a PLUSHIE (custom night prizes, the plushies around the office): its picture
   // made soft and squishy by plushify() below. Made the first time it's needed, then kept.
   plushes: new Map(),
+  // Hand-drawn plushie references: models/plushies/<role>.png (a mod's plushies/<role>.png first).
+  // A character with one gets ITS drawing as the plushie (soft fabric, seam and tag added), not a made-up one.
+  plushArt: {},
+  async loadPlushArt() {
+    await Promise.all(Object.keys(ACTOR_FILES).map(async role => {
+      const own = typeof MOD_FILES !== "undefined" && DRAWING_TYPES.map(t => MOD_FILES["plushies/" + role + "." + t]).find(Boolean);
+      const url = own || MODEL_DIR + "plushies/" + role + ".png";
+      try {
+        if (!own) { const r = await fetch(url, { method: "HEAD", cache: "no-cache" }); if (!r.ok) return; }
+        const img = await loadImage(url);
+        if (img.decode) await img.decode().catch(() => {});
+        this.plushArt[role] = makeSprite(img, 0.45);
+      } catch (e) { /* no reference for this one */ }
+    }));
+  },
   plush(role, kind) {
     const key = role + "/" + (kind || "stand");
     if (this.plushes.has(key)) return this.plushes.get(key);
@@ -208,6 +223,11 @@ const Actors = {
     const clean = PLUSH_CLEAN[role];
     const worn = !!clean;
     let base;
+    if (this.plushArt[role]) {
+      const p = plushify(this.plushArt[role], role, { asIs: true });
+      this.plushes.set(key, p);
+      return p;
+    }
     if (clean && !this.models[role] && hasPic("Chars", clean) && pic("Chars", clean).img) {
       if (!this.cleanSprites) this.cleanSprites = {};
       base = this.cleanSprites[clean] = this.cleanSprites[clean] || makeSprite(pic("Chars", clean).img, 0.4);
@@ -249,6 +269,7 @@ const Actors = {
   async load(onProgress) {
     // measure every 2D drawing now, while loading (measuring during the night made the game stutter)
     for (const role of Object.keys(ACTOR_FILES)) this.flat(role);
+    await this.loadPlushArt();
     const found = {};
     await Promise.all(Object.entries(ACTOR_FILES).map(async ([role, list]) => {
       // 1. a mod's 3D model
@@ -904,7 +925,8 @@ function plushify(s, role, opt = {}) {
   const [hx0, hy0, hx1, hy1] = s.head;
   const h = y1 - y0, f = PLUSH.size / h;
   // a character that is mostly face already (the Peepeepoopoo Monster) keeps its own shape, just puffed up
-  const chibi = (hy1 - hy0) < h * 0.5;
+  // (a hand-drawn plushie reference is already the right shape: asIs)
+  const chibi = !opt.asIs && (hy1 - hy0) < h * 0.5;
   const pad = PLUSH.seam * 3 + PLUSH.puff;
   // 1. the layout: a big head over a short, wide body (x squish on everything)
   let parts, W, H, headBox, bodyBox;
@@ -929,7 +951,7 @@ function plushify(s, role, opt = {}) {
   shape.width = W; shape.height = H;
   const g = shape.getContext("2d", { willReadFrequently: true });
   const paint = filter => { g.filter = filter; for (const p of parts) g.drawImage(s.img, ...p); g.filter = "none"; };
-  const color = opt.worn ? "saturate(0.8) sepia(0.18) brightness(1.02)" : "saturate(1.3) brightness(1.07)";
+  const color = opt.asIs ? "saturate(1.05)" : opt.worn ? "saturate(0.8) sepia(0.18) brightness(1.02)" : "saturate(1.3) brightness(1.07)";
   // 2. stuffed: a blurry copy underneath lets the colors fill in the puffed-up edges...
   paint(color + " blur(" + PLUSH.puff * 0.7 + "px)");
   paint(color + " blur(" + PLUSH.puff * 0.35 + "px)");
@@ -955,7 +977,7 @@ function plushify(s, role, opt = {}) {
   g.globalCompositeOperation = "source-atop";
   g.globalAlpha = 0.55; g.drawImage(soft, 0, 0); g.globalAlpha = 1;
   // 4. cute: rosy cheeks on the face
-  if (role !== "puppet" && role !== "shadow") {
+  if (!opt.asIs && role !== "puppet" && role !== "shadow") {
     const [hx, hy, hw, hh] = headBox;
     g.fillStyle = PLUSH.cheeks;
     g.filter = "blur(" + Math.max(2, hw * 0.02) + "px)";

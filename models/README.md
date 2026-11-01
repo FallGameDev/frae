@@ -73,3 +73,9 @@ Rebuild the toys (for example after changing the base model or a color in `TOYS`
 
     pip install bpy
     python3 tools/rig_toys.py models/basemodel.blend models
+
+
+**Plushies (Tape 2):** the game makes a plushie of every character by itself. To draw
+your own instead, put a transparent PNG in `models/plushies/` named after the role
+(`puppet.png`, `tfreddy.png`, `wbonnie.png`...). It is used as drawn, with the fabric, stitched seam and tag added.
+Mods can do the same with `plushies/<role>.png`.
